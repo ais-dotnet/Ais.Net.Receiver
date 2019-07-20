@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29025.244
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Ais.Net.Receiver", "Ais.Net.Receiver\Ais.Net.Receiver.csproj", "{39A469DF-E331-4A68-ACA3-5E7ECBE2B1FB}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{39A469DF-E331-4A68-ACA3-5E7ECBE2B1FB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{39A469DF-E331-4A68-ACA3-5E7ECBE2B1FB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{39A469DF-E331-4A68-ACA3-5E7ECBE2B1FB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{39A469DF-E331-4A68-ACA3-5E7ECBE2B1FB}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {B807F890-1DEB-4C00-A4FC-67EC55DE21F5}
+	EndGlobalSection
+EndGlobal
