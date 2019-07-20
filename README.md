@@ -1,5 +1,19 @@
 # Ais.Net.Receiver
-A simple .NET AIS Receiver for capturing the Norwegian Coastal Administration's AIS network data (available under [Norwegian license for public data (NLOD)](https://data.norge.no/nlod/en/2.0)) and persisting in Microsoft Azure Blob Storage.
+
+A simple .NET AIS Receiver for capturing the Norwegian Coastal Administration's marine Automatic Identification System (AIS) [AIVDM/AIVDO](https://gpsd.gitlab.io/gpsd/AIVDM.html) NMEA message network data (available under [Norwegian license for public data (NLOD)](https://data.norge.no/nlod/en/2.0)) and persisting in Microsoft Azure Blob Storage.
+
+The Norwegian Costal Administration provide a TCP endpoint (`153.44.253.27:5631`) for broadcasting their raw AIS (AIVDM/AIVDO) data, as NMEA sentences. 
+
+## Licenses
+
+The code for the AIS .NET Receiver is licensed under MIT. 
+The Data ingested by the AIS .NET Receiver is licensed under the [Norwegian license for public data (NLOD)](https://data.norge.no/nlod/en/2.0).
+
+## Project Sponsor
+
+This project is sponsored by [endjin](https://endjin.com), a UK based Microsoft Gold Partner for Cloud Platform, Data Platform, Data Analytics, and DevOps and Power BI Partner. For more information about our products and services, or for commercial support of this project, please [contact us](https://endjin.com/contact-us). 
+
+If you are interested in the Microsoft Azure Platform, subscribe to our free weekly newsletter [Azure Weekly](https://azureweekly.info). If you are interested in Power BI, please subscribe to our free weekly newsletter [Power BI Weekly](https://powerbiweekly.info).
 
 ## Code of conduct
 
