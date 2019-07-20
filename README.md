@@ -2,7 +2,9 @@
 
 A simple .NET AIS Receiver for capturing the Norwegian Coastal Administration's marine Automatic Identification System (AIS) [AIVDM/AIVDO](https://gpsd.gitlab.io/gpsd/AIVDM.html) NMEA message network data (available under [Norwegian license for public data (NLOD)](https://data.norge.no/nlod/en/2.0)) and persisting in Microsoft Azure Blob Storage.
 
-The Norwegian Costal Administration provide a TCP endpoint (`153.44.253.27:5631`) for broadcasting their raw AIS (AIVDM/AIVDO) data, as NMEA sentences. 
+The Norwegian Costal Administration provide a TCP endpoint (`153.44.253.27:5631`) for broadcasting their raw AIS AIVDM/AIVDO sentences.
+
+This project delivers a console application that will reliably ingest the TCP stream, batch the AIVDM/AIVDO sentences and write them to Azure Blob Storage using the [Append Blob](https://docs.microsoft.com/en-us/rest/api/storageservices/append-block) feature, to create timestamped hour-long rolling logs.
 
 ## Licenses
 
@@ -11,9 +13,11 @@ The Data ingested by the AIS .NET Receiver is licensed under the [Norwegian lice
 
 ## Project Sponsor
 
-This project is sponsored by [endjin](https://endjin.com), a UK based Microsoft Gold Partner for Cloud Platform, Data Platform, Data Analytics, DevOps, and is also a Power BI Partner. For more information about our products and services, or for commercial support of this project, please [contact us](https://endjin.com/contact-us). 
+This project is sponsored by [endjin](https://endjin.com), a UK based Microsoft Gold Partner for Cloud Platform, Data Platform, Data Analytics, DevOps, and a Power BI Partner.
 
-If you are interested in the Microsoft Azure Platform, subscribe to our free weekly newsletter [Azure Weekly](https://azureweekly.info). If you are interested in Power BI, please subscribe to our free weekly newsletter [Power BI Weekly](https://powerbiweekly.info).
+For more information about our products and services, or for commercial support of this project, please [contact us](https://endjin.com/contact-us). 
+
+We produce two free weekly newsletters; [Azure Weekly](https://azureweekly.info) for all things about the Microsoft Azure Platform, and [Power BI Weekly](https://powerbiweekly.info).
 
 Keep up with everything that's going on at endjin via our [blog](https://blogs.endjin.com/), follow us on [Twitter](https://twitter.com/endjin), or [LinkedIn](https://www.linkedin.com/company/1671851/) 
 
