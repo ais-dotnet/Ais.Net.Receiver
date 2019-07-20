@@ -6,6 +6,10 @@ The [Norwegian Costal Administration provide a TCP endpoint](https://ais.kystver
 
 This project contains a .NET Core console application that will reliably ingest the TCP stream, batch the AIVDM/AIVDO sentences and write them to Azure Blob Storage using the [Append Blob](https://docs.microsoft.com/en-us/rest/api/storageservices/append-block) feature, to create timestamped hour-long rolling logs.
 
+The purpose of this application is to provide sample data for [Ais.Net](https://github.com/ais-dotnet/Ais.Net) - the .NET Standard, high performance, zero allocation AIS decoder. The majority of raw AIS data is only available via commerical sources, and thus creating AIS datasets large enough to test / benchmark [Ais.Net](https://github.com/ais-dotnet/Ais.Net) is almost impossible. 
+
+The Norwegian Costal Administration provide a TCP endpoint produces ~2.2 KB/sec / ~8MB per hour / ~190MB per day / ~1.3 GB per week / ~67 GB per year.
+
 ## To Run
 
 From the command line: `dotnet Ais.Net.Receiver.dll`
@@ -23,7 +27,7 @@ For more information about our products and services, or for commercial support 
 
 We produce two free weekly newsletters; [Azure Weekly](https://azureweekly.info) for all things about the Microsoft Azure Platform, and [Power BI Weekly](https://powerbiweekly.info).
 
-Keep up with everything that's going on at endjin via our [blog](https://blogs.endjin.com/), follow us on [Twitter](https://twitter.com/endjin), or [LinkedIn](https://www.linkedin.com/company/1671851/) 
+Keep up with everything that's going on at endjin via our [blog](https://blogs.endjin.com/), follow us on [Twitter](https://twitter.com/endjin), or [LinkedIn](https://www.linkedin.com/company/1671851/).
 
 Our other Open Source projects can be found on [GitHub](https://github.com/endjin)
 
