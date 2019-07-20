@@ -8,7 +8,12 @@ This project contains a .NET Core console application that will reliably ingest 
 
 The purpose of this application is to provide sample data for [Ais.Net](https://github.com/ais-dotnet/Ais.Net) - the .NET Standard, high performance, zero allocation AIS decoder. The majority of raw AIS data is only available via commerical sources, and thus creating AIS datasets large enough to test / benchmark [Ais.Net](https://github.com/ais-dotnet/Ais.Net) is almost impossible. 
 
-The Norwegian Costal Administration provide a TCP endpoint produces ~2.2 KB/sec / ~8MB per hour / ~190MB per day / ~1.3 GB per week / ~67 GB per year.
+The Norwegian Costal Administration TCP endpoint produces: 
+- ~2.2 KB per second 
+- ~8MB per hour 
+- ~190MB per day 
+- ~1.3 GB per week 
+- ~67 GB per year.
 
 ## To Run
 
