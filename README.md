@@ -13,7 +13,8 @@ The Norwegian Costal Administration TCP endpoint produces:
 - ~8MB per hour 
 - ~190MB per day 
 - ~1.3 GB per week 
-- ~67 GB per year.
+- ~5.6 GB per month
+- ~67 GB per year
 
 ## To Run
 
