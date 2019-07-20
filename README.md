@@ -11,9 +11,13 @@ The Data ingested by the AIS .NET Receiver is licensed under the [Norwegian lice
 
 ## Project Sponsor
 
-This project is sponsored by [endjin](https://endjin.com), a UK based Microsoft Gold Partner for Cloud Platform, Data Platform, Data Analytics, and DevOps and Power BI Partner. For more information about our products and services, or for commercial support of this project, please [contact us](https://endjin.com/contact-us). 
+This project is sponsored by [endjin](https://endjin.com), a UK based Microsoft Gold Partner for Cloud Platform, Data Platform, Data Analytics, DevOps, and is also a Power BI Partner. For more information about our products and services, or for commercial support of this project, please [contact us](https://endjin.com/contact-us). 
 
 If you are interested in the Microsoft Azure Platform, subscribe to our free weekly newsletter [Azure Weekly](https://azureweekly.info). If you are interested in Power BI, please subscribe to our free weekly newsletter [Power BI Weekly](https://powerbiweekly.info).
+
+Keep up with everything that's going on at endjin via our [blog](https://blogs.endjin.com/), follow us on [Twitter](https://twitter.com/endjin), or [LinkedIn](https://www.linkedin.com/company/1671851/) 
+
+Our other Open Source projects can be found on [GitHub](https://github.com/endjin)
 
 ## Code of conduct
 
