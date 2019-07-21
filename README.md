@@ -18,7 +18,56 @@ The Norwegian Costal Administration TCP endpoint produces:
 - ~5.6 GB per month
 - ~67 GB per year
 
+## Azure Blob Storage Taxonomy
+
+The AIS data is stored using the following taxonomy
+
+`<USER DEFINED CONTAINER NAME>/yyyyMMdd/yyyyMMddTHH.nm4`
+
+An example directory listing, with a user defined container name of `nmea-ais` would look as follows:
+
+```
+nmea-ais
+├───20190720
+│   20190720T00.nm4
+│   20190720T01.nm4
+│   20190720T02.nm4
+│   20190720T03.nm4
+│   20190720T04.nm4
+│   20190720T05.nm4
+│   20190720T06.nm4
+│   20190720T07.nm4
+│   20190720T08.nm4
+│   20190720T09.nm4
+│   20190720T10.nm4
+│   20190720T11.nm4
+│   20190720T12.nm4
+│   20190720T13.nm4
+│   20190720T14.nm4
+│   20190720T15.nm4
+│   20190720T16.nm4
+│   20190720T17.nm4
+│   20190720T18.nm4
+│   20190720T19.nm4
+│   20190720T20.nm4
+│   20190720T21.nm4
+│   20190720T22.nm4
+│   20190720T23.nm4
+├───20190721
+│   20190721T00.nm4
+│   20190721T01.nm4
+```
+
 ## To Run
+
+Update the values in the `settings.json` file:
+
+```
+{
+  "connectionString": "<YOUR AZURE STORAGE CONNECTION STRING>",
+  "containerName": "<YOUR ROOT BLOB STORAGE CONTAINER NAME>"
+} 
+```
 
 From the command line: `dotnet Ais.Net.Receiver.dll`
 
