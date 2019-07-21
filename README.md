@@ -73,8 +73,13 @@ From the command line: `dotnet Ais.Net.Receiver.dll`
 
 ## Licenses
 
-The code for the AIS .NET Receiver is licensed under Microsoft Public License (MS-PL). 
-The Data ingested by the AIS .NET Receiver is licensed under the [Norwegian license for public data (NLOD)](https://data.norge.no/nlod/en/2.0).
+The commercial AIS.Net.Receiver license gives you the full rights to create and distribute software on your own terms without any open source license obligations. With the commercial license you also have access to official AIS.Net.Receiver support and close strategic relationship with endjin to make sure your development goals are met.
+
+AIS.Net.Receiver is also available under the Microsoft Public License (MS-PL) open source license. The AIS.Net.Receiver open source license is ideal for use cases such as open source projects with open source distribution, student/academic purposes, hobby projects, internal research projects without external distribution, or other projects where all Microsoft Public License obligations can be met. 
+
+For any licensing questions, please email [&#108;&#105;&#99;&#101;&#110;&#115;&#105;&#110;&#103;&#64;&#101;&#110;&#100;&#106;&#105;&#110;&#46;&#99;&#111;&#109;](&#109;&#97;&#105;&#108;&#116;&#111;&#58;&#108;&#105;&#99;&#101;&#110;&#115;&#105;&#110;&#103;&#64;&#101;&#110;&#100;&#106;&#105;&#110;&#46;&#99;&#111;&#109;)
+ 
+The Data ingested by the AIS.Net.Receiver is licensed under the [Norwegian license for public data (NLOD)](https://data.norge.no/nlod/en/2.0).
 
 ## Project Sponsor
 
