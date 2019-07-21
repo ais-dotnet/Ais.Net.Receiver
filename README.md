@@ -73,7 +73,7 @@ From the command line: `dotnet Ais.Net.Receiver.dll`
 
 ## Licenses
 
-The code for the AIS .NET Receiver is licensed under MIT. 
+The code for the AIS .NET Receiver is licensed under Microsoft Public License (MS-PL). 
 The Data ingested by the AIS .NET Receiver is licensed under the [Norwegian license for public data (NLOD)](https://data.norge.no/nlod/en/2.0).
 
 ## Project Sponsor
