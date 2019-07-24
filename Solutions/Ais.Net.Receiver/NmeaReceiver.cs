@@ -1,4 +1,8 @@
-﻿namespace Endjin.Ais.Receiver
+﻿// <copyright file="NmeaReceiver.cs" company="Endjin">
+// Copyright (c) Endjin. All rights reserved.
+// </copyright>
+
+namespace Endjin.Ais.Receiver
 {
     using System;
     using System.IO;
@@ -26,8 +30,6 @@
         public string Host { get; }
 
         public int Port { get; }
-
-        
 
         public IObservable<string> Items
         {

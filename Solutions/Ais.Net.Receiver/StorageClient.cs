@@ -1,4 +1,8 @@
-﻿namespace Endjin.Ais.Receiver
+﻿// <copyright file="StorageClient.cs" company="Endjin">
+// Copyright (c) Endjin. All rights reserved.
+// </copyright>
+
+namespace Endjin.Ais.Receiver
 {
     using Microsoft.Azure.Storage;
     using Microsoft.Azure.Storage.Blob;

@@ -1,4 +1,8 @@
-﻿namespace Endjin.Ais.Receiver
+﻿// <copyright file="Program.cs" company="Endjin">
+// Copyright (c) Endjin. All rights reserved.
+// </copyright>
+
+namespace Endjin.Ais.Receiver
 {
     using Microsoft.Extensions.Configuration;
 
@@ -22,7 +26,7 @@
             storageClient.InitialiseConnection();
 
             var receiver = new NmeaReceiver("153.44.253.27", 5631);
-            receiver.Items.Buffer(100).Subscribe(OnMessageReceived);
+            receiver.Items.Buffer(100).Subscribe(OnMessageReceived, OnError);
 
             while (!receiver.Connected)
             {
@@ -31,13 +35,18 @@
             }
         }
 
+        private static void OnError(Exception exception)
+        {
+            Console.WriteLine(exception.Message);
+        }
+
         private static void OnMessageReceived(IList<string> messages)
         {
             foreach(var message in messages)
             {
-                Console.WriteLine(message);
+                Console.WriteLine($"{DateTimeOffset.Now:yyyy/MM/dd/HH:mm:ss} :: {message}");
             }
-
+                       
             storageClient.AppendMessages(messages);
         }
     }
