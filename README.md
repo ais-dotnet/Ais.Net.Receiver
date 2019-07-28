@@ -27,35 +27,37 @@ The AIS data is stored using the following taxonomy
 An example directory listing, with a user defined container name of `nmea-ais` would look as follows:
 
 ```
-nmea-ais
-├───20190720
-│   20190720T00.nm4
-│   20190720T01.nm4
-│   20190720T02.nm4
-│   20190720T03.nm4
-│   20190720T04.nm4
-│   20190720T05.nm4
-│   20190720T06.nm4
-│   20190720T07.nm4
-│   20190720T08.nm4
-│   20190720T09.nm4
-│   20190720T10.nm4
-│   20190720T11.nm4
-│   20190720T12.nm4
-│   20190720T13.nm4
-│   20190720T14.nm4
-│   20190720T15.nm4
-│   20190720T16.nm4
-│   20190720T17.nm4
-│   20190720T18.nm4
-│   20190720T19.nm4
-│   20190720T20.nm4
-│   20190720T21.nm4
-│   20190720T22.nm4
-│   20190720T23.nm4
-├───20190721
-│   20190721T00.nm4
-│   20190721T01.nm4
+\---nmea-ais
+    \---raw
+        +---20190712
+        |       20190712T00.nm4
+        |       20190712T01.nm4
+        |       20190712T02.nm4
+        |       20190712T03.nm4
+        |       20190712T04.nm4
+        |       20190712T05.nm4
+        |       20190712T06.nm4
+        |       20190712T07.nm4
+        |       20190712T08.nm4
+        |       20190712T09.nm4
+        |       20190712T10.nm4
+        |       20190712T11.nm4
+        |       20190712T12.nm4
+        |       20190712T13.nm4
+        |       20190712T14.nm4
+        |       20190712T15.nm4
+        |       20190712T16.nm4
+        |       20190712T17.nm4
+        |       20190712T18.nm4
+        |       20190712T19.nm4
+        |       20190712T20.nm4
+        |       20190712T21.nm4
+        |       20190712T22.nm4
+        |       20190712T23.nm4
+        |
+        +---20190713
+        |       20190713T00.nm4
+        |       20190713T01.nm4
 ```
 
 ## To Run
@@ -95,4 +97,4 @@ Our other Open Source projects can be found on [GitHub](https://github.com/endji
 
 ## Code of conduct
 
-This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/).  For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or contact [&#104;&#101;&#108;&#108;&#111;&#064;&#101;&#110;&#100;&#106;&#105;&#110;&#046;&#099;&#111;&#109;](&#109;&#097;&#105;&#108;&#116;&#111;:&#104;&#101;&#108;&#108;&#111;&#064;&#101;&#110;&#100;&#106;&#105;&#110;&#046;&#099;&#111;&#109;) with any additional questions or comments.
+This project has adopted a code of conduct adapted from the [Contributor Covenant](http://contributor-covenant.org/) to clarify expected behavior in our community. This code of conduct has been [adopted by many other projects](http://contributor-covenant.org/adopters/). For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or contact [&#104;&#101;&#108;&#108;&#111;&#064;&#101;&#110;&#100;&#106;&#105;&#110;&#046;&#099;&#111;&#109;](&#109;&#097;&#105;&#108;&#116;&#111;:&#104;&#101;&#108;&#108;&#111;&#064;&#101;&#110;&#100;&#106;&#105;&#110;&#046;&#099;&#111;&#109;) with any additional questions or comments.
