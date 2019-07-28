@@ -22,7 +22,7 @@ The Norwegian Costal Administration TCP endpoint produces:
 
 The AIS data is stored using the following taxonomy
 
-`<USER DEFINED CONTAINER NAME>/yyyyMMdd/yyyyMMddTHH.nm4`
+`<USER DEFINED CONTAINER NAME>/raw/yyyyMMdd/yyyyMMddTHH.nm4`
 
 An example directory listing, with a user defined container name of `nmea-ais` would look as follows:
 
