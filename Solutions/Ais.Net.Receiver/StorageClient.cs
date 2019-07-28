@@ -53,7 +53,7 @@ namespace Endjin.Ais.Receiver
 
         private CloudAppendBlob GetAppendBlob()
         {
-            CloudAppendBlob blob = this.container.GetAppendBlobReference($"{DateTimeOffset.Now.ToString("yyyyMMdd")}/{DateTimeOffset.Now.ToString("yyyyMMddTHH")}.nm4");
+            CloudAppendBlob blob = this.container.GetAppendBlobReference($"raw/{DateTimeOffset.Now.ToString("yyyyMMdd")}/{DateTimeOffset.Now.ToString("yyyyMMddTHH")}.nm4");
 
             if (!blob.Exists())
             {
