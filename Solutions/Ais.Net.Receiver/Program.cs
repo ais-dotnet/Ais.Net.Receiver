@@ -42,12 +42,14 @@ namespace Endjin.Ais.Receiver
 
         private static void OnMessageReceived(IList<string> messages)
         {
-            foreach(var message in messages)
+            foreach (var message in messages)
             {
-                Console.WriteLine($"{DateTimeOffset.Now:yyyy/MM/dd/HH:mm:ss} :: {message}");
+                Console.WriteLine($"{message}");
             }
                        
             storageClient.AppendMessages(messages);
         }
+
+        
     }
 }

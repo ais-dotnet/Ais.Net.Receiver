@@ -6,6 +6,7 @@ namespace Endjin.Ais.Receiver
 {
     using System;
     using System.IO;
+    using System.Linq;
     using System.Reactive.Subjects;
     using System.Threading.Tasks;
 
@@ -58,7 +59,7 @@ namespace Endjin.Ais.Receiver
                 {
                     while (stream.DataAvailable)
                     {
-                        this.Subject.OnNext(await reader.ReadLineAsync().ConfigureAwait(false));
+                        this.Subject.OnNext(GenerateTimestamp() + await reader.ReadLineAsync().ConfigureAwait(false));
                         retryLoop = 0;
                     }
 
@@ -73,5 +74,14 @@ namespace Endjin.Ais.Receiver
                 }
             }
         }
+
+        public string GenerateTimestamp()
+        {
+            string timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString();
+
+            return $"\\c:{timestamp}*{NmeaChecksum("c:" + timestamp)}\\";
+        }
+
+        public string NmeaChecksum(string s) => s.Aggregate(0, (t, c) => t ^ c).ToString("X2");
     }
 }
