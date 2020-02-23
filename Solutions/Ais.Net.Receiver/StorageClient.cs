@@ -13,6 +13,7 @@ namespace Endjin.Ais.Receiver
     using System.Linq;
     using System.Reactive.Linq;
     using System.Text;
+    using System.Threading.Tasks;
 
     public class StorageClient
     {
@@ -24,22 +25,22 @@ namespace Endjin.Ais.Receiver
             this.configuration = configuration;
         }
 
-        public void AppendMessages(IList<string> messages)
+        public async Task AppendMessages(IList<string> messages)
         {
             CloudAppendBlob appendBlob;
 
             try
             {
-                appendBlob = GetAppendBlob();
+                appendBlob = await GetAppendBlobAsync().ConfigureAwait(false);
             }
             catch
             {
                 this.InitialiseConnection();
 
-                appendBlob = GetAppendBlob();
+                appendBlob = await GetAppendBlobAsync().ConfigureAwait(false);
             }
 
-            appendBlob.AppendText(messages.Aggregate(new StringBuilder(), (sb, a) => sb.AppendLine(String.Join(",", a)), sb => sb.ToString()));
+            await appendBlob.AppendTextAsync(messages.Aggregate(new StringBuilder(), (sb, a) => sb.AppendLine(String.Join(",", a)), sb => sb.ToString())).ConfigureAwait(false);
         }
 
         public void InitialiseConnection()
@@ -51,13 +52,13 @@ namespace Endjin.Ais.Receiver
             this.container.CreateIfNotExists();
         }
 
-        private CloudAppendBlob GetAppendBlob()
+        private async Task<CloudAppendBlob> GetAppendBlobAsync()
         {
-            CloudAppendBlob blob = this.container.GetAppendBlobReference($"raw/{DateTimeOffset.Now.ToString("yyyyMMdd")}/{DateTimeOffset.Now.ToString("yyyyMMddTHH")}.nm4");
+            CloudAppendBlob blob = this.container.GetAppendBlobReference($"raw/{DateTimeOffset.Now.ToString("yyyy")}/{DateTimeOffset.Now.ToString("MM")}/{DateTimeOffset.Now.ToString("dd")}/{DateTimeOffset.Now.ToString("yyyyMMddTHH")}.nm4");
 
             if (!blob.Exists())
             {
-                blob.CreateOrReplace();
+                await blob.CreateOrReplaceAsync().ConfigureAwait(false);
             }
 
             return blob;

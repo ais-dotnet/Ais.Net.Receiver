@@ -4,12 +4,12 @@
 
 namespace Endjin.Ais.Receiver
 {
-    using Microsoft.Extensions.Configuration;
-
     using System;
     using System.Collections.Generic;
     using System.Reactive.Linq;
     using System.Threading.Tasks;
+
+    using Microsoft.Extensions.Configuration;
 
     public static class Program
     {
@@ -26,11 +26,17 @@ namespace Endjin.Ais.Receiver
             storageClient.InitialiseConnection();
 
             var receiver = new NmeaReceiver("153.44.253.27", 5631);
-            receiver.Items.Buffer(100).Subscribe(OnMessageReceived, OnError);
+            receiver.Items.Buffer(100).SelectMany(OnMessageReceivedAsync).Subscribe();
 
             while (!receiver.Connected)
             {
                 await receiver.InitaliseAsync().ConfigureAwait(false);
+
+                /*await foreach (var item in receiver.GetAsync())
+                {
+                    Console.WriteLine($"{item}");
+                }*/
+
                 await receiver.RecieveAsync().ConfigureAwait(false);
             }
         }
@@ -40,16 +46,16 @@ namespace Endjin.Ais.Receiver
             Console.WriteLine(exception.Message);
         }
 
-        private static void OnMessageReceived(IList<string> messages)
+        private static async Task<int> OnMessageReceivedAsync(IList<string> messages)
         {
             foreach (var message in messages)
             {
                 Console.WriteLine($"{message}");
             }
-                       
-            storageClient.AppendMessages(messages);
-        }
 
-        
+            await storageClient.AppendMessages(messages);
+
+            return 0;
+        }
     }
 }

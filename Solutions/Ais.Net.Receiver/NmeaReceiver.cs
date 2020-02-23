@@ -5,6 +5,7 @@
 namespace Endjin.Ais.Receiver
 {
     using System;
+    using System.Collections.Generic;
     using System.IO;
     using System.Linq;
     using System.Reactive.Subjects;
@@ -46,6 +47,18 @@ namespace Endjin.Ais.Receiver
         {
             this.tcpClient = new System.Net.Sockets.TcpClient();
             await this.tcpClient.ConnectAsync(this.Host, this.Port);
+        }
+
+
+        public async IAsyncEnumerable<string> GetAsync()
+        {
+            using (var reader = new StreamReader(this.tcpClient.GetStream()))
+            {
+                while (true)
+                {
+                    yield return GenerateTimestamp() + await reader.ReadLineAsync().ConfigureAwait(false);
+                }
+            }
         }
 
         public async Task RecieveAsync()
