@@ -5,6 +5,11 @@ VisualStudioVersion = 16.0.29025.244
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Ais.Net.Receiver", "Ais.Net.Receiver\Ais.Net.Receiver.csproj", "{39A469DF-E331-4A68-ACA3-5E7ECBE2B1FB}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{6C0840FD-F495-41BA-9D68-2B691313D2DC}"
+	ProjectSection(SolutionItems) = preProject
+		..\GitVersion.yml = ..\GitVersion.yml
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
