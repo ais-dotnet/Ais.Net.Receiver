@@ -23,7 +23,7 @@ namespace Endjin.Ais.Receiver
                             .Build();
 
             storageClient = new StorageClient(config);
-            storageClient.InitialiseConnection();
+            await storageClient.InitialiseConnectionAsync().ConfigureAwait(false);
 
             var receiver = new NmeaReceiver("153.44.253.27", 5631);
             receiver.Items.Buffer(100).SelectMany(OnMessageReceivedAsync).Subscribe();

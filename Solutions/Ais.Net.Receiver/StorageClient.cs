@@ -4,64 +4,42 @@
 
 namespace Endjin.Ais.Receiver
 {
-    using Microsoft.Azure.Storage;
-    using Microsoft.Azure.Storage.Blob;
+    using Azure.Storage.Blobs.Specialized;
+
     using Microsoft.Extensions.Configuration;
 
     using System;
     using System.Collections.Generic;
+    using System.IO;
     using System.Linq;
-    using System.Reactive.Linq;
     using System.Text;
     using System.Threading.Tasks;
 
     public class StorageClient
     {
-        private CloudBlobContainer container;
+        private AppendBlobClient container;
         private IConfiguration configuration;
+        private Stream stream;
 
         public StorageClient(IConfiguration configuration)
         {
             this.configuration = configuration;
         }
 
-        public async Task AppendMessages(IList<string> messages)
+        public async Task AppendMessages(IEnumerable<string> messages)
         {
-            CloudAppendBlob appendBlob;
-
-            try
+            using (var stream = new MemoryStream(Encoding.UTF8.GetBytes(messages.Aggregate(new StringBuilder(), (sb, a) => sb.AppendLine(String.Join(",", a)), sb => sb.ToString())))) 
             {
-                appendBlob = await GetAppendBlobAsync().ConfigureAwait(false);
+                await this.container.AppendBlockAsync(stream).ConfigureAwait(false);
             }
-            catch
-            {
-                this.InitialiseConnection();
-
-                appendBlob = await GetAppendBlobAsync().ConfigureAwait(false);
-            }
-
-            await appendBlob.AppendTextAsync(messages.Aggregate(new StringBuilder(), (sb, a) => sb.AppendLine(String.Join(",", a)), sb => sb.ToString())).ConfigureAwait(false);
         }
 
-        public void InitialiseConnection()
+        public async Task InitialiseConnectionAsync()
         {
-            CloudStorageAccount cloudStorageAccount = CloudStorageAccount.Parse(this.configuration["connectionString"]);
-            CloudBlobClient client = cloudStorageAccount.CreateCloudBlobClient();
-
-            this.container = client.GetContainerReference(this.configuration["containerName"]);
-            this.container.CreateIfNotExists();
-        }
-
-        private async Task<CloudAppendBlob> GetAppendBlobAsync()
-        {
-            CloudAppendBlob blob = this.container.GetAppendBlobReference($"raw/{DateTimeOffset.Now.ToString("yyyy")}/{DateTimeOffset.Now.ToString("MM")}/{DateTimeOffset.Now.ToString("dd")}/{DateTimeOffset.Now.ToString("yyyyMMddTHH")}.nm4");
-
-            if (!blob.Exists())
-            {
-                await blob.CreateOrReplaceAsync().ConfigureAwait(false);
-            }
-
-            return blob;
+            string blobName = $"raw/{DateTimeOffset.Now.ToString("yyyy")}/{DateTimeOffset.Now.ToString("MM")}/{DateTimeOffset.Now.ToString("dd")}/{DateTimeOffset.Now.ToString("yyyyMMddTHH")}.nm4";
+            this.container = new AppendBlobClient(this.configuration["connectionString"], this.configuration["containerName"], blobName);
+            
+            await this.container.CreateIfNotExistsAsync().ConfigureAwait(false);
         }
     }
 }
