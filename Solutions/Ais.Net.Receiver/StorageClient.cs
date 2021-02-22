@@ -28,6 +28,8 @@ namespace Endjin.Ais.Receiver
 
         public async Task AppendMessages(IEnumerable<string> messages)
         {
+            await this.InitialiseConnectionAsync().ConfigureAwait(false);
+
             using (var stream = new MemoryStream(Encoding.UTF8.GetBytes(messages.Aggregate(new StringBuilder(), (sb, a) => sb.AppendLine(String.Join(",", a)), sb => sb.ToString())))) 
             {
                 await this.container.AppendBlockAsync(stream).ConfigureAwait(false);

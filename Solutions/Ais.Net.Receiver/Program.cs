@@ -23,20 +23,12 @@ namespace Endjin.Ais.Receiver
                             .Build();
 
             storageClient = new StorageClient(config);
-            await storageClient.InitialiseConnectionAsync().ConfigureAwait(false);
-
             var receiver = new NmeaReceiver("153.44.253.27", 5631);
             receiver.Items.Buffer(100).SelectMany(OnMessageReceivedAsync).Subscribe();
 
             while (!receiver.Connected)
             {
                 await receiver.InitaliseAsync().ConfigureAwait(false);
-
-                /*await foreach (var item in receiver.GetAsync())
-                {
-                    Console.WriteLine($"{item}");
-                }*/
-
                 await receiver.RecieveAsync().ConfigureAwait(false);
             }
         }
@@ -46,7 +38,7 @@ namespace Endjin.Ais.Receiver
             Console.WriteLine(exception.Message);
         }
 
-        private static async Task<int> OnMessageReceivedAsync(IList<string> messages)
+        private static async Task<int> OnMessageReceivedAsync(IEnumerable<string> messages)
         {
             foreach (var message in messages)
             {
