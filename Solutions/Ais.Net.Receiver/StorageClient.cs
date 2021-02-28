@@ -2,46 +2,70 @@
 // Copyright (c) Endjin. All rights reserved.
 // </copyright>
 
-namespace Endjin.Ais.Receiver
+namespace Ais.Net.Receiver
 {
-    using Azure.Storage.Blobs.Specialized;
-
-    using Microsoft.Extensions.Configuration;
-
     using System;
     using System.Collections.Generic;
     using System.IO;
     using System.Linq;
     using System.Text;
     using System.Threading.Tasks;
+    using Azure.Storage.Blobs;
+    using Azure.Storage.Blobs.Specialized;
+    using Microsoft.Extensions.Configuration;
 
-    public class StorageClient
+    public class StorageClient : IStorageClient
     {
-        private AppendBlobClient container;
-        private IConfiguration configuration;
-        private Stream stream;
+        private readonly IConfiguration configuration;
+        private AppendBlobClient appendBlobClient;
+        private BlobContainerClient blobContainerClient;
 
         public StorageClient(IConfiguration configuration)
         {
             this.configuration = configuration;
         }
 
-        public async Task AppendMessages(IEnumerable<string> messages)
+        public async Task PersistAsync(IEnumerable<string> messages)
         {
-            await this.InitialiseConnectionAsync().ConfigureAwait(false);
+            await this.InitialiseContainerAsync().ConfigureAwait(false);
+            await using MemoryStream stream = new MemoryStream(Encoding.UTF8.GetBytes(messages.Aggregate(new StringBuilder(), (sb, a) => sb.AppendLine(string.Join(",", a)), sb => sb.ToString())));
+            await this.appendBlobClient.AppendBlockAsync(stream).ConfigureAwait(false);
+        }
 
-            using (var stream = new MemoryStream(Encoding.UTF8.GetBytes(messages.Aggregate(new StringBuilder(), (sb, a) => sb.AppendLine(String.Join(",", a)), sb => sb.ToString())))) 
+        private async Task InitialiseContainerAsync()
+        {
+            try
             {
-                await this.container.AppendBlockAsync(stream).ConfigureAwait(false);
+                this.blobContainerClient = new BlobContainerClient(
+                    this.configuration[ConfigurationKeys.ConnectionString],
+                    this.configuration[ConfigurationKeys.ContainerName]);
+                this.appendBlobClient = new AppendBlobClient(
+                    this.configuration[ConfigurationKeys.ConnectionString],
+                    this.configuration[ConfigurationKeys.ContainerName],
+                    $"raw/{DateTimeOffset.Now:yyyy}/{DateTimeOffset.Now:MM}/{DateTimeOffset.Now:dd}/{DateTimeOffset.Now:yyyyMMddTHH}.nm4");
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                throw;
+            }
+
+            try
+            {
+                await this.blobContainerClient.CreateIfNotExistsAsync().ConfigureAwait(false);
+                await this.appendBlobClient.CreateIfNotExistsAsync().ConfigureAwait(false);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                throw;
             }
         }
 
-        public async Task InitialiseConnectionAsync()
+        private static class ConfigurationKeys
         {
-            string blobName = $"raw/{DateTimeOffset.Now.ToString("yyyy")}/{DateTimeOffset.Now.ToString("MM")}/{DateTimeOffset.Now.ToString("dd")}/{DateTimeOffset.Now.ToString("yyyyMMddTHH")}.nm4";
-            this.container = new AppendBlobClient(this.configuration["connectionString"], this.configuration["containerName"], blobName);
-            
-            await this.container.CreateIfNotExistsAsync().ConfigureAwait(false);
+            public const string ConnectionString = "connectionString";
+            public const string ContainerName = "containerName";
         }
     }
 }
