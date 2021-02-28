@@ -19,11 +19,11 @@ namespace Ais.Net.Receiver
             string timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString();
 
             // Some messages are missing NMEA Block Tags - see https://gpsd.gitlab.io/gpsd/AIVDM.html#_nmea_tag_blocks
-            // s: <string> = source stations - in our case AIS.Net.Receiver
+            // s: <string> = source stations - in our case AIS.Net.Receiver = 1000001
             // c: <int> = UNIX time in seconds or milliseconds + checksum
             return $"\\s:1000001,c:{timestamp}*{NmeaChecksum("c:" + timestamp)}\\{message}";
         }
 
-        public static string NmeaChecksum(string s) => s.Aggregate(0, (t, c) => t ^ c).ToString("X2");
+        private static string NmeaChecksum(string s) => s.Aggregate(0, (t, c) => t ^ c).ToString("X2");
     }
 }
