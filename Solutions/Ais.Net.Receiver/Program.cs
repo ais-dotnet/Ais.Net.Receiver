@@ -4,8 +4,9 @@
 
 namespace Ais.Net.Receiver
 {
-    using System.Threading.Tasks;
     using Microsoft.Extensions.Configuration;
+
+    using System.Threading.Tasks;
 
     public static class Program
     {

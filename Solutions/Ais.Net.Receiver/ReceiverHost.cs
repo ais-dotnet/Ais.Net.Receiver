@@ -4,12 +4,13 @@
 
 namespace Ais.Net.Receiver
 {
+    using Microsoft.Extensions.Configuration;
+
     using System;
     using System.Collections.Generic;
-    using System.Threading.Tasks;
-    using Microsoft.Extensions.Configuration;
     using System.Linq;
     using System.Reactive.Linq;
+    using System.Threading.Tasks;
 
     public class ReceiverHost
     {
