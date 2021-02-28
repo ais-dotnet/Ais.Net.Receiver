@@ -20,8 +20,7 @@ namespace Ais.Net.Receiver
 
             // Some messages are missing NMEA Block Tags - see https://gpsd.gitlab.io/gpsd/AIVDM.html#_nmea_tag_blocks
             // s: <string> = source stations - in our case AIS.Net.Receiver
-            // c:<int> = UNIX time in seconds or milliseconds + checksum
-
+            // c: <int> = UNIX time in seconds or milliseconds + checksum
             return $"\\s:1000001,c:{timestamp}*{NmeaChecksum("c:" + timestamp)}\\{message}";
         }
 

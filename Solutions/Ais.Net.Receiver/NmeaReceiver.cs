@@ -18,7 +18,7 @@ namespace Ais.Net.Receiver
         {
             this.Host = host;
             this.Port = port;
-            this.RetryPeriodicity = (retryPeriodicity ??= TimeSpan.FromMilliseconds(500));
+            this.RetryPeriodicity = (retryPeriodicity ??= TimeSpan.FromSeconds(1));
             this.RetryAttemptLimit = retryAttemptLimit;
         }
 
