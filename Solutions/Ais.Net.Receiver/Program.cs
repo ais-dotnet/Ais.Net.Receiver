@@ -17,9 +17,12 @@ namespace Ais.Net.Receiver
                             .AddJsonFile("local.settings.json", true, true)
                             .Build();
 
-            IStorageClient storageClient = new StorageClient(config);
+            var aisConfig = config.GetSection("Ais").Get<AisConfig>();
+            var storageConfig = config.GetSection("Storage").Get<StorageConfig>();
 
-            var receiverHost = new ReceiverHost(config, storageClient);
+            IStorageClient storageClient = new StorageClient(storageConfig);
+
+            var receiverHost = new ReceiverHost(aisConfig, storageClient);
             await receiverHost.StartAsync();
         }
     }

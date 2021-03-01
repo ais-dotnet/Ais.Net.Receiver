@@ -7,8 +7,6 @@ namespace Ais.Net.Receiver
     using Azure.Storage.Blobs;
     using Azure.Storage.Blobs.Specialized;
 
-    using Microsoft.Extensions.Configuration;
-
     using System;
     using System.Collections.Generic;
     using System.IO;
@@ -18,11 +16,11 @@ namespace Ais.Net.Receiver
 
     public class StorageClient : IStorageClient
     {
-        private readonly IConfiguration configuration;
+        private readonly StorageConfig configuration;
         private AppendBlobClient appendBlobClient;
         private BlobContainerClient blobContainerClient;
 
-        public StorageClient(IConfiguration configuration)
+        public StorageClient(StorageConfig configuration)
         {
             this.configuration = configuration;
         }
@@ -36,15 +34,18 @@ namespace Ais.Net.Receiver
 
         private async Task InitialiseContainerAsync()
         {
+            var timestamp = DateTimeOffset.UtcNow;
+
             try
             {
                 this.blobContainerClient = new BlobContainerClient(
-                    this.configuration[ConfigurationKeys.ConnectionString],
-                    this.configuration[ConfigurationKeys.ContainerName]);
+                    this.configuration.ConnectionString,
+                    this.configuration.ContainerName);
+
                 this.appendBlobClient = new AppendBlobClient(
-                    this.configuration[ConfigurationKeys.ConnectionString],
-                    this.configuration[ConfigurationKeys.ContainerName],
-                    $"raw/{DateTimeOffset.Now:yyyy}/{DateTimeOffset.Now:MM}/{DateTimeOffset.Now:dd}/{DateTimeOffset.Now:yyyyMMddTHH}.nm4");
+                    this.configuration.ConnectionString,
+                    this.configuration.ContainerName,
+                    $"raw/{timestamp:yyyy}/{timestamp:MM}/{timestamp:dd}/{timestamp:yyyyMMddTHH}.nm4");
             }
             catch (Exception e)
             {
@@ -62,12 +63,6 @@ namespace Ais.Net.Receiver
                 Console.WriteLine(e);
                 throw;
             }
-        }
-
-        private static class ConfigurationKeys
-        {
-            public const string ConnectionString = "connectionString";
-            public const string ContainerName = "containerName";
         }
     }
 }
