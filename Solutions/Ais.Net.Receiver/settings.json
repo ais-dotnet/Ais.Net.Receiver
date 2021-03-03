@@ -1,4 +1,13 @@
 {
-  "connectionString": "",
-  "containerName": "nmea-ais"
+  "Ais": {
+    "host": "153.44.253.27",
+    "port": "5631",
+    "retryAttempts": 100,
+    "retryPeriodicity": "00:00:00:00.500"
+  },
+  "Storage": {
+    "connectionString": "",
+    "containerName": "nmea-ais",
+    "writeBatchSize": 500
+  }
 }
