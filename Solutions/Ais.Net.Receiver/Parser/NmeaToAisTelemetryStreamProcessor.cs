@@ -23,6 +23,11 @@
                         this.ParseMessageTypes1Through3(asciiPayload, padding, messageType);
                         return;
                     }
+                    case 5:
+                    {
+                        this.ParseMessageType5(asciiPayload, padding);
+                        return;
+                    }
                     case 18:
                     {
                         this.ParseMessageType18(asciiPayload, padding);
@@ -39,6 +44,7 @@
                         return;
                     }
                 }
+                Console.WriteLine($"Unknown type: {messageType}");
             }
             catch (Exception e)
             {
@@ -68,6 +74,26 @@
                 TrueHeadingDegrees: parser.TrueHeadingDegrees,
                 Position: Position.From10000thMins(parser.Latitude10000thMins, parser.Longitude10000thMins)
             );
+
+            this.telemetry.OnNext(message);
+        }
+        private void ParseMessageType5(ReadOnlySpan<byte> asciiPayload, uint padding)
+        {
+            var parser = new NmeaAisStaticAndVoyageRelatedDataParser(asciiPayload, padding);
+            var message = new AisMessageType5(
+                Mmsi: parser.Mmsi,
+                ImoNumber: parser.ImoNumber,
+                CallSign:  parser.CallSign.TextFieldToString(),
+                Destination: parser.Destination.TextFieldToString(),
+                VesselName: parser.VesselName.TextFieldToString(),
+                ShipType: parser.ShipType,
+                DimensionToBow: parser.DimensionToBow,
+                DimensionToPort: parser.DimensionToPort,
+                DimensionToStarboard: parser.DimensionToStarboard,
+                DimensionToStern: parser.DimensionToStern,
+                Draught10thMetres: parser.Draught10thMetres,
+                PositionFixType: parser.PositionFixType
+                );
 
             this.telemetry.OnNext(message);
         }
