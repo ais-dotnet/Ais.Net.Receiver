@@ -28,4 +28,12 @@
     <PackageReference Include="System.Reactive" Version="5.0.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Domain" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Ais.Net.Models\Ais.Net.Models.csproj" />
+  </ItemGroup>
+
 </Project>

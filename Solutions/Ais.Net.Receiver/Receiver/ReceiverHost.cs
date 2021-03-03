@@ -9,8 +9,9 @@ namespace Ais.Net.Receiver.Receiver
     using System.Reactive.Linq;
     using System.Text;
     using System.Threading.Tasks;
+    using Ais.Net.Models;
+    using Ais.Net.Models.Abstractions;
     using Ais.Net.Receiver.Configuration;
-    using Ais.Net.Receiver.Domain;
     using Ais.Net.Receiver.Parser;
     using Ais.Net.Receiver.Storage;
 

@@ -6,7 +6,7 @@ namespace Ais.Net.Receiver.Parser
 {
     using System;
     using System.Reactive.Subjects;
-    using Ais.Net.Receiver.Domain;
+    using Ais.Net.Models;
 
     public class NmeaToAisTelemetryStreamProcessor : INmeaAisMessageStreamProcessor
     {

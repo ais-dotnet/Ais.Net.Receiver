@@ -10,6 +10,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		..\GitVersion.yml = ..\GitVersion.yml
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ais.Net.Models", "Ais.Net.Models\Ais.Net.Models.csproj", "{5B090F5E-28EA-4394-83DB-8C2764970FDC}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -20,6 +22,10 @@ Global
 		{39A469DF-E331-4A68-ACA3-5E7ECBE2B1FB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{39A469DF-E331-4A68-ACA3-5E7ECBE2B1FB}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{39A469DF-E331-4A68-ACA3-5E7ECBE2B1FB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5B090F5E-28EA-4394-83DB-8C2764970FDC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5B090F5E-28EA-4394-83DB-8C2764970FDC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5B090F5E-28EA-4394-83DB-8C2764970FDC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5B090F5E-28EA-4394-83DB-8C2764970FDC}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

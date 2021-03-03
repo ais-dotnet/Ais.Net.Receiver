@@ -2,8 +2,10 @@
 // Copyright (c) Endjin. All rights reserved.
 // </copyright>
 
-namespace Ais.Net.Receiver.Domain
+namespace Ais.Net.Models
 {
+    using Ais.Net.Models.Abstractions;
+
     public record AisMessageType24Part0(
         uint Mmsi,
         uint Spare160,

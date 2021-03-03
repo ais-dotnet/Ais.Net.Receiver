@@ -2,7 +2,7 @@
 // Copyright (c) Endjin. All rights reserved.
 // </copyright>
 
-namespace Ais.Net.Receiver.Domain
+namespace Ais.Net.Models
 {
     using System;
     using System.Text;

@@ -2,8 +2,10 @@
 // Copyright (c) Endjin. All rights reserved.
 // </copyright>
 
-namespace Ais.Net.Receiver.Domain
+namespace Ais.Net.Models
 {
+    using Ais.Net.Models.Abstractions;
+
     public record AisMessageType24Part1(uint Mmsi, string CallSign, string VendorIdRev3, string VendorIdRev4) : AisMessageBase(MessageType: 24, Mmsi),
         IAisMessageType24Part1,
         IVesselDimensions,

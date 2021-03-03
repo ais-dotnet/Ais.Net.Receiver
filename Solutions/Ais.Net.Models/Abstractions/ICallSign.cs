@@ -1,4 +1,4 @@
-﻿namespace Ais.Net.Receiver.Domain
+﻿namespace Ais.Net.Models.Abstractions
 {
     public interface ICallSign
     {
