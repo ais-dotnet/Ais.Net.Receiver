@@ -49,24 +49,25 @@
         private void ParseMessageTypes1Through3(ReadOnlySpan<byte> asciiPayload, uint padding, int messageType)
         {
             var parser = new NmeaAisPositionReportClassAParser(asciiPayload, padding);
-            var message = new AisMessageType1Through3(MessageType: messageType, Mmsi: parser.Mmsi)
-            {
-                CourseOverGround10thDegrees = parser.CourseOverGround10thDegrees,
-                ManoeuvreIndicator = parser.ManoeuvreIndicator,
-                NavigationStatus = parser.NavigationStatus,
-                PositionAccuracy = parser.PositionAccuracy,
-                RadioSlotTimeout = parser.RadioSlotTimeout,
-                RadioSubMessage = parser.RadioSubMessage,
-                RadioSyncState = parser.RadioSyncState,
-                RaimFlag = parser.RaimFlag,
-                RateOfTurn = parser.RateOfTurn,
-                RepeatIndicator = parser.RepeatIndicator,
-                SpareBits145 = parser.SpareBits145,
-                SpeedOverGroundTenths = parser.SpeedOverGroundTenths,
-                TimeStampSecond = parser.TimeStampSecond,
-                TrueHeadingDegrees = parser.TrueHeadingDegrees,
-                Position = Position.From10000thMins(parser.Latitude10000thMins, parser.Longitude10000thMins)
-            };
+            var message = new AisMessageType1Through3(
+                MessageType: messageType,
+                Mmsi: parser.Mmsi,
+                CourseOverGround10thDegrees: parser.CourseOverGround10thDegrees,
+                ManoeuvreIndicator: parser.ManoeuvreIndicator,
+                NavigationStatus: parser.NavigationStatus,
+                PositionAccuracy: parser.PositionAccuracy,
+                RadioSlotTimeout: parser.RadioSlotTimeout,
+                RadioSubMessage: parser.RadioSubMessage,
+                RadioSyncState: parser.RadioSyncState,
+                RaimFlag: parser.RaimFlag,
+                RateOfTurn: parser.RateOfTurn,
+                RepeatIndicator: parser.RepeatIndicator,
+                SpareBits145: parser.SpareBits145,
+                SpeedOverGroundTenths: parser.SpeedOverGroundTenths,
+                TimeStampSecond: parser.TimeStampSecond,
+                TrueHeadingDegrees: parser.TrueHeadingDegrees,
+                Position: Position.From10000thMins(parser.Latitude10000thMins, parser.Longitude10000thMins)
+            );
 
             this.telemetry.OnNext(message);
         }
@@ -74,26 +75,25 @@
         private void ParseMessageType18(ReadOnlySpan<byte> asciiPayload, uint padding)
         {
             var parser = new NmeaAisPositionReportClassBParser(asciiPayload, padding);
-            var message = new AisMessageType18(Mmsi: parser.Mmsi)
-            {
-                CanAcceptMessage22ChannelAssignment = parser.CanAcceptMessage22ChannelAssignment,
-                CanSwitchBands = parser.CanSwitchBands,
-                CourseOverGround10thDegrees = parser.CourseOverGround10thDegrees,
-                CsUnit = parser.CsUnit,
-                HasDisplay = parser.HasDisplay,
-                IsAssigned = parser.IsAssigned,
-                IsDscAttached = parser.IsDscAttached,
-                PositionAccuracy = parser.PositionAccuracy,
-                RadioStatusType = parser.RadioStatusType,
-                RaimFlag = parser.RaimFlag,
-                RegionalReserved139 = parser.RegionalReserved139,
-                RegionalReserved38 = parser.RegionalReserved38,
-                RepeatIndicator = parser.RepeatIndicator,
-                SpeedOverGroundTenths = parser.SpeedOverGroundTenths,
-                TimeStampSecond = parser.TimeStampSecond,
-                TrueHeadingDegrees = parser.TrueHeadingDegrees,
-                Position = Position.From10000thMins(parser.Latitude10000thMins, parser.Longitude10000thMins)
-            };
+            var message = new AisMessageType18(
+                Mmsi: parser.Mmsi,
+                Position: Position.From10000thMins(parser.Latitude10000thMins, parser.Longitude10000thMins),
+                CanAcceptMessage22ChannelAssignment: parser.CanAcceptMessage22ChannelAssignment,
+                CanSwitchBands: parser.CanSwitchBands,
+                CsUnit: parser.CsUnit,
+                HasDisplay: parser.HasDisplay,
+                IsDscAttached: parser.IsDscAttached,
+                RadioStatusType: parser.RadioStatusType,
+                RegionalReserved139: parser.RegionalReserved139,
+                RegionalReserved38: parser.RegionalReserved38,
+                CourseOverGround10thDegrees: parser.CourseOverGround10thDegrees,
+                PositionAccuracy: parser.PositionAccuracy,
+                SpeedOverGroundTenths: parser.SpeedOverGroundTenths,
+                TimeStampSecond: parser.TimeStampSecond,
+                TrueHeadingDegrees: parser.TrueHeadingDegrees,
+                IsAssigned: parser.IsAssigned,
+                RaimFlag: parser.RaimFlag,
+                RepeatIndicator: parser.RepeatIndicator);
 
             this.telemetry.OnNext(message);
         }
@@ -103,28 +103,29 @@
             var parser = new NmeaAisPositionReportExtendedClassBParser(asciiPayload, padding);
             Span<byte> shipNameAscii = stackalloc byte[(int) parser.ShipName.CharacterCount];
             parser.ShipName.WriteAsAscii(shipNameAscii);
-            var message = new AisMessageType19(Mmsi: parser.Mmsi, ShipName: shipNameAscii.ParseVesselName())
-            {
-                CourseOverGround10thDegrees = parser.CourseOverGround10thDegrees,
-                DimensionToBow = parser.DimensionToBow,
-                DimensionToPort = parser.DimensionToPort,
-                DimensionToStarboard = parser.DimensionToStarboard,
-                DimensionToStern = parser.DimensionToStern,
-                IsAssigned = parser.IsAssigned,
-                IsDteNotReady = parser.IsDteNotReady,
-                PositionAccuracy = parser.PositionAccuracy,
-                PositionFixType = parser.PositionFixType,
-                RaimFlag = parser.RaimFlag,
-                RegionalReserved139 = parser.RegionalReserved139,
-                RegionalReserved38 = parser.RegionalReserved38,
-                RepeatIndicator = parser.RepeatIndicator,
-                ShipType = parser.ShipType,
-                Spare308 = parser.Spare308,
-                SpeedOverGroundTenths = parser.SpeedOverGroundTenths,
-                TimeStampSecond = parser.TimeStampSecond,
-                TrueHeadingDegrees = parser.TrueHeadingDegrees,
-                Position = Position.From10000thMins(parser.Latitude10000thMins, parser.Longitude10000thMins)
-            };
+            var message = new AisMessageType19(
+                Mmsi: parser.Mmsi,
+                ShipName: shipNameAscii.ParseVesselName(),
+                CourseOverGround10thDegrees: parser.CourseOverGround10thDegrees,
+                DimensionToBow: parser.DimensionToBow,
+                DimensionToPort: parser.DimensionToPort,
+                DimensionToStarboard: parser.DimensionToStarboard,
+                DimensionToStern: parser.DimensionToStern,
+                IsAssigned: parser.IsAssigned,
+                IsDteNotReady: parser.IsDteNotReady,
+                PositionAccuracy: parser.PositionAccuracy,
+                PositionFixType: parser.PositionFixType,
+                RaimFlag: parser.RaimFlag,
+                RegionalReserved139: parser.RegionalReserved139,
+                RegionalReserved38: parser.RegionalReserved38,
+                RepeatIndicator: parser.RepeatIndicator,
+                ShipType: parser.ShipType,
+                Spare308: parser.Spare308,
+                SpeedOverGroundTenths: parser.SpeedOverGroundTenths,
+                TimeStampSecond: parser.TimeStampSecond,
+                TrueHeadingDegrees: parser.TrueHeadingDegrees,
+                Position: Position.From10000thMins(parser.Latitude10000thMins, parser.Longitude10000thMins)
+            );
 
             this.telemetry.OnNext(message);
         }
@@ -139,12 +140,12 @@
                 var parser = new NmeaAisStaticDataReportParserPartA(asciiPayload, padding);
                 Span<byte> vesselNameAscii = stackalloc byte[(int) parser.VesselName.CharacterCount];
                 parser.VesselName.WriteAsAscii(vesselNameAscii);
-                var message = new AisMessageType24Part0(Mmsi: parser.Mmsi)
-                {
-                    PartNumber = parser.PartNumber,
-                    RepeatIndicator = parser.RepeatIndicator,
-                    Spare160 = parser.Spare160
-                };
+                var message = new AisMessageType24Part0(
+                    Mmsi: parser.Mmsi,
+                    PartNumber: parser.PartNumber,
+                    RepeatIndicator: parser.RepeatIndicator,
+                    Spare160: parser.Spare160
+                );
 
                 this.telemetry.OnNext(message);
                 return;
