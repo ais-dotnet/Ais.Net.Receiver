@@ -16,5 +16,12 @@
 
             return vesselName.Trim('@').Trim().Replace("  ", " ");
         }
+
+        public static string TextFieldToString(this NmeaAisTextFieldParser field)
+        {
+            Span<byte> ascii = stackalloc byte[(int)field.CharacterCount];
+            field.WriteAsAscii(ascii);
+            return Encoding.ASCII.GetString(ascii);
+        }
     }
 }
