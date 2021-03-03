@@ -55,7 +55,15 @@ namespace Ais.Net.Receiver.Receiver
 
         private void OnTelemetryReceived(AisMessageBase message)
         {
-            Console.WriteLine($"[{message.MessageType}] [{message.Mmsi}]");
+            if (message is IVesselPosition position)
+            {
+                Console.WriteLine($"[{message.MessageType}] [{message.Mmsi}] [{position.Position.Latitude},{position.Position.Longitude}]");
+            }
+            else
+            {
+                Console.WriteLine($"[{message.MessageType}] [{message.Mmsi}]");
+            }
+
         }
 
         public async IAsyncEnumerable<string> GetAsync()
