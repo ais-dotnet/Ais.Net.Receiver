@@ -2,16 +2,16 @@
 // Copyright (c) Endjin. All rights reserved.
 // </copyright>
 
-namespace Ais.Net.Receiver
+namespace Ais.Net.Receiver.Receiver
 {
-    using Microsoft.Extensions.Configuration;
-
     using System;
     using System.Collections.Generic;
-    using System.Linq;
-    using System.Reactive.Linq;
     using System.Text;
     using System.Threading.Tasks;
+    using Ais.Net.Receiver.Configuration;
+    using Ais.Net.Receiver.Domain;
+    using Ais.Net.Receiver.Parser;
+    using Ais.Net.Receiver.Storage;
 
     public class ReceiverHost
     {
@@ -36,8 +36,7 @@ namespace Ais.Net.Receiver
             var processor = new NmeaToAisTelemetryStreamProcessor();
             var adapter = new NmeaLineToAisStreamAdapter(processor);
 
-            processor.Telemetry.Subscribe(OnTelemetryReceived);
-            //processor.Telemetry.CombineLatest()
+            processor.Telemetry.Subscribe(this.OnTelemetryReceived);
 
             await foreach (var message in this.GetAsync())
             {
@@ -54,12 +53,10 @@ namespace Ais.Net.Receiver
             // await messages.Buffer(int.Parse(this.configuration[ConfigurationKeys.WriteBatchSize])).Select(this.storageClient.PersistAsync);
         }
 
-        private void OnTelemetryReceived(AisTelmetry message)
+        private void OnTelemetryReceived(AisMessageBase message)
         {
-            Console.WriteLine($"{message.VesselName?.Trim('@').Trim()} [{message.Mmsi}] [{message.Position?.Latitude},{message.Position?.Longitude}]");
+            Console.WriteLine($"[{message.MessageType}] [{message.Mmsi}]");
         }
-
-        public IObserver<AisTelmetry> TelemetryStream { get; set; }
 
         public async IAsyncEnumerable<string> GetAsync()
         {

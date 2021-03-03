@@ -2,17 +2,17 @@
 // Copyright (c) Endjin. All rights reserved.
 // </copyright>
 
-namespace Ais.Net.Receiver
+namespace Ais.Net.Receiver.Storage
 {
-    using Azure.Storage.Blobs;
-    using Azure.Storage.Blobs.Specialized;
-
     using System;
     using System.Collections.Generic;
     using System.IO;
     using System.Linq;
     using System.Text;
     using System.Threading.Tasks;
+    using Ais.Net.Receiver.Configuration;
+    using Azure.Storage.Blobs;
+    using Azure.Storage.Blobs.Specialized;
 
     public class StorageClient : IStorageClient
     {

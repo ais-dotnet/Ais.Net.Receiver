@@ -7,6 +7,9 @@ namespace Ais.Net.Receiver
     using Microsoft.Extensions.Configuration;
 
     using System.Threading.Tasks;
+    using Ais.Net.Receiver.Configuration;
+    using Ais.Net.Receiver.Receiver;
+    using Ais.Net.Receiver.Storage;
 
     public static class Program
     {
@@ -14,7 +17,7 @@ namespace Ais.Net.Receiver
         {
             IConfiguration config = new ConfigurationBuilder()
                             .AddJsonFile("settings.json", true, true)
-                            .AddJsonFile("local.settings.json", true, true)
+                            .AddJsonFile("settings.local.json", true, true)
                             .Build();
 
             var aisConfig = config.GetSection("Ais").Get<AisConfig>();

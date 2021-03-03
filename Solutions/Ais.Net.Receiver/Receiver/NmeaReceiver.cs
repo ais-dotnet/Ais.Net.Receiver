@@ -2,7 +2,7 @@
 // Copyright (c) Endjin. All rights reserved.
 // </copyright>
 
-namespace Ais.Net.Receiver
+namespace Ais.Net.Receiver.Receiver
 {
     using System;
     using System.Collections.Generic;

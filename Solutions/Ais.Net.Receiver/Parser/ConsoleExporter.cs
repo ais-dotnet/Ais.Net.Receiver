@@ -1,4 +1,4 @@
-﻿namespace Ais.Net.Receiver
+﻿namespace Ais.Net.Receiver.Parser
 {
     using System;
     using System.Text;

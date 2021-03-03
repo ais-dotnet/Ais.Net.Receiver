@@ -1,4 +1,4 @@
-﻿namespace Ais.Net.Receiver
+﻿namespace Ais.Net.Receiver.Configuration
 {
     using System;
 
@@ -8,12 +8,5 @@
         public int Port { get; set; }
         public int RetryAttempts { get; set; }
         public TimeSpan RetryPeriodicity { get; set; }
-    }
-
-    public class StorageConfig
-    {
-        public string ConnectionString { get; set; }
-        public string ContainerName { get; set; }
-        public int WriteBatchSize { get; set; }
     }
 }
