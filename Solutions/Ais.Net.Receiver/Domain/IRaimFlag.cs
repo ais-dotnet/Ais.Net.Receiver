@@ -2,6 +2,6 @@
 {
     public interface IRaimFlag
     {
-        bool RaimFlag { get; set; }
+        bool RaimFlag { get; }
     }
 }

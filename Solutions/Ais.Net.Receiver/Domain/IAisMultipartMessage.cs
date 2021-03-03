@@ -2,6 +2,6 @@
 {
     public interface IAisMultipartMessage
     {
-        uint PartNumber { get; set; }
+        uint PartNumber { get; }
     }
 }

@@ -1,25 +1,22 @@
 ﻿namespace Ais.Net.Receiver.Domain
 {
-    public class AisMessageType24Part1 : AisMessageBase,
+    public record AisMessageType24Part1(uint Mmsi, string CallSign, string VendorIdRev3, string VendorIdRev4) : AisMessageBase(MessageType: 24, Mmsi),
         IAisMessageType24Part1,
         IVesselDimensions,
         IAisMultipartMessage,
         IRepeatIndicator,
         IShipType
     {
-        public string CallSign { get; set; }
-        public uint MothershipMmsi { get; set; }
-        public uint SerialNumber { get; set; }
-        public uint Spare162 { get; set; }
-        public uint UnitModelCode { get; set; }
-        public string VendorIdRev3 { get; set; }
-        public string VendorIdRev4 { get; set; }
-        public uint DimensionToBow { get; set; }
-        public uint DimensionToPort { get; set; }
-        public uint DimensionToStarboard { get; set; }
-        public uint DimensionToStern { get; set; }
-        public uint PartNumber { get; set; }
-        public uint RepeatIndicator { get; set; }
-        public ShipType ShipType { get; set; }
+        public uint MothershipMmsi { get; init; }
+        public uint SerialNumber { get; init; }
+        public uint Spare162 { get; init; }
+        public uint UnitModelCode { get; init; }
+        public uint DimensionToBow { get; init; }
+        public uint DimensionToPort { get; init; }
+        public uint DimensionToStarboard { get; init; }
+        public uint DimensionToStern { get; init; }
+        public uint PartNumber { get; init; }
+        public uint RepeatIndicator { get; init; }
+        public ShipType ShipType { get; init; }
     }
 }

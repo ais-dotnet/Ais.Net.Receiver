@@ -2,9 +2,9 @@
 {
     public interface IVesselDimensions
     {
-        uint DimensionToBow { get; set; }
-        uint DimensionToPort { get; set; }
-        uint DimensionToStarboard { get; set; }
-        uint DimensionToStern { get; set; }
+        uint DimensionToBow { get; }
+        uint DimensionToPort { get; }
+        uint DimensionToStarboard { get; }
+        uint DimensionToStern { get; }
     }
 }

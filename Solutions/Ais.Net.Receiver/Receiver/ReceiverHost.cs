@@ -17,22 +17,22 @@ namespace Ais.Net.Receiver.Receiver
     {
         private readonly AisConfig configuration;
         private readonly IStorageClient storageClient;
-        private NmeaReceiver receiver;
+        private readonly NmeaReceiver receiver;
 
         public ReceiverHost(AisConfig configuration, IStorageClient storageClient)
         {
             this.configuration = configuration;
             this.storageClient = storageClient;
-        }
 
-        public async Task StartAsync()
-        {
             this.receiver = new NmeaReceiver(
                 this.configuration.Host,
                 this.configuration.Port,
                 this.configuration.RetryPeriodicity,
                 this.configuration.RetryAttempts);
+        }
 
+        public async Task StartAsync()
+        {
             var processor = new NmeaToAisTelemetryStreamProcessor();
             var adapter = new NmeaLineToAisStreamAdapter(processor);
 
@@ -57,7 +57,9 @@ namespace Ais.Net.Receiver.Receiver
         {
             if (message is IVesselPosition position)
             {
-                Console.WriteLine($"[{message.MessageType}] [{message.Mmsi}] [{position.Position.Latitude},{position.Position.Longitude}]");
+                string positionText = position.Position is null ? "unknown position" : $"{position.Position.Latitude},{position.Position.Longitude}";
+                Console.WriteLine($"[{message.MessageType}] [{message.Mmsi}] [{positionText}]");
+
             }
             else
             {

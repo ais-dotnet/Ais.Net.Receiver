@@ -2,11 +2,11 @@
 {
     public interface IAisMessageType19
     {
-        bool IsDteNotReady { get; set; }
-        EpfdFixType PositionFixType { get; set; }
-        int RegionalReserved139 { get; set; }
-        int RegionalReserved38 { get; set; }
-        string ShipName { get; set; }
-        uint Spare308 { get; set; }
+        bool IsDteNotReady { get; }
+        EpfdFixType PositionFixType { get; }
+        int RegionalReserved139 { get; }
+        int RegionalReserved38 { get; }
+        string ShipName { get; }
+        uint Spare308 { get; }
     }
 }

@@ -2,6 +2,6 @@
 {
     public interface IVesselPosition
     {
-        Position Position { get; set; }
+        Position? Position { get; }
     }
 }

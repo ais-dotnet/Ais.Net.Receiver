@@ -2,10 +2,10 @@
 {
     public interface IVesselNavigation
     {
-        uint CourseOverGround10thDegrees { get; set; }
-        bool PositionAccuracy { get; set; }
-        uint SpeedOverGroundTenths { get; set; }
-        uint TimeStampSecond { get; set; }
-        uint TrueHeadingDegrees { get; set; }
+        uint CourseOverGround10thDegrees { get; }
+        bool PositionAccuracy { get; }
+        uint SpeedOverGroundTenths { get; }
+        uint TimeStampSecond { get; }
+        uint TrueHeadingDegrees { get; }
     }
 }

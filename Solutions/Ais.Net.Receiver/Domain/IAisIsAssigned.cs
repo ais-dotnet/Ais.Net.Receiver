@@ -2,6 +2,6 @@
 {
     public interface IAisIsAssigned
     {
-        bool IsAssigned { get; set; }
+        bool IsAssigned { get; }
     }
 }

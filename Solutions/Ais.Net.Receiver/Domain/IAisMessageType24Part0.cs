@@ -2,6 +2,6 @@
 {
     public interface IAisMessageType24Part0
     {
-        uint Spare160 { get; set; }
+        uint Spare160 { get; }
     }
 }

@@ -17,8 +17,8 @@ namespace Ais.Net.Receiver.Storage
     public class StorageClient : IStorageClient
     {
         private readonly StorageConfig configuration;
-        private AppendBlobClient appendBlobClient;
-        private BlobContainerClient blobContainerClient;
+        private AppendBlobClient? appendBlobClient;
+        private BlobContainerClient? blobContainerClient;
 
         public StorageClient(StorageConfig configuration)
         {
@@ -29,7 +29,7 @@ namespace Ais.Net.Receiver.Storage
         {
             await this.InitialiseContainerAsync().ConfigureAwait(false);
             await using MemoryStream stream = new MemoryStream(Encoding.UTF8.GetBytes(messages.Aggregate(new StringBuilder(), (sb, a) => sb.AppendLine(string.Join(",", a)), sb => sb.ToString())));
-            await this.appendBlobClient.AppendBlockAsync(stream).ConfigureAwait(false);
+            await this.appendBlobClient!.AppendBlockAsync(stream).ConfigureAwait(false);
         }
 
         private async Task InitialiseContainerAsync()
