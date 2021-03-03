@@ -8,6 +8,7 @@ namespace Ais.Net.Receiver.Domain
         IAisMessageType24Part1,
         IVesselDimensions,
         IAisMultipartMessage,
+        ICallSign,
         IRepeatIndicator,
         IShipType
     {

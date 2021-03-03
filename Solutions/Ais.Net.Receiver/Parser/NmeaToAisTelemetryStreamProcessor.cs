@@ -82,23 +82,31 @@ namespace Ais.Net.Receiver.Parser
 
             this.telemetry.OnNext(message);
         }
+
         private void ParseMessageType5(ReadOnlySpan<byte> asciiPayload, uint padding)
         {
             var parser = new NmeaAisStaticAndVoyageRelatedDataParser(asciiPayload, padding);
             var message = new AisMessageType5(
+                AisVersion: parser.AisVersion,
+                EtaMonth: parser.EtaMonth,
+                EtaDay: parser.EtaDay,
+                EtaHour: parser.EtaHour,
+                EtaMinute: parser.EtaMinute,
                 Mmsi: parser.Mmsi,
+                IsDteNotReady: parser.IsDteNotReady,
                 ImoNumber: parser.ImoNumber,
-                CallSign:  parser.CallSign.TextFieldToString(),
+                CallSign: parser.CallSign.TextFieldToString(),
                 Destination: parser.Destination.TextFieldToString(),
                 VesselName: parser.VesselName.TextFieldToString(),
                 ShipType: parser.ShipType,
+                RepeatIndicator: parser.RepeatIndicator,
                 DimensionToBow: parser.DimensionToBow,
                 DimensionToPort: parser.DimensionToPort,
                 DimensionToStarboard: parser.DimensionToStarboard,
                 DimensionToStern: parser.DimensionToStern,
                 Draught10thMetres: parser.Draught10thMetres,
-                PositionFixType: parser.PositionFixType
-                );
+                Spare423: parser.Spare423,
+                PositionFixType: parser.PositionFixType);
 
             this.telemetry.OnNext(message);
         }
@@ -187,13 +195,13 @@ namespace Ais.Net.Receiver.Parser
             if (part == 1)
             {
                 var parser = new NmeaAisStaticDataReportParserPartB(asciiPayload, padding);
-                
+
                 Span<byte> callSignAscii = stackalloc byte[(int) parser.CallSign.CharacterCount];
                 parser.CallSign.WriteAsAscii(callSignAscii);
-                
+
                 Span<byte> vendorIdRev3Ascii = stackalloc byte[(int) parser.VendorIdRev3.CharacterCount];
                 parser.VendorIdRev3.WriteAsAscii(vendorIdRev3Ascii);
-                
+
                 Span<byte> vendorIdRev4Ascii = stackalloc byte[(int) parser.VendorIdRev4.CharacterCount];
                 parser.VendorIdRev3.WriteAsAscii(vendorIdRev4Ascii);
 

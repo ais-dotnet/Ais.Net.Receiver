@@ -27,6 +27,8 @@ namespace Ais.Net.Receiver.Domain
         uint RepeatIndicator,
         ShipType ShipType) :
             AisMessageBase(MessageType: 19, Mmsi),
+            IAisIsDteNotReady,
+            IAisPositionFixType,
             IVesselNavigation,
             IVesselDimensions,
             IAisIsAssigned,

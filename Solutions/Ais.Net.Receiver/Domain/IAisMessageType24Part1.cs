@@ -6,7 +6,6 @@ namespace Ais.Net.Receiver.Domain
 {
     public interface IAisMessageType24Part1
     {
-        string CallSign { get; }
         uint MothershipMmsi { get; }
         uint SerialNumber { get; }
         uint Spare162 { get; }
