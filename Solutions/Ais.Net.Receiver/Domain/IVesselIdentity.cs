@@ -2,6 +2,6 @@
 {
     public interface IVesselIdentity
     {
-        uint Mmsi { get; set; }
+        uint Mmsi { get; }
     }
 }

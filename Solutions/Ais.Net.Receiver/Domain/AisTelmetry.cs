@@ -1,9 +1,7 @@
 ﻿namespace Ais.Net.Receiver.Domain
 {
-    public class AisTelmetry : AisMessageBase, IVesselPosition, IVesselName
+    public record AisTelmetry(int MessageType, uint Mmsi, string VesselName) : AisMessageBase(MessageType, Mmsi), IVesselPosition, IVesselName
     {
-        public string VesselName { get; set; }
-
-        public Position Position { get; set; }
+        public Position? Position { get; init; }
     }
 }

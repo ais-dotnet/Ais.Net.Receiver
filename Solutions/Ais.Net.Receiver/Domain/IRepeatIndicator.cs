@@ -2,6 +2,6 @@
 {
     public interface IRepeatIndicator
     {
-        uint RepeatIndicator { get; set; }
+        uint RepeatIndicator { get; }
     }
 }

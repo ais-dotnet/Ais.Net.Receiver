@@ -44,7 +44,8 @@ namespace Ais.Net.Receiver.Receiver
             {
                 while (stream.DataAvailable)
                 {
-                    yield return await reader.ReadLineAsync().ConfigureAwait(false);
+                    string? line = await reader.ReadLineAsync().ConfigureAwait(false);
+                    if (line is not null) { yield return line; }
                     retryAttempt = 0;
                 }
 

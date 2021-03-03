@@ -1,6 +1,6 @@
 ﻿namespace Ais.Net.Receiver.Domain
 {
-    public class AisMessageType18 : AisMessageBase,
+    public record AisMessageType18(uint Mmsi) : AisMessageBase(MessageType: 18, Mmsi),
         IAisMessageType18,
         IVesselNavigation,
         IAisIsAssigned,
@@ -8,22 +8,22 @@
         IRaimFlag,
         IRepeatIndicator
     {
-        public Position Position { get; set; }
-        public bool CanAcceptMessage22ChannelAssignment { get; set; }
-        public bool CanSwitchBands { get; set; }
-        public ClassBUnit CsUnit { get; set; }
-        public bool HasDisplay { get; set; }
-        public bool IsDscAttached { get; set; }
-        public ClassBRadioStatusType RadioStatusType { get; set; }
-        public int RegionalReserved139 { get; set; }
-        public int RegionalReserved38 { get; set; }
-        public uint CourseOverGround10thDegrees { get; set; }
-        public bool PositionAccuracy { get; set; }
-        public uint SpeedOverGroundTenths { get; set; }
-        public uint TimeStampSecond { get; set; }
-        public uint TrueHeadingDegrees { get; set; }
-        public bool IsAssigned { get; set; }
-        public bool RaimFlag { get; set; }
-        public uint RepeatIndicator { get; set; }
+        public Position? Position { get; init; }
+        public bool CanAcceptMessage22ChannelAssignment { get; init; }
+        public bool CanSwitchBands { get; init; }
+        public ClassBUnit CsUnit { get; init; }
+        public bool HasDisplay { get; init; }
+        public bool IsDscAttached { get; init; }
+        public ClassBRadioStatusType RadioStatusType { get; init; }
+        public int RegionalReserved139 { get; init; }
+        public int RegionalReserved38 { get; init; }
+        public uint CourseOverGround10thDegrees { get; init; }
+        public bool PositionAccuracy { get; init; }
+        public uint SpeedOverGroundTenths { get; init; }
+        public uint TimeStampSecond { get; init; }
+        public uint TrueHeadingDegrees { get; init; }
+        public bool IsAssigned { get; init; }
+        public bool RaimFlag { get; init; }
+        public uint RepeatIndicator { get; init; }
     }
 }

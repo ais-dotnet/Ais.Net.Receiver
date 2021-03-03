@@ -2,6 +2,6 @@
 {
     public interface IShipType
     {
-        ShipType ShipType { get; set; }
+        ShipType ShipType { get; }
     }
 }

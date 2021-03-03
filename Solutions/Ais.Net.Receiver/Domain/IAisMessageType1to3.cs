@@ -2,12 +2,12 @@
 {
     public interface IAisMessageType1to3
     {
-        ManoeuvreIndicator ManoeuvreIndicator { get; set; }
-        NavigationStatus NavigationStatus { get; set; }
-        uint RadioSlotTimeout { get; set; }
-        uint RadioSubMessage { get; set; }
-        RadioSyncState RadioSyncState { get; set; }
-        int RateOfTurn { get; set; }
-        uint SpareBits145 { get; set; }
+        ManoeuvreIndicator ManoeuvreIndicator { get; }
+        NavigationStatus NavigationStatus { get; }
+        uint RadioSlotTimeout { get; }
+        uint RadioSubMessage { get; }
+        RadioSyncState RadioSyncState { get; }
+        int RateOfTurn { get; }
+        uint SpareBits145 { get; }
     }
 }

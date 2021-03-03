@@ -2,6 +2,6 @@
 {
     public interface IAisMessageType
     {
-        int MessageType { get; set; }
+        int MessageType { get; }
     }
 }

@@ -2,6 +2,6 @@
 {
     public interface IVesselName
     {
-        string VesselName { get; set; }
+        string VesselName { get; }
     }
 }

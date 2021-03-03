@@ -1,6 +1,6 @@
 ﻿namespace Ais.Net.Receiver.Domain
 {
-    public class AisMessageType19 : AisMessageBase,
+    public record AisMessageType19(uint Mmsi, string ShipName) : AisMessageBase(MessageType: 19, Mmsi),
         IVesselNavigation,
         IVesselDimensions,
         IAisIsAssigned,
@@ -10,25 +10,24 @@
         IRepeatIndicator,
         IShipType
     {
-        public Position Position { get; set; }
-        public bool IsDteNotReady { get; set; }
-        public EpfdFixType PositionFixType { get; set; }
-        public int RegionalReserved139 { get; set; }
-        public int RegionalReserved38 { get; set; }
-        public string ShipName { get; set; }
-        public uint Spare308 { get; set; }
-        public uint CourseOverGround10thDegrees { get; set; }
-        public bool PositionAccuracy { get; set; }
-        public uint SpeedOverGroundTenths { get; set; }
-        public uint TimeStampSecond { get; set; }
-        public uint TrueHeadingDegrees { get; set; }
-        public uint DimensionToBow { get; set; }
-        public uint DimensionToPort { get; set; }
-        public uint DimensionToStarboard { get; set; }
-        public uint DimensionToStern { get; set; }
-        public bool IsAssigned { get; set; }
-        public bool RaimFlag { get; set; }
-        public uint RepeatIndicator { get; set; }
-        public ShipType ShipType { get; set; }
+        public Position? Position { get; init; }
+        public bool IsDteNotReady { get; init; }
+        public EpfdFixType PositionFixType { get; init; }
+        public int RegionalReserved139 { get; init; }
+        public int RegionalReserved38 { get; init; }
+        public uint Spare308 { get; init; }
+        public uint CourseOverGround10thDegrees { get; init; }
+        public bool PositionAccuracy { get; init; }
+        public uint SpeedOverGroundTenths { get; init; }
+        public uint TimeStampSecond { get; init; }
+        public uint TrueHeadingDegrees { get; init; }
+        public uint DimensionToBow { get; init; }
+        public uint DimensionToPort { get; init; }
+        public uint DimensionToStarboard { get; init; }
+        public uint DimensionToStern { get; init; }
+        public bool IsAssigned { get; init; }
+        public bool RaimFlag { get; init; }
+        public uint RepeatIndicator { get; init; }
+        public ShipType ShipType { get; init; }
     }
 }
