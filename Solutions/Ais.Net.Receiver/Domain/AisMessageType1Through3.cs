@@ -1,4 +1,8 @@
-﻿namespace Ais.Net.Receiver.Domain
+﻿// <copyright file="AisMessageType1Through3.cs" company="Endjin">
+// Copyright (c) Endjin. All rights reserved.
+// </copyright>
+
+namespace Ais.Net.Receiver.Domain
 {
     public record AisMessageType1Through3(
         int MessageType,

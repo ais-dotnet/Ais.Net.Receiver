@@ -1,4 +1,4 @@
-﻿// <copyright file="Program.cs" company="Endjin">
+﻿// <copyright file="ReceiverHost.cs" company="Endjin">
 // Copyright (c) Endjin. All rights reserved.
 // </copyright>
 
@@ -37,7 +37,7 @@ namespace Ais.Net.Receiver.Receiver
             var processor = new NmeaToAisTelemetryStreamProcessor();
             var adapter = new NmeaLineToAisStreamAdapter(processor);
 
-            processor.Telemetry.Subscribe(this.OnTelemetryReceived);
+            //processor.Telemetry.Subscribe(this.OnTelemetryReceived);
 
             IObservable<IGroupedObservable<uint, AisMessageBase>> byVessel = processor.Telemetry.GroupBy(m => m.Mmsi);
             var xs =
@@ -52,7 +52,7 @@ namespace Ais.Net.Receiver.Receiver
                 {
                     (uint mmsi, IVesselPosition position, IVesselName name) = ln;
                     string positionText = position.Position is null ? "unknown position" : $"{position.Position.Latitude},{position.Position.Longitude}";
-                    Console.WriteLine($"[{mmsi}: '{name.VesselName}'] -  [{positionText}]");
+                    Console.WriteLine($"[{mmsi}: '{name.VesselName.CleanVesselName()}'] - [{positionText}]");
                 });
 
             await foreach (var message in this.GetAsync())

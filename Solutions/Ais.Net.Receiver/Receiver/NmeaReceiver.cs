@@ -18,7 +18,7 @@ namespace Ais.Net.Receiver.Receiver
         {
             this.Host = host;
             this.Port = port;
-            this.RetryPeriodicity = (retryPeriodicity ??= TimeSpan.FromSeconds(1));
+            this.RetryPeriodicity = (retryPeriodicity ?? TimeSpan.FromSeconds(1));
             this.RetryAttemptLimit = retryAttemptLimit;
         }
 
@@ -36,7 +36,7 @@ namespace Ais.Net.Receiver.Receiver
         {
             await this.tcpClient.ConnectAsync(this.Host, this.Port);
             await using NetworkStream stream = this.tcpClient.GetStream();
-            using StreamReader reader = new StreamReader(stream);
+            using StreamReader reader = new(stream);
 
             int retryAttempt = 0;
 

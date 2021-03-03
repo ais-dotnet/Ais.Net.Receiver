@@ -28,7 +28,7 @@ namespace Ais.Net.Receiver.Storage
         public async Task PersistAsync(IEnumerable<string> messages)
         {
             await this.InitialiseContainerAsync().ConfigureAwait(false);
-            await using MemoryStream stream = new MemoryStream(Encoding.UTF8.GetBytes(messages.Aggregate(new StringBuilder(), (sb, a) => sb.AppendLine(string.Join(",", a)), sb => sb.ToString())));
+            await using MemoryStream stream = new(Encoding.UTF8.GetBytes(messages.Aggregate(new StringBuilder(), (sb, a) => sb.AppendLine(string.Join(",", a)), sb => sb.ToString())));
             await this.appendBlobClient!.AppendBlockAsync(stream).ConfigureAwait(false);
         }
 

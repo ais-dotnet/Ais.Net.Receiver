@@ -1,4 +1,8 @@
-﻿// Configuration binding types are typically better off as null-oblivious, because the contents
+﻿// <copyright file="StorageConfig.cs" company="Endjin">
+// Copyright (c) Endjin. All rights reserved.
+// </copyright>
+
+// Configuration binding types are typically better off as null-oblivious, because the contents
 // of config files are outside the compiler's control.
 #nullable disable annotations
 

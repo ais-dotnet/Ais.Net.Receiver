@@ -1,4 +1,8 @@
-﻿namespace Ais.Net.Receiver.Domain
+﻿// <copyright file="AisMessageType24Part1.cs" company="Endjin">
+// Copyright (c) Endjin. All rights reserved.
+// </copyright>
+
+namespace Ais.Net.Receiver.Domain
 {
     public record AisMessageType24Part1(uint Mmsi, string CallSign, string VendorIdRev3, string VendorIdRev4) : AisMessageBase(MessageType: 24, Mmsi),
         IAisMessageType24Part1,

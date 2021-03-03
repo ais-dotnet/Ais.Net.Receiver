@@ -1,4 +1,8 @@
-﻿namespace Ais.Net.Receiver.Domain
+﻿// <copyright file="NmeaReceiver.cs" company="Endjin">
+// Copyright (c) Endjin. All rights reserved.
+// </copyright>
+
+namespace Ais.Net.Receiver.Domain
 {
     using System;
     using System.Text;
@@ -10,11 +14,14 @@
             return value / 600000.0;
         }
 
-        public static string ParseVesselName(this Span<byte> value)
+        public static string CleanVesselName(this string value)
         {
-            var vesselName = Encoding.ASCII.GetString(value);
+            return value.Trim('@').Trim().Replace("  ", " ");
+        }
 
-            return vesselName.Trim('@').Trim().Replace("  ", " ");
+        public static string GetString(this Span<byte> value)
+        {
+            return Encoding.ASCII.GetString(value); ;
         }
 
         public static string TextFieldToString(this NmeaAisTextFieldParser field)

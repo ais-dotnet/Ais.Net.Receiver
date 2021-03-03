@@ -1,4 +1,4 @@
-﻿// <copyright file="Program.cs" company="Endjin">
+﻿// <copyright file="IStorageClient.cs" company="Endjin">
 // Copyright (c) Endjin. All rights reserved.
 // </copyright>
 

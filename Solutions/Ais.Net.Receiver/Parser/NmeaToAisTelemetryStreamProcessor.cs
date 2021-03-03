@@ -1,4 +1,8 @@
-﻿namespace Ais.Net.Receiver.Parser
+﻿// <copyright file="NmeaToAisTelemetryStreamProcessor.cs" company="Endjin">
+// Copyright (c) Endjin. All rights reserved.
+// </copyright>
+
+namespace Ais.Net.Receiver.Parser
 {
     using System;
     using System.Reactive.Subjects;
@@ -44,7 +48,7 @@
                         return;
                     }
                 }
-                Console.WriteLine($"Unknown type: {messageType}");
+                // Console.WriteLine($"Unknown type: {messageType}");
             }
             catch (Exception e)
             {
@@ -55,6 +59,7 @@
         private void ParseMessageTypes1Through3(ReadOnlySpan<byte> asciiPayload, uint padding, int messageType)
         {
             var parser = new NmeaAisPositionReportClassAParser(asciiPayload, padding);
+
             var message = new AisMessageType1Through3(
                 MessageType: messageType,
                 Mmsi: parser.Mmsi,
@@ -129,9 +134,10 @@
             var parser = new NmeaAisPositionReportExtendedClassBParser(asciiPayload, padding);
             Span<byte> shipNameAscii = stackalloc byte[(int) parser.ShipName.CharacterCount];
             parser.ShipName.WriteAsAscii(shipNameAscii);
+
             var message = new AisMessageType19(
                 Mmsi: parser.Mmsi,
-                ShipName: shipNameAscii.ParseVesselName(),
+                ShipName: shipNameAscii.GetString(),
                 CourseOverGround10thDegrees: parser.CourseOverGround10thDegrees,
                 DimensionToBow: parser.DimensionToBow,
                 DimensionToPort: parser.DimensionToPort,
@@ -166,6 +172,7 @@
                 var parser = new NmeaAisStaticDataReportParserPartA(asciiPayload, padding);
                 Span<byte> vesselNameAscii = stackalloc byte[(int) parser.VesselName.CharacterCount];
                 parser.VesselName.WriteAsAscii(vesselNameAscii);
+
                 var message = new AisMessageType24Part0(
                     Mmsi: parser.Mmsi,
                     PartNumber: parser.PartNumber,
@@ -180,17 +187,21 @@
             if (part == 1)
             {
                 var parser = new NmeaAisStaticDataReportParserPartB(asciiPayload, padding);
+                
                 Span<byte> callSignAscii = stackalloc byte[(int) parser.CallSign.CharacterCount];
                 parser.CallSign.WriteAsAscii(callSignAscii);
+                
                 Span<byte> vendorIdRev3Ascii = stackalloc byte[(int) parser.VendorIdRev3.CharacterCount];
                 parser.VendorIdRev3.WriteAsAscii(vendorIdRev3Ascii);
+                
                 Span<byte> vendorIdRev4Ascii = stackalloc byte[(int) parser.VendorIdRev4.CharacterCount];
                 parser.VendorIdRev3.WriteAsAscii(vendorIdRev4Ascii);
+
                 var message = new AisMessageType24Part1(
                     Mmsi: parser.Mmsi,
-                    CallSign: callSignAscii.ParseVesselName(),
-                    VendorIdRev3: vendorIdRev3Ascii.ParseVesselName(),
-                    VendorIdRev4: vendorIdRev4Ascii.ParseVesselName())
+                    CallSign: callSignAscii.GetString(),
+                    VendorIdRev3: vendorIdRev3Ascii.GetString(),
+                    VendorIdRev4: vendorIdRev4Ascii.GetString())
                 {
                     DimensionToBow = parser.DimensionToBow,
                     DimensionToPort = parser.DimensionToPort,
