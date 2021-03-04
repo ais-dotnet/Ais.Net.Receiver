@@ -1,4 +1,4 @@
-﻿// <copyright file="NmeaToAisTelemetryStreamProcessor.cs" company="Endjin">
+﻿// <copyright file="NmeaToAisMessageAsyncStreamProcessor.cs" company="Endjin">
 // Copyright (c) Endjin. All rights reserved.
 // </copyright>
 
@@ -8,7 +8,7 @@ namespace Ais.Net.Receiver.Parser
     using System.Reactive.Subjects;
     using Ais.Net.Models;
 
-    public class NmeaToAisTelemetryStreamProcessor : INmeaAisMessageStreamProcessor
+    public class NmeaToAisMessageAsyncStreamProcessor : INmeaAisMessageStreamProcessor
     {
         private readonly Subject<AisMessageBase> telemetry = new();
 

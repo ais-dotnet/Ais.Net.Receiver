@@ -9,7 +9,10 @@ namespace Ais.Net.Receiver
     using System.Threading.Tasks;
     using Ais.Net.Receiver.Configuration;
     using Ais.Net.Receiver.Receiver;
-    using Ais.Net.Receiver.Storage;
+    using System;
+    using System.Reactive.Linq;
+    using Ais.Net.Models;
+    using Ais.Net.Models.Abstractions;
 
     public static class Program
     {
@@ -21,12 +24,32 @@ namespace Ais.Net.Receiver
                             .Build();
 
             var aisConfig = config.GetSection("Ais").Get<AisConfig>();
-            var storageConfig = config.GetSection("Storage").Get<StorageConfig>();
 
-            IStorageClient storageClient = new StorageClient(storageConfig);
+            var receiverHost = new ReceiverHost(aisConfig);
 
-            var receiverHost = new ReceiverHost(aisConfig, storageClient);
+            IObservable<IGroupedObservable<uint, AisMessageBase>> byVessel = receiverHost.Telemetry.GroupBy(m => m.Mmsi);
+
+            var xs =
+                from vg in byVessel
+                let vesselLocations = vg.OfType<IVesselPosition>()
+                let vesselNames = vg.OfType<IVesselName>()
+                let vesselLocationsWithNames = vesselLocations.CombineLatest(vesselNames)
+                from locationAndName in vesselLocationsWithNames
+                select (mmsi: vg.Key, location: locationAndName.First, name: locationAndName.Second);
+
+            xs.Subscribe(ln =>
+            {
+                (uint mmsi, IVesselPosition position, IVesselName name) = ln;
+                string positionText = position.Position is null ? "unknown position" : $"{position.Position.Latitude},{position.Position.Longitude}";
+                Console.WriteLine($"[{mmsi}: '{name.VesselName.CleanVesselName()}'] - [{positionText}]");
+            });
+
             await receiverHost.StartAsync();
         }
     }
+
+    /*
+    var storageConfig = config.GetSection("Storage").Get<StorageConfig>();
+    IStorageClient storageClient = new StorageClient(storageConfig);
+    */
 }

@@ -4,28 +4,28 @@
 
 namespace Ais.Net.Receiver.Receiver
 {
+    using Ais.Net.Models;
+    using Ais.Net.Receiver.Configuration;
+    using Ais.Net.Receiver.Parser;
+
     using System;
     using System.Collections.Generic;
     using System.Reactive.Linq;
+    using System.Reactive.Subjects;
     using System.Text;
     using System.Threading.Tasks;
-    using Ais.Net.Models;
-    using Ais.Net.Models.Abstractions;
-    using Ais.Net.Receiver.Configuration;
-    using Ais.Net.Receiver.Parser;
-    using Ais.Net.Receiver.Storage;
 
     public class ReceiverHost
     {
         private readonly AisConfig configuration;
-        private readonly IStorageClient storageClient;
         private readonly NmeaReceiver receiver;
+        private readonly Subject<AisMessageBase> telemetry = new();
 
-        public ReceiverHost(AisConfig configuration, IStorageClient storageClient)
+        public IObservable<AisMessageBase> Telemetry => this.telemetry;
+
+        public ReceiverHost(AisConfig configuration)
         {
             this.configuration = configuration;
-            this.storageClient = storageClient;
-
             this.receiver = new NmeaReceiver(
                 this.configuration.Host,
                 this.configuration.Port,
@@ -35,26 +35,10 @@ namespace Ais.Net.Receiver.Receiver
 
         public async Task StartAsync()
         {
-            var processor = new NmeaToAisTelemetryStreamProcessor();
+            var processor = new NmeaToAisMessageAsyncStreamProcessor();
             var adapter = new NmeaLineToAisStreamAdapter(processor);
 
-            //processor.Telemetry.Subscribe(this.OnTelemetryReceived);
-
-            IObservable<IGroupedObservable<uint, AisMessageBase>> byVessel = processor.Telemetry.GroupBy(m => m.Mmsi);
-            var xs =
-                from vg in byVessel
-                let vesselLocations = vg.OfType<IVesselPosition>()
-                let vesselNames = vg.OfType<IVesselName>()
-                let vesselLocationsWithNames = vesselLocations.CombineLatest(vesselNames)
-                from locationAndName in vesselLocationsWithNames
-                select (mmsi: vg.Key, location: locationAndName.First, name: locationAndName.Second);
-
-            xs.Subscribe(ln =>
-                {
-                    (uint mmsi, IVesselPosition position, IVesselName name) = ln;
-                    string positionText = position.Position is null ? "unknown position" : $"{position.Position.Latitude},{position.Position.Longitude}";
-                    Console.WriteLine($"[{mmsi}: '{name.VesselName.CleanVesselName()}'] - [{positionText}]");
-                });
+            processor.Telemetry.Subscribe(this.telemetry);
 
             await foreach (var message in this.GetAsync())
             {
@@ -66,22 +50,6 @@ namespace Ais.Net.Receiver.Receiver
                 }
 
                 ProcessLineNonAsync(message, adapter);
-            }
-
-            // await messages.Buffer(int.Parse(this.configuration[ConfigurationKeys.WriteBatchSize])).Select(this.storageClient.PersistAsync);
-        }
-
-        private void OnTelemetryReceived(AisMessageBase message)
-        {
-            if (message is IVesselPosition position)
-            {
-                string positionText = position.Position is null ? "unknown position" : $"{position.Position.Latitude},{position.Position.Longitude}";
-                Console.WriteLine($"[{message.MessageType}] [{message.Mmsi}] [{positionText}]");
-
-            }
-            else
-            {
-                Console.WriteLine($"[{message.MessageType}] [{message.Mmsi}]");
             }
         }
 
