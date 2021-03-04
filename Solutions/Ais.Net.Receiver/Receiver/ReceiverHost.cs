@@ -35,18 +35,17 @@ namespace Ais.Net.Receiver.Receiver
 
         public async Task StartAsync()
         {
-            var processor = new NmeaToAisMessageAsyncStreamProcessor();
+            var processor = new NmeaToAisMessageTypeProcessor();
             var adapter = new NmeaLineToAisStreamAdapter(processor);
 
             processor.Telemetry.Subscribe(this.telemetry);
 
             await foreach (var message in this.GetAsync())
             {
-                static void ProcessLineNonAsync(string msg, INmeaLineStreamProcessor lineStreamProcessor)
+                static void ProcessLineNonAsync(string line, INmeaLineStreamProcessor lineStreamProcessor)
                 {
-                    var asciiMessage = Encoding.ASCII.GetBytes(msg);
-                    var line = new NmeaLineParser(asciiMessage);
-                    lineStreamProcessor.OnNext(line, 0);
+                    var lineAsAscii = Encoding.ASCII.GetBytes(line);
+                    lineStreamProcessor.OnNext(new NmeaLineParser(lineAsAscii), 0);
                 }
 
                 ProcessLineNonAsync(message, adapter);

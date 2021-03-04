@@ -1,4 +1,4 @@
-﻿// <copyright file="NmeaToAisMessageAsyncStreamProcessor.cs" company="Endjin">
+﻿// <copyright file="NmeaToAisMessageTypeProcessor.cs" company="Endjin">
 // Copyright (c) Endjin. All rights reserved.
 // </copyright>
 
@@ -8,7 +8,11 @@ namespace Ais.Net.Receiver.Parser
     using System.Reactive.Subjects;
     using Ais.Net.Models;
 
-    public class NmeaToAisMessageAsyncStreamProcessor : INmeaAisMessageStreamProcessor
+    /// <summary>
+    /// Receives AIS messages parsed from an NMEA sentence and converts it into an 
+    /// <see cref="IObservable"/> stream of <see cref="AisMessageBase"/> based types.
+    /// </summary>
+    public class NmeaToAisMessageTypeProcessor : INmeaAisMessageStreamProcessor
     {
         private readonly Subject<AisMessageBase> telemetry = new();
 
@@ -172,7 +176,6 @@ namespace Ais.Net.Receiver.Parser
 
         private void ParseMessageType24(ReadOnlySpan<byte> asciiPayload, uint padding)
         {
-
             var part = NmeaAisStaticDataReportParser.GetPartNumber(asciiPayload, padding);
 
             if (part == 0)
