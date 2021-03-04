@@ -7,7 +7,7 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
-   <ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\Ais.Net.Models\Ais.Net.Models.csproj" />
     <ProjectReference Include="..\Ais.Net.Receiver.Storage.Azure.Blob\Ais.Net.Receiver.Storage.Azure.Blob.csproj" />
     <ProjectReference Include="..\Ais.Net.Receiver\Ais.Net.Receiver.csproj" />
