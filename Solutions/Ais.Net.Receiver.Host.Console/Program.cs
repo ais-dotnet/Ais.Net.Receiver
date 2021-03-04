@@ -2,17 +2,16 @@
 // Copyright (c) Endjin. All rights reserved.
 // </copyright>
 
-namespace Ais.Net.Receiver
+namespace Ais.Net.Receiver.Host.Console
 {
-    using Microsoft.Extensions.Configuration;
-
-    using System.Threading.Tasks;
-    using Ais.Net.Receiver.Configuration;
-    using Ais.Net.Receiver.Receiver;
     using System;
     using System.Reactive.Linq;
+    using System.Threading.Tasks;
     using Ais.Net.Models;
     using Ais.Net.Models.Abstractions;
+    using Ais.Net.Receiver.Configuration;
+    using Ais.Net.Receiver.Receiver;
+    using Microsoft.Extensions.Configuration;
 
     public static class Program
     {
