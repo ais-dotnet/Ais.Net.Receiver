@@ -4,14 +4,16 @@
 
 namespace Ais.Net.Receiver.Host.Console
 {
-    using System;
-    using System.Reactive.Linq;
-    using System.Threading.Tasks;
     using Ais.Net.Models;
     using Ais.Net.Models.Abstractions;
     using Ais.Net.Receiver.Configuration;
     using Ais.Net.Receiver.Receiver;
+
     using Microsoft.Extensions.Configuration;
+
+    using System;
+    using System.Reactive.Linq;
+    using System.Threading.Tasks;
 
     public static class Program
     {
@@ -23,22 +25,21 @@ namespace Ais.Net.Receiver.Host.Console
                             .Build();
 
             var aisConfig = config.GetSection("Ais").Get<AisConfig>();
-
             var receiverHost = new ReceiverHost(aisConfig);
 
             IObservable<IGroupedObservable<uint, AisMessageBase>> byVessel = receiverHost.Telemetry.GroupBy(m => m.Mmsi);
 
-            var xs =
-                from vg in byVessel
-                let vesselNavigation = vg.OfType<IVesselNavigation>()
-                let vesselNames = vg.OfType<IVesselName>()
-                let vesselLocationsWithNames = vesselNavigation.CombineLatest(vesselNames)
-                from locationAndName in vesselLocationsWithNames
-                select (mmsi: vg.Key, location: locationAndName.First, name: locationAndName.Second);
+            var vesselNavigationWithNameStream =
+                from perVesselMessages in byVessel
+                let vesselNavigationUpdates = perVesselMessages.OfType<IVesselNavigation>()
+                let vesselNames = perVesselMessages.OfType<IVesselName>()
+                let vesselLocationsWithNames = vesselNavigationUpdates.CombineLatest(vesselNames, (navigation, name) => (navigation, name))
+                from vesselLocationAndName in vesselLocationsWithNames
+                select (mmsi: perVesselMessages.Key, vesselLocationAndName.navigation, vesselLocationAndName.name);
 
-            xs.Subscribe(ln =>
+            vesselNavigationWithNameStream.Subscribe(navigationWithName =>
             {
-                (uint mmsi, IVesselNavigation navigation, IVesselName name) = ln;
+                (uint mmsi, IVesselNavigation navigation, IVesselName name) = navigationWithName;
                 string positionText = navigation.Position is null ? "unknown position" : $"{navigation.Position.Latitude},{navigation.Position.Longitude}";
                 Console.WriteLine($"[{mmsi}: '{name.VesselName.CleanVesselName()}'] - [{positionText}] - [{navigation.CourseOverGroundDegrees}]");
             });
