@@ -14,6 +14,16 @@ namespace Ais.Net.Models
             return value / 600000.0;
         }
 
+        public static float? FromTenths(this uint value)
+        {
+            return value == 1023 ? null : (value / 10.0f);
+        }
+        
+        public static float? FromTenthsToDegrees(this uint value)
+        {
+            return value == 3600 ? null : (value / 10.0f);
+        }
+
         public static string CleanVesselName(this string value)
         {
             return value.Trim('@').Trim().Replace("  ", " ");
@@ -28,6 +38,7 @@ namespace Ais.Net.Models
         {
             Span<byte> ascii = stackalloc byte[(int)field.CharacterCount];
             field.WriteAsAscii(ascii);
+
             return Encoding.ASCII.GetString(ascii);
         }
     }

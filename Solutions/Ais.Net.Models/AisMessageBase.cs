@@ -6,5 +6,5 @@ namespace Ais.Net.Models
 {
     using Ais.Net.Models.Abstractions;
 
-    public record AisMessageBase(int MessageType, uint Mmsi) : IVesselIdentity, IAisMessageType;
+    public record AisMessageBase(int MessageType, uint Mmsi) : IAisMessage;
 }

@@ -4,15 +4,17 @@
 
 namespace Ais.Net.Receiver.Storage.Azure.Blob
 {
+    using Ais.Net.Receiver.Storage.Azure.Blob.Configuration;
+
+    using global::Azure.Storage.Blobs;
+    using global::Azure.Storage.Blobs.Specialized;
+
     using System;
     using System.Collections.Generic;
     using System.IO;
     using System.Linq;
     using System.Text;
     using System.Threading.Tasks;
-    using Ais.Net.Receiver.Storage.Azure.Blob.Configuration;
-    using global::Azure.Storage.Blobs;
-    using global::Azure.Storage.Blobs.Specialized;
 
     public class StorageClient : IStorageClient
     {

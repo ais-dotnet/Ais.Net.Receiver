@@ -15,6 +15,7 @@
         uint EtaHour { get; }
 
         uint EtaMinute { get; }
+
         uint ImoNumber { get; }
 
         uint Spare423 { get; }

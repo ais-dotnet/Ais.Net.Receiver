@@ -7,26 +7,26 @@ namespace Ais.Net.Models
     using Ais.Net.Models.Abstractions;
 
     public record AisMessageType1Through3(
+        float? CourseOverGroundDegrees,
+        ManoeuvreIndicator ManoeuvreIndicator,
         int MessageType,
         uint Mmsi,
-        Position? Position,
-        ManoeuvreIndicator ManoeuvreIndicator,
         NavigationStatus NavigationStatus,
+        Position? Position,
+        bool PositionAccuracy,
         uint RadioSlotTimeout,
         uint RadioSubMessage,
         RadioSyncState RadioSyncState,
         int RateOfTurn,
+        bool RaimFlag,
+        uint RepeatIndicator,
         uint SpareBits145,
-        float? CourseOverGroundDegrees,
-        bool PositionAccuracy,
         float? SpeedOverGround,
         uint TimeStampSecond,
-        uint TrueHeadingDegrees,
-        bool RaimFlag,
-        uint RepeatIndicator) :
+        uint TrueHeadingDegrees) :
             AisMessageBase(MessageType, Mmsi),
             IAisMessageType1to3,
-            IVesselNavigation,
             IRaimFlag,
-            IRepeatIndicator;
+            IRepeatIndicator,
+            IVesselNavigation;
 }

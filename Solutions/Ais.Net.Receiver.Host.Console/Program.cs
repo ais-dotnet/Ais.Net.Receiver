@@ -27,7 +27,7 @@ namespace Ais.Net.Receiver.Host.Console
             var aisConfig = config.GetSection("Ais").Get<AisConfig>();
             var receiverHost = new ReceiverHost(aisConfig);
 
-            IObservable<IGroupedObservable<uint, AisMessageBase>> byVessel = receiverHost.Telemetry.GroupBy(m => m.Mmsi);
+            IObservable<IGroupedObservable<uint, IAisMessage>> byVessel = receiverHost.Telemetry.GroupBy(m => m.Mmsi);
 
             var vesselNavigationWithNameStream =
                 from perVesselMessages in byVessel

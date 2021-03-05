@@ -6,24 +6,27 @@ namespace Ais.Net.Models
 {
     using Ais.Net.Models.Abstractions;
 
-    public record AisMessageType24Part1(uint Mmsi, string CallSign, string VendorIdRev3, string VendorIdRev4) : AisMessageBase(MessageType: 24, Mmsi),
-        IAisMessageType24Part1,
-        IVesselDimensions,
-        IAisMultipartMessage,
-        ICallSign,
-        IRepeatIndicator,
-        IShipType
-    {
-        public uint MothershipMmsi { get; init; }
-        public uint SerialNumber { get; init; }
-        public uint Spare162 { get; init; }
-        public uint UnitModelCode { get; init; }
-        public uint DimensionToBow { get; init; }
-        public uint DimensionToPort { get; init; }
-        public uint DimensionToStarboard { get; init; }
-        public uint DimensionToStern { get; init; }
-        public uint PartNumber { get; init; }
-        public uint RepeatIndicator { get; init; }
-        public ShipType ShipType { get; init; }
-    }
+    public record AisMessageType24Part1(
+        string CallSign,
+        uint DimensionToBow,
+        uint DimensionToPort,
+        uint DimensionToStarboard,
+        uint DimensionToStern,
+        uint Mmsi,
+        uint MothershipMmsi,
+        uint PartNumber,
+        uint RepeatIndicator,
+        uint SerialNumber,
+        uint Spare162,
+        ShipType ShipType,
+        uint UnitModelCode,
+        string VendorIdRev3,
+        string VendorIdRev4) :
+            AisMessageBase(MessageType: 24, Mmsi),
+            IAisMessageType24Part1,
+            IAisMultipartMessage,
+            ICallSign,
+            IRepeatIndicator,
+            IShipType,
+            IVesselDimensions;
 }

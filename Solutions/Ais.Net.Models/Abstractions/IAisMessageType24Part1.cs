@@ -7,10 +7,15 @@ namespace Ais.Net.Models.Abstractions
     public interface IAisMessageType24Part1
     {
         uint MothershipMmsi { get; }
+
         uint SerialNumber { get; }
+
         uint Spare162 { get; }
+
         uint UnitModelCode { get; }
+
         string VendorIdRev3 { get; }
+
         string VendorIdRev4 { get; }
     }
 }

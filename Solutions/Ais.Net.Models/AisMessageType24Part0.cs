@@ -8,9 +8,9 @@ namespace Ais.Net.Models
 
     public record AisMessageType24Part0(
         uint Mmsi,
-        uint Spare160,
         uint PartNumber,
-        uint RepeatIndicator) :
+        uint RepeatIndicator,
+        uint Spare160) :
             AisMessageBase(MessageType: 24, Mmsi),
             IAisMultipartMessage,
             IRepeatIndicator,

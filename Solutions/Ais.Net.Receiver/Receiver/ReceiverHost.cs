@@ -4,13 +4,12 @@
 
 namespace Ais.Net.Receiver.Receiver
 {
-    using Ais.Net.Models;
+    using Ais.Net.Models.Abstractions;
     using Ais.Net.Receiver.Configuration;
     using Ais.Net.Receiver.Parser;
 
     using System;
     using System.Collections.Generic;
-    using System.Reactive.Linq;
     using System.Reactive.Subjects;
     using System.Text;
     using System.Threading.Tasks;
@@ -19,9 +18,9 @@ namespace Ais.Net.Receiver.Receiver
     {
         private readonly AisConfig configuration;
         private readonly NmeaReceiver receiver;
-        private readonly Subject<AisMessageBase> telemetry = new();
+        private readonly Subject<IAisMessage> telemetry = new();
 
-        public IObservable<AisMessageBase> Telemetry => this.telemetry;
+        public IObservable<IAisMessage> Telemetry => this.telemetry;
 
         public ReceiverHost(AisConfig configuration)
         {
