@@ -67,7 +67,7 @@ namespace Ais.Net.Receiver.Parser
             var message = new AisMessageType1Through3(
                 MessageType: messageType,
                 Mmsi: parser.Mmsi,
-                CourseOverGround10thDegrees: parser.CourseOverGround10thDegrees,
+                CourseOverGroundDegrees: parser.CourseOverGround10thDegrees == 3600 ? null : (parser.CourseOverGround10thDegrees / 10.0f),
                 ManoeuvreIndicator: parser.ManoeuvreIndicator,
                 NavigationStatus: parser.NavigationStatus,
                 PositionAccuracy: parser.PositionAccuracy,
@@ -78,7 +78,7 @@ namespace Ais.Net.Receiver.Parser
                 RateOfTurn: parser.RateOfTurn,
                 RepeatIndicator: parser.RepeatIndicator,
                 SpareBits145: parser.SpareBits145,
-                SpeedOverGroundTenths: parser.SpeedOverGroundTenths,
+                SpeedOverGround: parser.SpeedOverGroundTenths == 1023 ? null : (parser.SpeedOverGroundTenths / 10.0f),
                 TimeStampSecond: parser.TimeStampSecond,
                 TrueHeadingDegrees: parser.TrueHeadingDegrees,
                 Position: Position.From10000thMins(parser.Latitude10000thMins, parser.Longitude10000thMins)
@@ -129,9 +129,9 @@ namespace Ais.Net.Receiver.Parser
                 RadioStatusType: parser.RadioStatusType,
                 RegionalReserved139: parser.RegionalReserved139,
                 RegionalReserved38: parser.RegionalReserved38,
-                CourseOverGround10thDegrees: parser.CourseOverGround10thDegrees,
+                CourseOverGroundDegrees: parser.CourseOverGround10thDegrees == 3600 ? null : (parser.CourseOverGround10thDegrees / 10.0f),
                 PositionAccuracy: parser.PositionAccuracy,
-                SpeedOverGroundTenths: parser.SpeedOverGroundTenths,
+                SpeedOverGround: parser.SpeedOverGroundTenths == 1023 ? null : (parser.SpeedOverGroundTenths / 10.0f),
                 TimeStampSecond: parser.TimeStampSecond,
                 TrueHeadingDegrees: parser.TrueHeadingDegrees,
                 IsAssigned: parser.IsAssigned,
@@ -150,7 +150,7 @@ namespace Ais.Net.Receiver.Parser
             var message = new AisMessageType19(
                 Mmsi: parser.Mmsi,
                 ShipName: shipNameAscii.GetString(),
-                CourseOverGround10thDegrees: parser.CourseOverGround10thDegrees,
+                CourseOverGroundDegrees: parser.CourseOverGround10thDegrees == 3600 ? null : (parser.CourseOverGround10thDegrees / 10.0f),
                 DimensionToBow: parser.DimensionToBow,
                 DimensionToPort: parser.DimensionToPort,
                 DimensionToStarboard: parser.DimensionToStarboard,
@@ -165,7 +165,7 @@ namespace Ais.Net.Receiver.Parser
                 RepeatIndicator: parser.RepeatIndicator,
                 ShipType: parser.ShipType,
                 Spare308: parser.Spare308,
-                SpeedOverGroundTenths: parser.SpeedOverGroundTenths,
+                SpeedOverGround: parser.SpeedOverGroundTenths == 1023 ? null : (parser.SpeedOverGroundTenths / 10.0f),
                 TimeStampSecond: parser.TimeStampSecond,
                 TrueHeadingDegrees: parser.TrueHeadingDegrees,
                 Position: Position.From10000thMins(parser.Latitude10000thMins, parser.Longitude10000thMins)

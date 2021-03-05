@@ -6,10 +6,16 @@ namespace Ais.Net.Models.Abstractions
 {
     public interface IVesselNavigation
     {
-        uint CourseOverGround10thDegrees { get; }
+        float? CourseOverGroundDegrees { get; }
+        
+        Position? Position { get; }
+        
         bool PositionAccuracy { get; }
-        uint SpeedOverGroundTenths { get; }
+        
+        float? SpeedOverGround { get; }
+        
         uint TimeStampSecond { get; }
+        
         uint TrueHeadingDegrees { get; }
     }
 }

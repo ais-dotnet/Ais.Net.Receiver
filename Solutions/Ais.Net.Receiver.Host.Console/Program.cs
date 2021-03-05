@@ -30,17 +30,17 @@ namespace Ais.Net.Receiver.Host.Console
 
             var xs =
                 from vg in byVessel
-                let vesselLocations = vg.OfType<IVesselPosition>()
+                let vesselNavigation = vg.OfType<IVesselNavigation>()
                 let vesselNames = vg.OfType<IVesselName>()
-                let vesselLocationsWithNames = vesselLocations.CombineLatest(vesselNames)
+                let vesselLocationsWithNames = vesselNavigation.CombineLatest(vesselNames)
                 from locationAndName in vesselLocationsWithNames
                 select (mmsi: vg.Key, location: locationAndName.First, name: locationAndName.Second);
 
             xs.Subscribe(ln =>
             {
-                (uint mmsi, IVesselPosition position, IVesselName name) = ln;
-                string positionText = position.Position is null ? "unknown position" : $"{position.Position.Latitude},{position.Position.Longitude}";
-                Console.WriteLine($"[{mmsi}: '{name.VesselName.CleanVesselName()}'] - [{positionText}]");
+                (uint mmsi, IVesselNavigation navigation, IVesselName name) = ln;
+                string positionText = navigation.Position is null ? "unknown position" : $"{navigation.Position.Latitude},{navigation.Position.Longitude}";
+                Console.WriteLine($"[{mmsi}: '{name.VesselName.CleanVesselName()}'] - [{positionText}] - [{navigation.CourseOverGroundDegrees}]");
             });
 
             await receiverHost.StartAsync();

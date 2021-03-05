@@ -17,9 +17,9 @@ namespace Ais.Net.Models
         ClassBRadioStatusType RadioStatusType,
         int RegionalReserved139,
         int RegionalReserved38,
-        uint CourseOverGround10thDegrees,
+        float? CourseOverGroundDegrees,
         bool PositionAccuracy,
-        uint SpeedOverGroundTenths,
+        float? SpeedOverGround,
         uint TimeStampSecond,
         uint TrueHeadingDegrees,
         bool IsAssigned,
@@ -29,7 +29,6 @@ namespace Ais.Net.Models
             IAisMessageType18,
             IVesselNavigation,
             IAisIsAssigned,
-            IVesselPosition,
             IRaimFlag,
             IRepeatIndicator;
 }

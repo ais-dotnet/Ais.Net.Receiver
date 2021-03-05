@@ -17,16 +17,15 @@ namespace Ais.Net.Models
         RadioSyncState RadioSyncState,
         int RateOfTurn,
         uint SpareBits145,
-        uint CourseOverGround10thDegrees,
+        float? CourseOverGroundDegrees,
         bool PositionAccuracy,
-        uint SpeedOverGroundTenths,
+        float? SpeedOverGround,
         uint TimeStampSecond,
         uint TrueHeadingDegrees,
         bool RaimFlag,
         uint RepeatIndicator) :
             AisMessageBase(MessageType, Mmsi),
             IAisMessageType1to3,
-            IVesselPosition,
             IVesselNavigation,
             IRaimFlag,
             IRepeatIndicator;
