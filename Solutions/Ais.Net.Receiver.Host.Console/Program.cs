@@ -6,6 +6,7 @@ namespace Ais.Net.Receiver.Host.Console
 {
     using System;
     using System.Reactive.Linq;
+    using System.Threading;
     using System.Threading.Tasks;
 
     using Ais.Net.Models;
@@ -46,10 +47,19 @@ namespace Ais.Net.Receiver.Host.Console
             {
                 (uint mmsi, IVesselNavigation navigation, IVesselName name) = navigationWithName;
                 string positionText = navigation.Position is null ? "unknown position" : $"{navigation.Position.Latitude},{navigation.Position.Longitude}";
+                Console.ForegroundColor = ConsoleColor.Green;
                 Console.WriteLine($"[{mmsi}: '{name.VesselName.CleanVesselName()}'] - [{positionText}] - [{navigation.CourseOverGroundDegrees ?? 0}]");
+                Console.ResetColor();
             });
 
-            await receiverHost.StartAsync();
+            var cts = new CancellationTokenSource();
+
+            Task task = receiverHost.StartAsync(cts.Token);
+
+            // If you wanted to cancel the long running process:
+            // cts.Cancel();
+
+            await task;
         }
     }
 }

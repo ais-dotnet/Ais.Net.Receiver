@@ -7,7 +7,9 @@ namespace Ais.Net.Receiver.Receiver
     using System;
     using System.Collections.Generic;
     using System.Reactive.Subjects;
+    using System.Runtime.CompilerServices;
     using System.Text;
+    using System.Threading;
     using System.Threading.Tasks;
 
     using Ais.Net.Models.Abstractions;
@@ -35,14 +37,14 @@ namespace Ais.Net.Receiver.Receiver
 
         public IObservable<IAisMessage> Messages => this.messages;
 
-        public async Task StartAsync()
+        public async Task StartAsync(CancellationToken cancellationToken = default)
         {
             var processor = new NmeaToAisMessageTypeProcessor();
             var adapter = new NmeaLineToAisStreamAdapter(processor);
 
             processor.Messages.Subscribe(this.messages);
 
-            await foreach (string? message in this.GetAsync())
+            await foreach (string? message in this.GetAsync(cancellationToken).WithCancellation(cancellationToken))
             {
                 static void ProcessLineNonAsync(string line, INmeaLineStreamProcessor lineStreamProcessor)
                 {
@@ -59,9 +61,9 @@ namespace Ais.Net.Receiver.Receiver
             }
         }
 
-        private async IAsyncEnumerable<string> GetAsync()
+        private async IAsyncEnumerable<string> GetAsync([EnumeratorCancellation]CancellationToken cancellationToken = default)
         {
-            await foreach (string? message in this.receiver.GetAsync())
+            await foreach (string? message in this.receiver.GetAsync().WithCancellation(cancellationToken))
             {
                 if (message.IsMissingNmeaBlockTags())
                 {
