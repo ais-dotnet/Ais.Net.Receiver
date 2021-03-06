@@ -1,6 +1,6 @@
 # Ais.Net.Receiver
 
-[![Build Status](https://dev.azure.com/endjin-labs/Ais.Net.Receiver/_apis/build/status/ais-dotnet.Ais.Net.Receiver?branchName=master)](https://dev.azure.com/endjin-labs/Ais.Net.Receiver/_build/latest?definitionId=1&branchName=master)
+[![Build Status](https://dev.azure.com/endjin-labs/Ais.Net.Receiver/_apis/build/status/CI?repoName=ais-dotnet%2FAis.Net.Receiver&branchName=master)](https://dev.azure.com/endjin-labs/Ais.Net.Receiver/_build/latest?definitionId=1&repoName=ais-dotnet%2FAis.Net.Receiver&branchName=master)
 
 [![IMM](https://endimmfuncdev.azurewebsites.net/api/imm/github/ais-dotnet/Ais.Net.Receiver/total?cache=false)](https://endimmfuncdev.azurewebsites.net/api/imm/github/ais-dotnet/Ais.Net.Receiver/total?cache=false)
 
