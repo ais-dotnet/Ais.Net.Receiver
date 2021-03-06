@@ -1,5 +1,5 @@
-﻿// <copyright file="StorageConfig.cs" company="Endjin">
-// Copyright (c) Endjin. All rights reserved.
+﻿// <copyright file="StorageConfig.cs" company="Endjin Limited">
+// Copyright (c) Endjin Limited. All rights reserved.
 // </copyright>
 
 // Configuration binding types are typically better off as null-oblivious, because the contents

@@ -1,5 +1,5 @@
-﻿// <copyright file="AisMessageType19.cs" company="Endjin">
-// Copyright (c) Endjin. All rights reserved.
+﻿// <copyright file="AisMessageType19.cs" company="Endjin Limited">
+// Copyright (c) Endjin Limited. All rights reserved.
 // </copyright>
 
 namespace Ais.Net.Models

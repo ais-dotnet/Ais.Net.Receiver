@@ -1,20 +1,20 @@
-﻿// <copyright file="StorageClient.cs" company="Endjin">
-// Copyright (c) Endjin. All rights reserved.
+﻿// <copyright file="StorageClient.cs" company="Endjin Limited">
+// Copyright (c) Endjin Limited. All rights reserved.
 // </copyright>
 
 namespace Ais.Net.Receiver.Storage.Azure.Blob
 {
-    using Ais.Net.Receiver.Storage.Azure.Blob.Configuration;
-
-    using global::Azure.Storage.Blobs;
-    using global::Azure.Storage.Blobs.Specialized;
-
     using System;
     using System.Collections.Generic;
     using System.IO;
     using System.Linq;
     using System.Text;
     using System.Threading.Tasks;
+
+    using Ais.Net.Receiver.Storage.Azure.Blob.Configuration;
+
+    using global::Azure.Storage.Blobs;
+    using global::Azure.Storage.Blobs.Specialized;
 
     public class StorageClient : IStorageClient
     {
@@ -30,13 +30,13 @@ namespace Ais.Net.Receiver.Storage.Azure.Blob
         public async Task PersistAsync(IEnumerable<string> messages)
         {
             await this.InitialiseContainerAsync().ConfigureAwait(false);
-            await using MemoryStream stream = new(Encoding.UTF8.GetBytes(messages.Aggregate(new StringBuilder(), (sb, a) => sb.AppendLine(string.Join(",", a)), sb => sb.ToString())));
+            await using MemoryStream stream = new (Encoding.UTF8.GetBytes(messages.Aggregate(new StringBuilder(), (sb, a) => sb.AppendLine(string.Join(",", a)), sb => sb.ToString())));
             await this.appendBlobClient!.AppendBlockAsync(stream).ConfigureAwait(false);
         }
 
         private async Task InitialiseContainerAsync()
         {
-            var timestamp = DateTimeOffset.UtcNow;
+            DateTimeOffset timestamp = DateTimeOffset.UtcNow;
 
             try
             {

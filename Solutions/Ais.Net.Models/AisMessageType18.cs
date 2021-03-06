@@ -1,5 +1,5 @@
-﻿// <copyright file="AisMessageType18.cs" company="Endjin">
-// Copyright (c) Endjin. All rights reserved.
+﻿// <copyright file="AisMessageType18.cs" company="Endjin Limited">
+// Copyright (c) Endjin Limited. All rights reserved.
 // </copyright>
 
 namespace Ais.Net.Models
@@ -24,8 +24,7 @@ namespace Ais.Net.Models
         uint RepeatIndicator,
         float? SpeedOverGround,
         uint TimeStampSecond,
-        uint TrueHeadingDegrees
-        ) :
+        uint TrueHeadingDegrees) :
             AisMessageBase(MessageType: 18, Mmsi),
             IAisMessageType18,
             IAisIsAssigned,

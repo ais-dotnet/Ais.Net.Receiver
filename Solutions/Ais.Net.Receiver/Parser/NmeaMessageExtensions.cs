@@ -1,5 +1,5 @@
-﻿// <copyright file="NmeaMessageExtensions.cs" company="Endjin">
-// Copyright (c) Endjin. All rights reserved.
+﻿// <copyright file="NmeaMessageExtensions.cs" company="Endjin Limited">
+// Copyright (c) Endjin Limited. All rights reserved.
 // </copyright>
 
 namespace Ais.Net.Receiver.Parser

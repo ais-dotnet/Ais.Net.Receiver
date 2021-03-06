@@ -1,18 +1,18 @@
-﻿// <copyright file="NmeaToAisMessageTypeProcessor.cs" company="Endjin">
-// Copyright (c) Endjin. All rights reserved.
+﻿// <copyright file="NmeaToAisMessageTypeProcessor.cs" company="Endjin Limited">
+// Copyright (c) Endjin Limited. All rights reserved.
 // </copyright>
 
 namespace Ais.Net.Receiver.Parser
 {
-    using Ais.Net.Models;
-    using Ais.Net.Models.Abstractions;
-
     using System;
     using System.Reactive.Subjects;
 
+    using Ais.Net.Models;
+    using Ais.Net.Models.Abstractions;
+
     /// <summary>
     /// Receives AIS messages parsed from an NMEA sentence and converts it into an
-    /// <see cref="IObservable"/> stream of <see cref="IAisMessage"/> based types.
+    /// <see cref="System.IObservable{T}"/> stream of <see cref="IAisMessage"/> based types.
     /// </summary>
     public class NmeaToAisMessageTypeProcessor : INmeaAisMessageStreamProcessor
     {
@@ -29,36 +29,62 @@ namespace Ais.Net.Receiver.Parser
                 switch (messageType)
                 {
                     case >= 1 and <= 3:
-                    {
-                        this.ParseMessageTypes1Through3(asciiPayload, padding, messageType);
-                        return;
-                    }
+                        {
+                            this.ParseMessageTypes1Through3(asciiPayload, padding, messageType);
+                            return;
+                        }
+
                     case 5:
-                    {
-                        this.ParseMessageType5(asciiPayload, padding);
-                        return;
-                    }
+                        {
+                            this.ParseMessageType5(asciiPayload, padding);
+                            return;
+                        }
+
                     case 18:
-                    {
-                        this.ParseMessageType18(asciiPayload, padding);
-                        return;
-                    }
+                        {
+                            this.ParseMessageType18(asciiPayload, padding);
+                            return;
+                        }
+
                     case 19:
-                    {
-                        this.ParseMessageType19(asciiPayload, padding);
-                        return;
-                    }
+                        {
+                            this.ParseMessageType19(asciiPayload, padding);
+                            return;
+                        }
+
                     case 24:
-                    {
-                        this.ParseMessageType24(asciiPayload, padding);
-                        return;
-                    }
+                        {
+                            this.ParseMessageType24(asciiPayload, padding);
+                            return;
+                        }
                 }
             }
             catch (Exception e)
             {
                 Console.WriteLine($"[{messageType}] {e.Message}");
             }
+        }
+
+        public void OnError(in ReadOnlySpan<byte> line, Exception error, int lineNumber)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void OnCompleted()
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Progress(
+            bool done,
+            int totalNmeaLines,
+            int totalAisMessages,
+            int totalTicks,
+            int nmeaLinesSinceLastUpdate,
+            int aisMessagesSinceLastUpdate,
+            int ticksSinceLastUpdate)
+        {
+            throw new NotImplementedException();
         }
 
         private void ParseMessageTypes1Through3(ReadOnlySpan<byte> asciiPayload, uint padding, int messageType)
@@ -147,7 +173,7 @@ namespace Ais.Net.Receiver.Parser
         {
             var parser = new NmeaAisPositionReportExtendedClassBParser(asciiPayload, padding);
 
-            Span<byte> shipNameAscii = stackalloc byte[(int) parser.ShipName.CharacterCount];
+            Span<byte> shipNameAscii = stackalloc byte[(int)parser.ShipName.CharacterCount];
             parser.ShipName.WriteAsAscii(shipNameAscii);
 
             var message = new AisMessageType19(
@@ -171,15 +197,14 @@ namespace Ais.Net.Receiver.Parser
                 SpeedOverGround: parser.SpeedOverGroundTenths.FromTenths(),
                 TimeStampSecond: parser.TimeStampSecond,
                 TrueHeadingDegrees: parser.TrueHeadingDegrees,
-                Position: Position.From10000thMins(parser.Latitude10000thMins, parser.Longitude10000thMins)
-            );
+                Position: Position.From10000thMins(parser.Latitude10000thMins, parser.Longitude10000thMins));
 
             this.telemetry.OnNext(message);
         }
 
         private void ParseMessageType24(ReadOnlySpan<byte> asciiPayload, uint padding)
         {
-            var part = NmeaAisStaticDataReportParser.GetPartNumber(asciiPayload, padding);
+            uint part = NmeaAisStaticDataReportParser.GetPartNumber(asciiPayload, padding);
 
             switch (part)
             {
@@ -194,8 +219,7 @@ namespace Ais.Net.Receiver.Parser
                             Mmsi: parser.Mmsi,
                             PartNumber: parser.PartNumber,
                             RepeatIndicator: parser.RepeatIndicator,
-                            Spare160: parser.Spare160
-                        );
+                            Spare160: parser.Spare160);
 
                         this.telemetry.OnNext(message);
                         break;
@@ -235,28 +259,6 @@ namespace Ais.Net.Receiver.Parser
                         break;
                     }
             }
-        }
-
-        public void OnError(in ReadOnlySpan<byte> line, Exception error, int lineNumber)
-        {
-            throw new NotImplementedException();
-        }
-
-        public void OnCompleted()
-        {
-            throw new NotImplementedException();
-        }
-
-        public void Progress(
-            bool done,
-            int totalNmeaLines,
-            int totalAisMessages,
-            int totalTicks,
-            int nmeaLinesSinceLastUpdate,
-            int aisMessagesSinceLastUpdate,
-            int ticksSinceLastUpdate)
-        {
-            throw new NotImplementedException();
         }
     }
 }

@@ -24,12 +24,12 @@ namespace Ais.Net.Receiver.Host.Console
                             .AddJsonFile("settings.local.json", true, true)
                             .Build();
 
-            var aisConfig = config.GetSection("Ais").Get<AisConfig>();
+            AisConfig aisConfig = config.GetSection("Ais").Get<AisConfig>();
             var receiverHost = new ReceiverHost(aisConfig);
 
             IObservable<IGroupedObservable<uint, IAisMessage>> byVessel = receiverHost.Telemetry.GroupBy(m => m.Mmsi);
 
-            var vesselNavigationWithNameStream =
+            IObservable<(uint mmsi, IVesselNavigation navigation, IVesselName name)>? vesselNavigationWithNameStream =
                 from perVesselMessages in byVessel
                 let vesselNavigationUpdates = perVesselMessages.OfType<IVesselNavigation>()
                 let vesselNames = perVesselMessages.OfType<IVesselName>()
@@ -41,7 +41,7 @@ namespace Ais.Net.Receiver.Host.Console
             {
                 (uint mmsi, IVesselNavigation navigation, IVesselName name) = navigationWithName;
                 string positionText = navigation.Position is null ? "unknown position" : $"{navigation.Position.Latitude},{navigation.Position.Longitude}";
-                Console.WriteLine($"[{mmsi}: '{name.VesselName.CleanVesselName()}'] - [{positionText}] - [{navigation.CourseOverGroundDegrees}]");
+                Console.WriteLine($"[{mmsi}: '{name.VesselName.CleanVesselName()}'] - [{positionText}] - [{navigation.CourseOverGroundDegrees ?? 0}]");
             });
 
             await receiverHost.StartAsync();

@@ -1,5 +1,5 @@
-﻿// <copyright file="NmeaReceiver.cs" company="Endjin">
-// Copyright (c) Endjin. All rights reserved.
+﻿// <copyright file="NmeaReceiver.cs" company="Endjin Limited">
+// Copyright (c) Endjin Limited. All rights reserved.
 // </copyright>
 
 namespace Ais.Net.Receiver.Receiver
@@ -30,7 +30,7 @@ namespace Ais.Net.Receiver.Receiver
 
         public int RetryAttemptLimit { get; }
 
-        public TimeSpan RetryPeriodicity { get;  }
+        public TimeSpan RetryPeriodicity { get; }
 
         public async IAsyncEnumerable<string> GetAsync()
         {

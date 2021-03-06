@@ -7,6 +7,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Ais.Net.Receiver", "Ais.Net
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{6C0840FD-F495-41BA-9D68-2B691313D2DC}"
 	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
 		..\GitVersion.yml = ..\GitVersion.yml
 	EndProjectSection
 EndProject
@@ -14,7 +15,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Ais.Net.Models", "Ais.Net.M
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Ais.Net.Receiver.Storage.Azure.Blob", "Ais.Net.Receiver.Storage.Azure.Blob\Ais.Net.Receiver.Storage.Azure.Blob.csproj", "{C6485EBE-8939-4918-AA28-703E024E1B4C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ais.Net.Receiver.Host.Console", "Ais.Net.Receiver.Host.Console\Ais.Net.Receiver.Host.Console.csproj", "{F7297F19-858C-4663-BA47-D001876F9868}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Ais.Net.Receiver.Host.Console", "Ais.Net.Receiver.Host.Console\Ais.Net.Receiver.Host.Console.csproj", "{F7297F19-858C-4663-BA47-D001876F9868}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

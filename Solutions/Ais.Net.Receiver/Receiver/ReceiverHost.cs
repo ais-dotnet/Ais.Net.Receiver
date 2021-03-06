@@ -1,26 +1,24 @@
-﻿// <copyright file="ReceiverHost.cs" company="Endjin">
-// Copyright (c) Endjin. All rights reserved.
+﻿// <copyright file="ReceiverHost.cs" company="Endjin Limited">
+// Copyright (c) Endjin Limited. All rights reserved.
 // </copyright>
 
 namespace Ais.Net.Receiver.Receiver
 {
-    using Ais.Net.Models.Abstractions;
-    using Ais.Net.Receiver.Configuration;
-    using Ais.Net.Receiver.Parser;
-
     using System;
     using System.Collections.Generic;
     using System.Reactive.Subjects;
     using System.Text;
     using System.Threading.Tasks;
 
+    using Ais.Net.Models.Abstractions;
+    using Ais.Net.Receiver.Configuration;
+    using Ais.Net.Receiver.Parser;
+
     public class ReceiverHost
     {
         private readonly AisConfig configuration;
         private readonly NmeaReceiver receiver;
         private readonly Subject<IAisMessage> telemetry = new();
-
-        public IObservable<IAisMessage> Telemetry => this.telemetry;
 
         public ReceiverHost(AisConfig configuration)
         {
@@ -32,6 +30,8 @@ namespace Ais.Net.Receiver.Receiver
                 this.configuration.RetryAttempts);
         }
 
+        public IObservable<IAisMessage> Telemetry => this.telemetry;
+
         public async Task StartAsync()
         {
             var processor = new NmeaToAisMessageTypeProcessor();
@@ -39,11 +39,11 @@ namespace Ais.Net.Receiver.Receiver
 
             processor.Telemetry.Subscribe(this.telemetry);
 
-            await foreach (var message in this.GetAsync())
+            await foreach (string? message in this.GetAsync())
             {
                 static void ProcessLineNonAsync(string line, INmeaLineStreamProcessor lineStreamProcessor)
                 {
-                    var lineAsAscii = Encoding.ASCII.GetBytes(line);
+                    byte[]? lineAsAscii = Encoding.ASCII.GetBytes(line);
                     lineStreamProcessor.OnNext(new NmeaLineParser(lineAsAscii), 0);
                 }
 
@@ -51,9 +51,9 @@ namespace Ais.Net.Receiver.Receiver
             }
         }
 
-        public async IAsyncEnumerable<string> GetAsync()
+        private async IAsyncEnumerable<string> GetAsync()
         {
-            await foreach (var message in this.receiver.GetAsync())
+            await foreach (string? message in this.receiver.GetAsync())
             {
                 if (message.IsMissingNmeaBlockTags())
                 {

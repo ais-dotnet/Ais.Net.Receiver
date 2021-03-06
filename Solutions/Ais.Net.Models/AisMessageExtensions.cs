@@ -1,5 +1,5 @@
-﻿// <copyright file="NmeaReceiver.cs" company="Endjin">
-// Copyright (c) Endjin. All rights reserved.
+﻿// <copyright file="AisMessageExtensions.cs" company="Endjin Limited">
+// Copyright (c) Endjin Limited. All rights reserved.
 // </copyright>
 
 namespace Ais.Net.Models
@@ -18,7 +18,7 @@ namespace Ais.Net.Models
         {
             return value == 1023 ? null : (value / 10.0f);
         }
-        
+
         public static float? FromTenthsToDegrees(this uint value)
         {
             return value == 3600 ? null : (value / 10.0f);
@@ -31,7 +31,7 @@ namespace Ais.Net.Models
 
         public static string GetString(this Span<byte> value)
         {
-            return Encoding.ASCII.GetString(value); ;
+            return Encoding.ASCII.GetString(value);
         }
 
         public static string TextFieldToString(this NmeaAisTextFieldParser field)
