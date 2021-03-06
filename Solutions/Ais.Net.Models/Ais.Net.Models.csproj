@@ -10,6 +10,13 @@
   </PropertyGroup>
 
   <PropertyGroup>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageDescription>.NET types and interfaces that describe AIS message types 1,2,3,5,18,19,24 Part 0, and 24 Part 1. These can be used on top of the high performance, zero allocation AIS.Net message decoder, which can process millions of AIVDM/AIVDO sentences per second on a single core. Sponsored by endjin.</PackageDescription>
+    <PackageTags>ais;aisvdm;aivdo;nmea;marine;gis;iot;aiforearth;endjin</PackageTags>
+    <PackageReleaseNotes></PackageReleaseNotes>
+  </PropertyGroup>
+
+  <PropertyGroup>
     <NoWarn>RCS1029;SA1313;SA1009;SA1600;SA1591;CS1591;</NoWarn>
   </PropertyGroup>
 

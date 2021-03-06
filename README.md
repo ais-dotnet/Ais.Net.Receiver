@@ -91,8 +91,9 @@ Ais.Net.Receiver bridges the gap between the high performance, zero allocation w
 meaningful operations. Ais.Net.Models provides a series of [C# 9.0 records](https://devblogs.microsoft.com/dotnet/c-9-0-on-the-record/) 
 which define the the message types, a series of interfaces that define common behaviours, and extension methods to help with type conversions & calculations.
 
-The table below shows the messages, their properties and how they are mapped to interfaces. The C# record types then implement the relevant interfaces, 
-which enables simpler higher level programming constructs, such as Rx queries over an IAisMessage stream.
+The table below shows the messages, their properties and how they are mapped to interfaces.
+
+<details><summary><b>Show AIS Message Types and .NET Interfaces</b></summary>
 
 |                        | Message Type 1 to 3         | Message Type 5       | Message Type 18                     | Message Type 19             | Message Type 24 Part 0 | Message Type 24 Part 1 |
 | ---------------------- | --------------------------- | -------------------- | ----------------------------------- | --------------------------- | ---------------------- | ---------------------- |
@@ -153,6 +154,22 @@ which enables simpler higher level programming constructs, such as Rx queries ov
 | IAisMessageType24Part1 |                             |                      |                                     |                             |                        | VendorIdRev3           |
 | IAisMessageType24Part1 |                             |                      |                                     |                             |                        | VendorIdRev4           |
 | IVesselName            |                             | VesselName           |                                     |                             |                        |                        |
+</details>
+
+
+The C# record types then implement the relevant interfaces, which enables simpler higher level programming constructs, such as Rx queries over an `IAisMessage` stream:
+
+```csharp
+IObservable<IGroupedObservable<uint, IAisMessage>> byVessel = receiverHost.Telemetry.GroupBy(m => m.Mmsi);
+
+IObservable<(uint mmsi, IVesselNavigation navigation, IVesselName name)>? vesselNavigationWithNameStream =
+    from perVesselMessages in byVessel
+    let vesselNavigationUpdates = perVesselMessages.OfType<IVesselNavigation>()
+    let vesselNames = perVesselMessages.OfType<IVesselName>()
+    let vesselLocationsWithNames = vesselNavigationUpdates.CombineLatest(vesselNames, (navigation, name) => (navigation, name))
+    from vesselLocationAndName in vesselLocationsWithNames
+    select (mmsi: perVesselMessages.Key, vesselLocationAndName.navigation, vesselLocationAndName.name);
+```
 
 ## Licenses
 
