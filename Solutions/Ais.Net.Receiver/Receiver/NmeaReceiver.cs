@@ -8,6 +8,8 @@ namespace Ais.Net.Receiver.Receiver
     using System.Collections.Generic;
     using System.IO;
     using System.Net.Sockets;
+    using System.Runtime.CompilerServices;
+    using System.Threading;
     using System.Threading.Tasks;
 
     public class NmeaReceiver
@@ -32,7 +34,7 @@ namespace Ais.Net.Receiver.Receiver
 
         public TimeSpan RetryPeriodicity { get; }
 
-        public async IAsyncEnumerable<string> GetAsync()
+        public async IAsyncEnumerable<string> GetAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             await this.tcpClient.ConnectAsync(this.Host, this.Port);
             await using NetworkStream stream = this.tcpClient.GetStream();
@@ -42,14 +44,14 @@ namespace Ais.Net.Receiver.Receiver
 
             while (this.tcpClient.Connected)
             {
-                while (stream.DataAvailable)
+                while (stream.DataAvailable && !cancellationToken.IsCancellationRequested)
                 {
                     string? line = await reader.ReadLineAsync().ConfigureAwait(false);
                     if (line is not null) { yield return line; }
                     retryAttempt = 0;
                 }
 
-                if (retryAttempt == this.RetryAttemptLimit)
+                if (cancellationToken.IsCancellationRequested || retryAttempt == this.RetryAttemptLimit)
                 {
                     break;
                 }
