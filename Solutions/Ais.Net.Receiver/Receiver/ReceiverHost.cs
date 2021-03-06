@@ -18,7 +18,8 @@ namespace Ais.Net.Receiver.Receiver
     {
         private readonly AisConfig configuration;
         private readonly NmeaReceiver receiver;
-        private readonly Subject<IAisMessage> telemetry = new();
+        private readonly Subject<string> sentences = new();
+        private readonly Subject<IAisMessage> messages = new();
 
         public ReceiverHost(AisConfig configuration)
         {
@@ -30,14 +31,16 @@ namespace Ais.Net.Receiver.Receiver
                 this.configuration.RetryAttempts);
         }
 
-        public IObservable<IAisMessage> Telemetry => this.telemetry;
+        public IObservable<string> Sentences => this.sentences;
+
+        public IObservable<IAisMessage> Messages => this.messages;
 
         public async Task StartAsync()
         {
             var processor = new NmeaToAisMessageTypeProcessor();
             var adapter = new NmeaLineToAisStreamAdapter(processor);
 
-            processor.Telemetry.Subscribe(this.telemetry);
+            processor.Messages.Subscribe(this.messages);
 
             await foreach (string? message in this.GetAsync())
             {
@@ -47,7 +50,12 @@ namespace Ais.Net.Receiver.Receiver
                     lineStreamProcessor.OnNext(new NmeaLineParser(lineAsAscii), 0);
                 }
 
-                ProcessLineNonAsync(message, adapter);
+                this.sentences.OnNext(message);
+
+                if (this.messages.HasObservers)
+                {
+                    ProcessLineNonAsync(message, adapter);
+                }
             }
         }
 

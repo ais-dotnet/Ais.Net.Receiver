@@ -4,16 +4,16 @@
 
 namespace Ais.Net.Receiver.Host.Console
 {
+    using System;
+    using System.Reactive.Linq;
+    using System.Threading.Tasks;
+
     using Ais.Net.Models;
     using Ais.Net.Models.Abstractions;
     using Ais.Net.Receiver.Configuration;
     using Ais.Net.Receiver.Receiver;
 
     using Microsoft.Extensions.Configuration;
-
-    using System;
-    using System.Reactive.Linq;
-    using System.Threading.Tasks;
 
     public static class Program
     {
@@ -27,8 +27,13 @@ namespace Ais.Net.Receiver.Host.Console
             AisConfig aisConfig = config.GetSection("Ais").Get<AisConfig>();
             var receiverHost = new ReceiverHost(aisConfig);
 
-            IObservable<IGroupedObservable<uint, IAisMessage>> byVessel = receiverHost.Telemetry.GroupBy(m => m.Mmsi);
+            // Write out the messages as they are received over the wire.
+            receiverHost.Sentences.Subscribe((sentences) => Console.WriteLine(sentences));
 
+            // Decode teh sentences into messages, and group by the vessel by Id
+            IObservable<IGroupedObservable<uint, IAisMessage>> byVessel = receiverHost.Messages.GroupBy(m => m.Mmsi);
+
+            // Combine the various message types required to create a stream containing name and navigation
             IObservable<(uint mmsi, IVesselNavigation navigation, IVesselName name)>? vesselNavigationWithNameStream =
                 from perVesselMessages in byVessel
                 let vesselNavigationUpdates = perVesselMessages.OfType<IVesselNavigation>()
@@ -47,9 +52,4 @@ namespace Ais.Net.Receiver.Host.Console
             await receiverHost.StartAsync();
         }
     }
-
-    /*
-    var storageConfig = config.GetSection("Storage").Get<StorageConfig>();
-    IStorageClient storageClient = new StorageClient(storageConfig);
-    */
 }
