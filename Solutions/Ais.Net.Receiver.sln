@@ -17,6 +17,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Ais.Net.Receiver.Storage.Az
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Ais.Net.Receiver.Host.Console", "Ais.Net.Receiver.Host.Console\Ais.Net.Receiver.Host.Console.csproj", "{F7297F19-858C-4663-BA47-D001876F9868}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Ais.Net.Models.Specs", "Ais.Net.Models.Specs\Ais.Net.Models.Specs.csproj", "{AA6F29A1-3F00-4796-A7C7-9EDFD6C677F8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -39,6 +41,10 @@ Global
 		{F7297F19-858C-4663-BA47-D001876F9868}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F7297F19-858C-4663-BA47-D001876F9868}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F7297F19-858C-4663-BA47-D001876F9868}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AA6F29A1-3F00-4796-A7C7-9EDFD6C677F8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AA6F29A1-3F00-4796-A7C7-9EDFD6C677F8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AA6F29A1-3F00-4796-A7C7-9EDFD6C677F8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AA6F29A1-3F00-4796-A7C7-9EDFD6C677F8}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
