@@ -160,7 +160,7 @@ The table below shows the messages, their properties and how they are mapped to 
 The C# record types then implement the relevant interfaces, which enables simpler higher level programming constructs, such as Rx queries over an `IAisMessage` stream:
 
 ```csharp
-IObservable<IGroupedObservable<uint, IAisMessage>> byVessel = receiverHost.Telemetry.GroupBy(m => m.Mmsi);
+IObservable<IGroupedObservable<uint, IAisMessage>> byVessel = receiverHost.Messages.GroupBy(m => m.Mmsi);
 
 IObservable<(uint mmsi, IVesselNavigation navigation, IVesselName name)>? vesselNavigationWithNameStream =
     from perVesselMessages in byVessel
