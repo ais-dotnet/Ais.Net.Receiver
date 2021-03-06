@@ -8,6 +8,13 @@
     <Nullable>enable</Nullable>
     <EndjinDisableCodeAnalysis>True</EndjinDisableCodeAnalysis>
   </PropertyGroup>
+
+  <PropertyGroup>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageDescription></PackageDescription>
+    <PackageTags></PackageTags>
+    <PackageReleaseNotes></PackageReleaseNotes>
+  </PropertyGroup>
   
   <PropertyGroup>
     <NoWarn>RCS1029;SA1313;SA1009;SA1600;SA1591;CS1591;</NoWarn>
