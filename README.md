@@ -8,7 +8,9 @@ A simple .NET Core AIS Receiver for capturing the Norwegian Coastal Administrati
 
 The [Norwegian Costal Administration provide a TCP endpoint](https://ais.kystverket.no/) (`153.44.253.27:5631`) for broadcasting their raw AIS AIVDM/AIVDO sentences, captured by over 50 base stations, and covers the area 40-60 nautical miles from the Norwegian coastline.
 
-This project contains a .NET Core console application that will reliably ingest the TCP stream, batch the AIVDM/AIVDO sentences and write them to Azure Blob Storage using the [Append Blob](https://docs.microsoft.com/en-us/rest/api/storageservices/append-block) feature, to create timestamped hour-long rolling logs.
+This project contains a [NmeaReceiver](https://github.com/ais-dotnet/Ais.Net.Receiver/blob/master/Solutions/Ais.Net.Receiver/Receiver/NmeaReceiver.cs) which consumes the raw NetworkStream, a [NmeaToAisMessageTypeProcessor](https://github.com/ais-dotnet/Ais.Net.Receiver/blob/master/Solutions/Ais.Net.Receiver/Parser/NmeaToAisMessageTypeProcessor.cs), which can decode the raw sentences into `IAisMessage`, and [ReceiverHost](https://github.com/ais-dotnet/Ais.Net.Receiver/blob/master/Solutions/Ais.Net.Receiver/Receiver/ReceiverHost.cs) which manages the process and exposes an `IObservable<string>` for raw sentences and an `IObservable<IAisMessage>` for decoded messages. `ReceiverHost` can be hosted in a console application or other runtime environments like [.NET Interactive](https://github.com/dotnet/interactive).
+
+The project also includes a [demo console](https://github.com/ais-dotnet/Ais.Net.Receiver/blob/master/Solutions/Ais.Net.Receiver.Host.Console/Program.cs) which shows how the various pieces can fit together, including subscribing to the `IObservable<string>` and `IObservable<IAisMessage>` streams and displaying the results or batch the AIVDM/AIVDO sentences and write them to Azure Blob Storage using the [Append Blob](https://docs.microsoft.com/en-us/rest/api/storageservices/append-block) feature, to create timestamped hour-long rolling logs.
 
 The purpose of this application is to provide sample data for [Ais.Net](https://github.com/ais-dotnet/Ais.Net) - the .NET Standard, high performance, zero allocation AIS decoder. The majority of raw AIS data is only available via commerical sources, and thus creating AIS datasets large enough to test / benchmark [Ais.Net](https://github.com/ais-dotnet/Ais.Net) is almost impossible. 
 
@@ -87,8 +89,7 @@ From the command line: `dotnet Ais.Net.Receiver.Host.Console.exe`
 
 ## Ais.Net.Models
 
-Ais.Net.Receiver bridges the gap between the high performance, zero allocation world of Ais.Net and the real world need for types to perform
-meaningful operations. Ais.Net.Models provides a series of [C# 9.0 records](https://devblogs.microsoft.com/dotnet/c-9-0-on-the-record/) 
+Ais.Net.Receiver bridges the gap between the high performance, zero allocation world of [Ais.Net](https://github.com/ais-dotnet/Ais.Net) and the real world need for types to perform meaningful operations. Ais.Net.Models provides a series of [C# 9.0 records](https://devblogs.microsoft.com/dotnet/c-9-0-on-the-record/) 
 which define the the message types, a series of interfaces that define common behaviours, and extension methods to help with type conversions & calculations.
 
 The table below shows the messages, their properties and how they are mapped to interfaces.
