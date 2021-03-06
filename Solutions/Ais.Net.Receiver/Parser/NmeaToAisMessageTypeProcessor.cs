@@ -16,9 +16,9 @@ namespace Ais.Net.Receiver.Parser
     /// </summary>
     public class NmeaToAisMessageTypeProcessor : INmeaAisMessageStreamProcessor
     {
-        private readonly Subject<IAisMessage> telemetry = new();
+        private readonly Subject<IAisMessage> messages = new();
 
-        public IObservable<IAisMessage> Telemetry => this.telemetry;
+        public IObservable<IAisMessage> Messages => this.messages;
 
         public void OnNext(in NmeaLineParser parsedLine, in ReadOnlySpan<byte> asciiPayload, uint padding)
         {
@@ -110,7 +110,7 @@ namespace Ais.Net.Receiver.Parser
                 TimeStampSecond: parser.TimeStampSecond,
                 TrueHeadingDegrees: parser.TrueHeadingDegrees);
 
-            this.telemetry.OnNext(message);
+            this.messages.OnNext(message);
         }
 
         private void ParseMessageType5(ReadOnlySpan<byte> asciiPayload, uint padding)
@@ -139,7 +139,7 @@ namespace Ais.Net.Receiver.Parser
                 Spare423: parser.Spare423,
                 PositionFixType: parser.PositionFixType);
 
-            this.telemetry.OnNext(message);
+            this.messages.OnNext(message);
         }
 
         private void ParseMessageType18(ReadOnlySpan<byte> asciiPayload, uint padding)
@@ -166,7 +166,7 @@ namespace Ais.Net.Receiver.Parser
                 RaimFlag: parser.RaimFlag,
                 RepeatIndicator: parser.RepeatIndicator);
 
-            this.telemetry.OnNext(message);
+            this.messages.OnNext(message);
         }
 
         private void ParseMessageType19(ReadOnlySpan<byte> asciiPayload, uint padding)
@@ -199,7 +199,7 @@ namespace Ais.Net.Receiver.Parser
                 TrueHeadingDegrees: parser.TrueHeadingDegrees,
                 Position: Position.From10000thMins(parser.Latitude10000thMins, parser.Longitude10000thMins));
 
-            this.telemetry.OnNext(message);
+            this.messages.OnNext(message);
         }
 
         private void ParseMessageType24(ReadOnlySpan<byte> asciiPayload, uint padding)
@@ -221,7 +221,7 @@ namespace Ais.Net.Receiver.Parser
                             RepeatIndicator: parser.RepeatIndicator,
                             Spare160: parser.Spare160);
 
-                        this.telemetry.OnNext(message);
+                        this.messages.OnNext(message);
                         break;
                     }
 
@@ -255,7 +255,7 @@ namespace Ais.Net.Receiver.Parser
                             VendorIdRev3: vendorIdRev3Ascii.GetString(),
                             VendorIdRev4: vendorIdRev4Ascii.GetString());
 
-                        this.telemetry.OnNext(message);
+                        this.messages.OnNext(message);
                         break;
                     }
             }
