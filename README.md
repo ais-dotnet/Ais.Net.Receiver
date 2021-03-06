@@ -33,34 +33,34 @@ An example directory listing, with a user defined container name of `nmea-ais` w
 \---nmea-ais
     \---raw
         +---20210712
-        |       20210712T00.nm4
-        |       20210712T01.nm4
-        |       20210712T02.nm4
-        |       20210712T03.nm4
-        |       20210712T04.nm4
-        |       20210712T05.nm4
-        |       20210712T06.nm4
-        |       20210712T07.nm4
-        |       20210712T08.nm4
-        |       20210712T09.nm4
-        |       20210712T10.nm4
-        |       20210712T11.nm4
-        |       20210712T12.nm4
-        |       20210712T13.nm4
-        |       20210712T14.nm4
-        |       20210712T15.nm4
-        |       20210712T16.nm4
-        |       20210712T17.nm4
-        |       20210712T18.nm4
-        |       20210712T19.nm4
-        |       20210712T20.nm4
-        |       20210712T21.nm4
-        |       20210712T22.nm4
-        |       20210712T23.nm4
-        |
+        | 20210712T00.nm4 |
+        | 2-------------4 |
+        | 20210712T02.nm4 |
+        | 20210712T03.nm4 |
+        | 20210712T04.nm4 |
+        | 20210712T05.nm4 |
+        | 20210712T06.nm4 |
+        | 20210712T07.nm4 |
+        | 20210712T08.nm4 |
+        | 20210712T09.nm4 |
+        | 20210712T10.nm4 |
+        | 20210712T11.nm4 |
+        | 20210712T12.nm4 |
+        | 20210712T13.nm4 |
+        | 20210712T14.nm4 |
+        | 20210712T15.nm4 |
+        | 20210712T16.nm4 |
+        | 20210712T17.nm4 |
+        | 20210712T18.nm4 |
+        | 20210712T19.nm4 |
+        | 20210712T20.nm4 |
+        | 20210712T21.nm4 |
+        | 20210712T22.nm4 |
+        | 20210712T23.nm4 |
+        |                 |
         +---20210713
-        |       20210713T00.nm4
-        |       20210713T01.nm4
+        | 20210713T00.nm4 |
+        | 2-------------4 |
 ```
 
 ## To Run
@@ -84,6 +84,75 @@ Update the values in the `settings.json` file:
 ```
 
 From the command line: `dotnet Ais.Net.Receiver.Host.Console.exe`
+
+## Ais.Net.Models
+
+Ais.Net.Receiver bridges the gap between the high performance, zero allocation world of Ais.Net and the real world need for types to perform
+meaningful operations. Ais.Net.Models provides a series of [C# 9.0 records](https://devblogs.microsoft.com/dotnet/c-9-0-on-the-record/) 
+which define the the message types, a series of interfaces that define common behaviours, and extension methods to help with type conversions & calculations.
+
+The table below shows the messages, their properties and how they are mapped to interfaces. The C# record types then implement the relevant interfaces, 
+which enables simpler higher level programming constructs, such as Rx queries over an IAisMessage stream.
+
+|                        | Message Type 1 to 3         | Message Type 5       | Message Type 18                     | Message Type 19             | Message Type 24 Part 0 | Message Type 24 Part 1 |
+| ---------------------- | --------------------------- | -------------------- | ----------------------------------- | --------------------------- | ---------------------- | ---------------------- |
+| IAisMessageType5       |                             | AisVersion           |                                     |                             |                        |                        |
+| ICallSign              |                             | CallSign             |                                     |                             |                        | CallSign               |
+| IAisMessageType18      |                             |                      | CanAcceptMessage22ChannelAssignment |                             |                        |                        |
+| IAisMessageType18      |                             |                      | CanSwitchBands                      |                             |                        |                        |
+| IVesselNavigation      | CourseOverGround10thDegrees |                      | CourseOverGround10thDegrees         | CourseOverGround10thDegrees |                        |                        |
+| IAisMessageType5       |                             | Destination          |                                     |                             |                        |                        |
+| IAisMessageType18      |                             |                      | CsUnit                              |                             |                        |                        |
+| IVesselDimensions      |                             | DimensionToBow       |                                     | DimensionToBow              |                        | DimensionToBow         |
+| IVesselDimensions      |                             | DimensionToPort      |                                     | DimensionToPort             |                        | DimensionToPort        |
+| IVesselDimensions      |                             | DimensionToStarboard |                                     | DimensionToStarboard        |                        | DimensionToStarboard   |
+| IVesselDimensions      |                             | DimensionToStern     |                                     | DimensionToStern            |                        | DimensionToStern       |
+| IAisMessageType5       |                             | Draught10thMetres    |                                     |                             |                        |                        |
+| IAisMessageType5       |                             | EtaMonth             |                                     |                             |                        |                        |
+| IAisMessageType5       |                             | EtaDay               |                                     |                             |                        |                        |
+| IAisMessageType5       |                             | EtaHour              |                                     |                             |                        |                        |
+| IAisMessageType5       |                             | EtaMinute            |                                     |                             |                        |                        |
+| IAisMessageType18      |                             |                      | HasDisplay                          |                             |                        |                        |
+| IIsAssigned            |                             |                      | IsAssigned                          | IsAssigned                  |                        |                        |
+| IAisMessageType18      |                             |                      | IsDscAttached                       |                             |                        |                        |
+| IAisMessageType5       |                             | ImoNumber            |                                     |                             |                        |                        |
+| IAisIsDteNotReady      |                             | IsDteNotReady        |                                     | IsDteNotReady               |                        |                        |
+| IVesselNavigation      | Latitude10000thMins         |                      | Latitude10000thMins                 | Latitude10000thMins         |                        |                        |
+| IVesselNavigation      | Longitude10000thMins        |                      | Longitude10000thMins                | Longitude10000thMins        |                        |                        |
+| IAisMessageType1to3    | ManoeuvreIndicator          |                      |                                     |                             |                        |                        |
+| IAisMessageType24Part1 |                             |                      |                                     |                             |                        | MothershipMmsi         |
+| IAisMessageType        | MessageType                 | MessageType          | MessageType                         | MessageType                 | MessageType            | MessageType            |
+| IVesselIdentity        | Mmsi                        | Mmsi                 | Mmsi                                | Mmsi                        | Mmsi                   | Mmsi                   |
+| IAisMessageType1to3    | NavigationStatus            |                      |                                     |                             |                        |                        |
+| IAisMultipartMessage   |                             |                      |                                     |                             | PartNumber             | PartNumber             |
+| IVesselNavigation      | PositionAccuracy            |                      | PositionAccuracy                    | PositionAccuracy            |                        |                        |
+| IAisPositionFixType    |                             | PositionFixType      |                                     | PositionFixType             |                        |                        |
+| IAisMessageType18      |                             |                      | RadioStatusType                     |                             |                        |                        |
+| IAisMessageType1to3    | RadioSlotTimeout            |                      |                                     |                             |                        |                        |
+| IAisMessageType1to3    | RadioSubMessage             |                      |                                     |                             |                        |                        |
+| IAisMessageType1to3    | RadioSyncState              |                      |                                     |                             |                        |                        |
+| IAisMessageType19      |                             |                      |                                     | RegionalReserved139         |                        |                        |
+| IAisMessageType19      |                             |                      |                                     | RegionalReserved38          |                        |                        |
+| IRaimFlag              | RaimFlag                    |                      | RaimFlag                            | RaimFlag                    |                        |                        |
+| IAisMessageType18      |                             |                      | RegionalReserved139                 |                             |                        |                        |
+| IAisMessageType18      |                             |                      | RegionalReserved38                  |                             |                        |                        |
+| IAisMessageType1to3    | RateOfTurn                  |                      |                                     |                             |                        |                        |
+| IRepeatIndicator       | RepeatIndicator             | RepeatIndicator      | RepeatIndicator                     | RepeatIndicator             | RepeatIndicator        | RepeatIndicator        |
+| IAisMessageType24Part1 |                             |                      |                                     |                             |                        | SerialNumber           |
+| IAisMessageType19      |                             |                      |                                     | ShipName                    |                        |                        |
+| IShipType              |                             | ShipType             |                                     | ShipType                    |                        | ShipType               |
+| IAisMessageType1to3    | SpareBits145                |                      |                                     |                             |                        |                        |
+| IAisMessageType24Part0 |                             |                      |                                     |                             | Spare160               |                        |
+| IAisMessageType24Part1 |                             |                      |                                     |                             |                        | Spare162               |
+| IAisMessageType5       |                             | Spare423             |                                     |                             |                        |                        |
+| IAisMessageType19      |                             |                      |                                     | Spare308                    |                        |                        |
+| IVesselNavigation      | SpeedOverGroundTenths       |                      | SpeedOverGroundTenths               | SpeedOverGroundTenths       |                        |                        |
+| IVesselNavigation      | TimeStampSecond             |                      | TimeStampSecond                     | TimeStampSecond             |                        |                        |
+| IVesselNavigation      | TrueHeadingDegrees          |                      | TrueHeadingDegrees                  | TrueHeadingDegrees          |                        |                        |
+| IAisMessageType24Part1 |                             |                      |                                     |                             |                        | UnitModelCode          |
+| IAisMessageType24Part1 |                             |                      |                                     |                             |                        | VendorIdRev3           |
+| IAisMessageType24Part1 |                             |                      |                                     |                             |                        | VendorIdRev4           |
+| IVesselName            |                             | VesselName           |                                     |                             |                        |                        |
 
 ## Licenses
 
