@@ -23,70 +23,6 @@ The Norwegian Costal Administration TCP endpoint produces:
 - ~7 GB per month
 - ~81.4 GB per year
 
-## Azure Blob Storage Taxonomy
-
-The AIS data is stored using the following taxonomy
-
-`<USER DEFINED CONTAINER NAME>/raw/yyyy/MM/dd/yyyyMMddTHH.nm4`
-
-An example directory listing, with a user defined container name of `nmea-ais` would look as follows:
-
-```
-\---nmea-ais
-    \---raw
-        +---20210712
-        | 20210712T00.nm4 |
-        | 2-------------4 |
-        | 20210712T02.nm4 |
-        | 20210712T03.nm4 |
-        | 20210712T04.nm4 |
-        | 20210712T05.nm4 |
-        | 20210712T06.nm4 |
-        | 20210712T07.nm4 |
-        | 20210712T08.nm4 |
-        | 20210712T09.nm4 |
-        | 20210712T10.nm4 |
-        | 20210712T11.nm4 |
-        | 20210712T12.nm4 |
-        | 20210712T13.nm4 |
-        | 20210712T14.nm4 |
-        | 20210712T15.nm4 |
-        | 20210712T16.nm4 |
-        | 20210712T17.nm4 |
-        | 20210712T18.nm4 |
-        | 20210712T19.nm4 |
-        | 20210712T20.nm4 |
-        | 20210712T21.nm4 |
-        | 20210712T22.nm4 |
-        | 20210712T23.nm4 |
-        |                 |
-        +---20210713
-        | 20210713T00.nm4 |
-        | 2-------------4 |
-```
-
-## To Run
-
-Update the values in the `settings.json` file:
-
-```json
-{
-  "Ais": {
-    "host": "153.44.253.27",
-    "port": "5631",
-    "retryAttempts": 100,
-    "retryPeriodicity": "00:00:00:00.500"
-  },
-  "Storage": {
-    "connectionString": "<YOUR AZURE STORAGE CONNECTION STRING>",
-    "containerName": "nmea-ais",
-    "writeBatchSize": 500
-  }
-}
-```
-
-From the command line: `dotnet Ais.Net.Receiver.Host.Console.exe`
-
 ## Ais.Net.Models
 
 Ais.Net.Receiver bridges the gap between the high performance, zero allocation world of [Ais.Net](https://github.com/ais-dotnet/Ais.Net) and the real world need for types to perform meaningful operations. Ais.Net.Models provides a series of [C# 9.0 records](https://devblogs.microsoft.com/dotnet/c-9-0-on-the-record/) 
@@ -171,6 +107,70 @@ IObservable<(uint mmsi, IVesselNavigation navigation, IVesselName name)>? vessel
     from vesselLocationAndName in vesselLocationsWithNames
     select (mmsi: perVesselMessages.Key, vesselLocationAndName.navigation, vesselLocationAndName.name);
 ```
+
+## Azure Blob Storage Taxonomy
+
+The AIS data is stored using the following taxonomy
+
+`<USER DEFINED CONTAINER NAME>/raw/yyyy/MM/dd/yyyyMMddTHH.nm4`
+
+An example directory listing, with a user defined container name of `nmea-ais` would look as follows:
+
+```
+\---nmea-ais
+    \---raw
+        +---20210712
+        | 20210712T00.nm4 |
+        | 2-------------4 |
+        | 20210712T02.nm4 |
+        | 20210712T03.nm4 |
+        | 20210712T04.nm4 |
+        | 20210712T05.nm4 |
+        | 20210712T06.nm4 |
+        | 20210712T07.nm4 |
+        | 20210712T08.nm4 |
+        | 20210712T09.nm4 |
+        | 20210712T10.nm4 |
+        | 20210712T11.nm4 |
+        | 20210712T12.nm4 |
+        | 20210712T13.nm4 |
+        | 20210712T14.nm4 |
+        | 20210712T15.nm4 |
+        | 20210712T16.nm4 |
+        | 20210712T17.nm4 |
+        | 20210712T18.nm4 |
+        | 20210712T19.nm4 |
+        | 20210712T20.nm4 |
+        | 20210712T21.nm4 |
+        | 20210712T22.nm4 |
+        | 20210712T23.nm4 |
+        |                 |
+        +---20210713
+        | 20210713T00.nm4 |
+        | 2-------------4 |
+```
+
+## To Run
+
+Update the values in the `settings.json` file:
+
+```json
+{
+  "Ais": {
+    "host": "153.44.253.27",
+    "port": "5631",
+    "retryAttempts": 100,
+    "retryPeriodicity": "00:00:00:00.500"
+  },
+  "Storage": {
+    "connectionString": "<YOUR AZURE STORAGE CONNECTION STRING>",
+    "containerName": "nmea-ais",
+    "writeBatchSize": 500
+  }
+}
+```
+
+From the command line: `dotnet Ais.Net.Receiver.Host.Console.exe`
 
 ## Licenses
 
