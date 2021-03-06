@@ -36,7 +36,7 @@ namespace Ais.Net.Receiver.Receiver
 
         public async IAsyncEnumerable<string> GetAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            await this.tcpClient.ConnectAsync(this.Host, this.Port);
+            await this.tcpClient.ConnectAsync(this.Host, this.Port, cancellationToken);
             await using NetworkStream stream = this.tcpClient.GetStream();
             using StreamReader reader = new(stream);
 
@@ -56,7 +56,7 @@ namespace Ais.Net.Receiver.Receiver
                     break;
                 }
 
-                await Task.Delay(this.RetryPeriodicity).ConfigureAwait(false);
+                await Task.Delay(this.RetryPeriodicity, cancellationToken).ConfigureAwait(false);
 
                 retryAttempt++;
             }
