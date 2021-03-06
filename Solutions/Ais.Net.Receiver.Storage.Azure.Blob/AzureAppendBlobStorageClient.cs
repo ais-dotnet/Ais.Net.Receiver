@@ -16,13 +16,13 @@ namespace Ais.Net.Receiver.Storage.Azure.Blob
     using global::Azure.Storage.Blobs;
     using global::Azure.Storage.Blobs.Specialized;
 
-    public class StorageClient : IStorageClient
+    public class AzureAppendBlobStorageClient : IStorageClient
     {
         private readonly StorageConfig configuration;
         private AppendBlobClient? appendBlobClient;
         private BlobContainerClient? blobContainerClient;
 
-        public StorageClient(StorageConfig configuration)
+        public AzureAppendBlobStorageClient(StorageConfig configuration)
         {
             this.configuration = configuration;
         }

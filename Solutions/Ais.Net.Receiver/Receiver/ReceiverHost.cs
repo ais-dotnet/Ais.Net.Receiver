@@ -63,7 +63,7 @@ namespace Ais.Net.Receiver.Receiver
 
         private async IAsyncEnumerable<string> GetAsync([EnumeratorCancellation]CancellationToken cancellationToken = default)
         {
-            await foreach (string? message in this.receiver.GetAsync().WithCancellation(cancellationToken))
+            await foreach (string? message in this.receiver.GetAsync(cancellationToken).WithCancellation(cancellationToken))
             {
                 if (message.IsMissingNmeaBlockTags())
                 {

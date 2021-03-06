@@ -5,14 +5,18 @@
 namespace Ais.Net.Receiver.Host.Console
 {
     using System;
+    using System.Collections.Generic;
     using System.Reactive.Linq;
     using System.Threading;
     using System.Threading.Tasks;
+    using System.Threading.Tasks.Dataflow;
 
     using Ais.Net.Models;
     using Ais.Net.Models.Abstractions;
     using Ais.Net.Receiver.Configuration;
     using Ais.Net.Receiver.Receiver;
+    using Ais.Net.Receiver.Storage.Azure.Blob;
+    using Ais.Net.Receiver.Storage.Azure.Blob.Configuration;
 
     using Microsoft.Extensions.Configuration;
 
@@ -26,10 +30,11 @@ namespace Ais.Net.Receiver.Host.Console
                             .Build();
 
             AisConfig aisConfig = config.GetSection("Ais").Get<AisConfig>();
-            var receiverHost = new ReceiverHost(aisConfig);
+            StorageConfig storageConfig = config.GetSection("Storage").Get<StorageConfig>();
 
-            // Write out the messages as they are received over the wire.
-            receiverHost.Sentences.Subscribe((sentences) => Console.WriteLine(sentences));
+            IStorageClient storageClient = new AzureAppendBlobStorageClient(storageConfig);
+
+            var receiverHost = new ReceiverHost(aisConfig);
 
             // Decode teh sentences into messages, and group by the vessel by Id
             IObservable<IGroupedObservable<uint, IAisMessage>> byVessel = receiverHost.Messages.GroupBy(m => m.Mmsi);
@@ -47,10 +52,22 @@ namespace Ais.Net.Receiver.Host.Console
             {
                 (uint mmsi, IVesselNavigation navigation, IVesselName name) = navigationWithName;
                 string positionText = navigation.Position is null ? "unknown position" : $"{navigation.Position.Latitude},{navigation.Position.Longitude}";
+                
                 Console.ForegroundColor = ConsoleColor.Green;
                 Console.WriteLine($"[{mmsi}: '{name.VesselName.CleanVesselName()}'] - [{positionText}] - [{navigation.CourseOverGroundDegrees ?? 0}]");
                 Console.ResetColor();
             });
+
+            var batchBlock = new BatchBlock<string>(storageConfig.WriteBatchSize);
+            var actionBlock = new ActionBlock<IEnumerable<string>>(storageClient.PersistAsync);
+
+            batchBlock.LinkTo(actionBlock);
+
+            // Write out the messages as they are received over the wire.
+            receiverHost.Sentences.Subscribe(sentence => Console.WriteLine(sentence));
+
+            // Persist the messages as they are received over the wire.
+            receiverHost.Sentences.Subscribe(batchBlock.AsObserver());
 
             var cts = new CancellationTokenSource();
 
