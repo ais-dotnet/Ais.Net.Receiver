@@ -11,7 +11,7 @@
   
   <PropertyGroup>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
-    <PackageDescription>Recieves Network streams of NMEA sentences and can decode AIS message types 1,2,3,5,18,19,24 Part 0, and 24 Part 1 into an IObservable of IAisMessage. Sponsored by endjin.</PackageDescription>
+    <PackageDescription>Recieves Network streams of NMEA sentences and can decode AIS message types 1,2,3,5,18,19,24 Part 0, and 24 Part 1 into an IObservable of IAisMessage (See Ais.Net.Models). Sponsored by endjin.</PackageDescription>
     <PackageTags>ais;aisvdm;aivdo;nmea;marine;gis;iot;aiforearth;endjin</PackageTags>
     <PackageReleaseNotes></PackageReleaseNotes>
   </PropertyGroup>

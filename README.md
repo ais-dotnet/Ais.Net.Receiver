@@ -1,10 +1,22 @@
+# AIS.NET Projects
+
+| Package                                                                        | Status                                                                                                                                                                                                                                                                                         |
+| ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Ais.Net](https://github.com/ais-dotnet/)                                      | [![#](https://img.shields.io/nuget/v/Ais.Net.svg)](https://www.nuget.org/packages/Ais.Net/)                                                                                                                                                                                                    |
+| Ais.Net.Models                                                                 | [![#](https://img.shields.io/nuget/v/Ais.Net.Models.svg)](https://www.nuget.org/packages/Ais.Net.Models/)                                                                                                                                                                                      |
+| Ais.Net.Receiver                                                               | [![#](https://img.shields.io/nuget/v/Ais.Net.Receiver.svg)](https://www.nuget.org/packages/Ais.Net.Receiver/)                                                                                                                                                                                  |
+| Ais.Net.Receiver.Storage.Azure.Blob                                            | [![#](https://img.shields.io/nuget/v/Ais.Net.Receiver.Storage.Azure.Blob.svg)](https://www.nuget.org/packages/Ais.Net.Receiver.Storage.Azure.Blob/)                                                                                                                                            |
+| [IP Maturity Model Score](https://github.com/endjin/Endjin.Ip.Maturity.Matrix) | [![IMM](https://endimmfuncdev.azurewebsites.net/api/imm/github/ais-dotnet/Ais.Net.Receiver/total?cache=false)](https://endimmfuncdev.azurewebsites.net/api/imm/github/ais-dotnet/Ais.Net.Receiver/total?cache=false)                                                                           |
+| Build Status                                                                   | [![Build Status](https://dev.azure.com/endjin-labs/Ais.Net.Receiver/_apis/build/status/CI?repoName=ais-dotnet%2FAis.Net.Receiver&branchName=master)](https://dev.azure.com/endjin-labs/Ais.Net.Receiver/_build/latest?definitionId=1&repoName=ais-dotnet%2FAis.Net.Receiver&branchName=master) |
+
+
+The AIS.NET project contains a series of layers, from a low-level high performance NMEA AIS sentence decoder, to a rich high-level C# 9.0 models of AIS message types, a receiver component that can listen to TCP streams of NMEA sentences and expose them as an `IObservable<string>` of raw sentences or an decoded `IObservable<IAisMessage>`, and finally a Storage Client implementation to persisting the raw NMEA sentence stream to Azure Blob storage for future processing.
+
+![https://github.com/ais-dotnet](https://endjincdn.blob.core.windows.net/assets/ais-dotnet-project-layers.png)
+
 # Ais.Net.Receiver
 
-[![Build Status](https://dev.azure.com/endjin-labs/Ais.Net.Receiver/_apis/build/status/CI?repoName=ais-dotnet%2FAis.Net.Receiver&branchName=master)](https://dev.azure.com/endjin-labs/Ais.Net.Receiver/_build/latest?definitionId=1&repoName=ais-dotnet%2FAis.Net.Receiver&branchName=master)
-
-[![IMM](https://endimmfuncdev.azurewebsites.net/api/imm/github/ais-dotnet/Ais.Net.Receiver/total?cache=false)](https://endimmfuncdev.azurewebsites.net/api/imm/github/ais-dotnet/Ais.Net.Receiver/total?cache=false)
-
-A simple .NET Core AIS Receiver for capturing the Norwegian Coastal Administration's marine Automatic Identification System (AIS) [AIVDM/AIVDO](https://gpsd.gitlab.io/gpsd/AIVDM.html) NMEA message network data (available under [Norwegian license for public data (NLOD)](https://data.norge.no/nlod/en/2.0)) and persisting in Microsoft Azure Blob Storage.
+A simple .NET 5.0 AIS Receiver for capturing the Norwegian Coastal Administration's marine Automatic Identification System (AIS) [AIVDM/AIVDO](https://gpsd.gitlab.io/gpsd/AIVDM.html) NMEA message network data (available under [Norwegian license for public data (NLOD)](https://data.norge.no/nlod/en/2.0)) and persisting in Microsoft Azure Blob Storage.
 
 The [Norwegian Costal Administration provide a TCP endpoint](https://ais.kystverket.no/) (`153.44.253.27:5631`) for broadcasting their raw AIS AIVDM/AIVDO sentences, captured by over 50 base stations, and covers the area 40-60 nautical miles from the Norwegian coastline.
 
@@ -171,6 +183,60 @@ Update the values in the `settings.json` file:
 ```
 
 From the command line: `dotnet Ais.Net.Receiver.Host.Console.exe`
+
+# Raspberry Pi
+
+As the AIS.NET stack is written in .NET 5.0 and .NET Standard you can publish the Ais.Net.Recevier.Host.Console application with a target runtime of Portable. This will allow you to run the recevier on a Raspberry Pi if you want to capture your own AIS data.
+
+For reliability you can run `Ais.Net.Recevier.Host.Console.dll` as daemon.
+
+## Installation
+
+The combination of Windows Terminal, .NET and PowerShell make a Raspberry Pi a very productive environment for .NET Devs.
+
+Install [Windows Terminal](https://github.com/microsoft/terminal). You can download Windows Terminal from the [Microsoft Store](https://www.microsoft.com/en-gb/p/windows-terminal/9n0dx20hk701) or from the [GitHub releases page](https://github.com/microsoft/terminal/releases).
+
+Open Windows Terminal and use `ssh pi@<Raspberry PI IP Address>` to connect to your Pi.
+
+### Install .NET 5.0
+
+Use the following commands to install .NET 5.0 on your Pi.
+
+1. `curl -sSL https://dot.net/v1/dotnet-install.sh | bash /dev/stdin -c 5.0`
+1. `echo 'export DOTNET_ROOT=$HOME/.dotnet' >> ~/.bashrc`
+1. `echo 'export PATH=$PATH:$HOME/.dotnet' >> ~/.bashrc`
+1. `source ~/.bashrc`
+1. `dotnet --version`
+
+### Install PowerShell 7.x
+
+Use the following commands to install PowerShell on your Pi.
+
+1. Download the latest package `wget https://github.com/PowerShell/PowerShell/releases/download/v7.1.2/powershell-7.1.2-linux-arm32.tar.gz`
+1. Create a directory for it to be unpacked into `mkdir ~/powershell`
+1. Unpack `tar -xvf ./powershell-7.1.2-linux-arm32.tar.gz -C ~/powershell`
+1. Give it executable rights `sudo chmod +x /opt/microsoft/powershell/7/pwsh`
+1. Create a symbolic link `sudo ln -s /opt/microsoft/powershell/7/pwsh /usr/bin/pwsh`
+
+use the command `pwsh` to enter the PowerShell session.
+
+### Install Ais.Net.Receiver.Host.Console
+
+2. From the solution root, open a command prompt and type `dotnet publish -c Release .\Solutions\Ais.Net.Receiver.sln`
+3. Add your Azure Blob Storage Account connection string to `settings.json`
+4. Transfer (I use [Beyond Compare](https://www.scootersoftware.com/) as it has native SSH support) the contents of `.\Solutions\Ais.Net.Receiver.Host.Console\bin\Release\net5.0\publish` to a folder called `aisr` in the `home/pi` directory on your Raspberry Pi (assuming you still have the default set up.) 
+5. Copy `Solutions\Ais.Net.Receiver.Host.Console.RaspberryPi\aisr.service` to `/lib/systemd/system/aisr.service`
+6. run `sudo chmod 644 /lib/systemd/system/aisr.service`
+7. run `sudo systemctl enable aisr.service`
+8. run `sudo reboot`
+
+You can use `journalctl -u "aisr"` to view the console output of `Ais.Net.Recevier.Host.Console.dll` 
+
+You can use `sudo systemctl restart aisr` to restart the service.
+
+If you need to look at / edit the deployed `aisr.service` use `sudo nano  /lib/systemd/system/aisr.service` make your edits then use `Ctrl+O` and `Ctrl+X` to save the file and exit.
+
+Use [Azure Storage Explorer](https://azure.microsoft.com/en-us/features/storage-explorer/) to browse to where files are captured.
 
 ## Licenses
 

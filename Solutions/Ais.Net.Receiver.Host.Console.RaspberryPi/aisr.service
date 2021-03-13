@@ -1,0 +1,10 @@
+ [Unit]
+ Description=aisr
+ After=multi-user.target
+
+ [Service]
+ Type=idle
+ ExecStart=/home/pi/.dotnet/dotnet /home/pi/aisr/Ais.Net.Receiver.Host.Console.dll
+
+ [Install]
+ WantedBy=multi-user.target
