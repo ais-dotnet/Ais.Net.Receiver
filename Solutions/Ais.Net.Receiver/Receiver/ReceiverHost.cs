@@ -16,6 +16,10 @@ namespace Ais.Net.Receiver.Receiver
     using Ais.Net.Receiver.Configuration;
     using Ais.Net.Receiver.Parser;
 
+    using Corvus.Retry;
+    using Corvus.Retry.Policies;
+    using Corvus.Retry.Strategies;
+
     public class ReceiverHost
     {
         private readonly AisConfig configuration;
@@ -37,7 +41,17 @@ namespace Ais.Net.Receiver.Receiver
 
         public IObservable<IAisMessage> Messages => this.messages;
 
-        public async Task StartAsync(CancellationToken cancellationToken = default)
+        public Task StartAsync(CancellationToken cancellationToken = default)
+        {
+            return Retriable.RetryAsync(() =>
+                        this.StartAsyncInternal(cancellationToken),
+                        cancellationToken,
+                        new Backoff(maxTries: 100, deltaBackoff: TimeSpan.FromSeconds(5)),
+                        new AnyExceptionPolicy(),
+                        false);
+        }
+
+        private async Task StartAsyncInternal(CancellationToken cancellationToken = default)
         {
             var processor = new NmeaToAisMessageTypeProcessor();
             var adapter = new NmeaLineToAisStreamAdapter(processor);
