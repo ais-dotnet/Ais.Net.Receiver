@@ -11,8 +11,8 @@
 
   <PropertyGroup>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
-    <PackageDescription></PackageDescription>
-    <PackageTags></PackageTags>
+    <PackageDescription>An Azure Blob based IStorageClient implmentation for persisting raw NMEA AIS sentences. Sponsored by endjin.</PackageDescription>
+    <PackageTags>ais;aisvdm;aivdo;nmea;marine;gis;iot;aiforearth;microsoft;azure;blob;storage;endjin</PackageTags>
     <PackageReleaseNotes></PackageReleaseNotes>
   </PropertyGroup>
   
