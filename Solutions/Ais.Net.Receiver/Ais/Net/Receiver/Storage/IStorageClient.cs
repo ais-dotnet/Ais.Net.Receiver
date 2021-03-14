@@ -2,7 +2,7 @@
 // Copyright (c) Endjin Limited. All rights reserved.
 // </copyright>
 
-namespace Ais.Net.Receiver.Storage.Azure.Blob
+namespace Ais.Net.Receiver.Storage
 {
     using System.Collections.Generic;
     using System.Threading.Tasks;
