@@ -15,6 +15,7 @@ namespace Ais.Net.Receiver.Host.Console
     using Ais.Net.Models.Abstractions;
     using Ais.Net.Receiver.Configuration;
     using Ais.Net.Receiver.Receiver;
+    using Ais.Net.Receiver.Storage;
     using Ais.Net.Receiver.Storage.Azure.Blob;
     using Ais.Net.Receiver.Storage.Azure.Blob.Configuration;
 
