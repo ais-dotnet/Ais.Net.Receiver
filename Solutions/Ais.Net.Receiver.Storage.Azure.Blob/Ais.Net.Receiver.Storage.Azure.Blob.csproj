@@ -32,4 +32,8 @@
     <PackageReference Update="StyleCop.Analyzers" Version="1.2.0-beta.321" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Ais.Net.Receiver\Ais.Net.Receiver.csproj" />
+  </ItemGroup>
+
 </Project>
