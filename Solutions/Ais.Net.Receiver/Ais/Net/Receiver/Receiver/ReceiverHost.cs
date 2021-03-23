@@ -13,7 +13,6 @@ namespace Ais.Net.Receiver.Receiver
     using System.Threading.Tasks;
 
     using Ais.Net.Models.Abstractions;
-    using Ais.Net.Receiver.Configuration;
     using Ais.Net.Receiver.Parser;
 
     using Corvus.Retry;
@@ -22,19 +21,13 @@ namespace Ais.Net.Receiver.Receiver
 
     public class ReceiverHost
     {
-        private readonly AisConfig configuration;
-        private readonly NmeaReceiver receiver;
+        private readonly INmeaReceiver receiver;
         private readonly Subject<string> sentences = new();
         private readonly Subject<IAisMessage> messages = new();
 
-        public ReceiverHost(AisConfig configuration)
+        public ReceiverHost(INmeaReceiver receiver)
         {
-            this.configuration = configuration;
-            this.receiver = new NmeaReceiver(
-                this.configuration.Host,
-                this.configuration.Port,
-                this.configuration.RetryPeriodicity,
-                this.configuration.RetryAttempts);
+            this.receiver = receiver;
         }
 
         public IObservable<string> Sentences => this.sentences;

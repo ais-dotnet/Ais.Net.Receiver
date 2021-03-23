@@ -12,11 +12,11 @@ namespace Ais.Net.Receiver.Receiver
     using System.Threading;
     using System.Threading.Tasks;
 
-    public class NmeaReceiver
+    public class NetworkStreamNmeaReceiver : INmeaReceiver
     {
         private readonly TcpClient tcpClient = new();
 
-        public NmeaReceiver(string host, int port, TimeSpan? retryPeriodicity, int retryAttemptLimit = 100)
+        public NetworkStreamNmeaReceiver(string host, int port, TimeSpan? retryPeriodicity, int retryAttemptLimit = 100)
         {
             this.Host = host;
             this.Port = port;

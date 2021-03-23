@@ -21,6 +21,8 @@ namespace Ais.Net.Receiver.Host.Console
 
     using Microsoft.Extensions.Configuration;
 
+    using NDepend.Path;
+
     public static class Program
     {
         public static async Task Main(string[] args)
@@ -35,7 +37,15 @@ namespace Ais.Net.Receiver.Host.Console
 
             IStorageClient storageClient = new AzureAppendBlobStorageClient(storageConfig);
 
-            var receiverHost = new ReceiverHost(aisConfig);
+            /*INmeaReceiver receiver = new NetworkStreamNmeaReceiver(
+                aisConfig.Host,
+                aisConfig.Port,
+                aisConfig.RetryPeriodicity,
+                aisConfig.RetryAttempts);*/
+
+            INmeaReceiver receiver = new FileStreamNmeaReceiver(@"C:\Temp\nmea-ais\compacted\2021\03.nm4");
+
+            var receiverHost = new ReceiverHost(receiver);
 
             // Decode teh sentences into messages, and group by the vessel by Id
             IObservable<IGroupedObservable<uint, IAisMessage>> byVessel = receiverHost.Messages.GroupBy(m => m.Mmsi);
@@ -68,7 +78,7 @@ namespace Ais.Net.Receiver.Host.Console
             receiverHost.Sentences.Subscribe(sentence => Console.WriteLine(sentence));
 
             // Persist the messages as they are received over the wire.
-            receiverHost.Sentences.Subscribe(batchBlock.AsObserver());
+            //receiverHost.Sentences.Subscribe(batchBlock.AsObserver());
 
             var cts = new CancellationTokenSource();
 
