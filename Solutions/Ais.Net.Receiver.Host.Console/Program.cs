@@ -35,7 +35,15 @@ namespace Ais.Net.Receiver.Host.Console
 
             IStorageClient storageClient = new AzureAppendBlobStorageClient(storageConfig);
 
-            var receiverHost = new ReceiverHost(aisConfig);
+            INmeaReceiver receiver = new NetworkStreamNmeaReceiver(
+                aisConfig.Host,
+                aisConfig.Port,
+                aisConfig.RetryPeriodicity,
+                aisConfig.RetryAttempts);
+
+            // INmeaReceiver receiver = new FileStreamNmeaReceiver(@"PATH-TO-RECORDING.nm4");
+
+            var receiverHost = new ReceiverHost(receiver);
 
             // Decode teh sentences into messages, and group by the vessel by Id
             IObservable<IGroupedObservable<uint, IAisMessage>> byVessel = receiverHost.Messages.GroupBy(m => m.Mmsi);
