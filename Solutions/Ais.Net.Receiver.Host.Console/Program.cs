@@ -21,8 +21,6 @@ namespace Ais.Net.Receiver.Host.Console
 
     using Microsoft.Extensions.Configuration;
 
-    using NDepend.Path;
-
     public static class Program
     {
         public static async Task Main(string[] args)
