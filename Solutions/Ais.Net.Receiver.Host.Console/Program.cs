@@ -35,13 +35,13 @@ namespace Ais.Net.Receiver.Host.Console
 
             IStorageClient storageClient = new AzureAppendBlobStorageClient(storageConfig);
 
-            /*INmeaReceiver receiver = new NetworkStreamNmeaReceiver(
+            INmeaReceiver receiver = new NetworkStreamNmeaReceiver(
                 aisConfig.Host,
                 aisConfig.Port,
                 aisConfig.RetryPeriodicity,
-                aisConfig.RetryAttempts);*/
+                aisConfig.RetryAttempts);
 
-            INmeaReceiver receiver = new FileStreamNmeaReceiver(@"C:\Temp\nmea-ais\compacted\2021\03.nm4");
+            // INmeaReceiver receiver = new FileStreamNmeaReceiver(@"PATH-TO-RECORDING.nm4");
 
             var receiverHost = new ReceiverHost(receiver);
 
@@ -76,7 +76,7 @@ namespace Ais.Net.Receiver.Host.Console
             receiverHost.Sentences.Subscribe(sentence => Console.WriteLine(sentence));
 
             // Persist the messages as they are received over the wire.
-            //receiverHost.Sentences.Subscribe(batchBlock.AsObserver());
+            receiverHost.Sentences.Subscribe(batchBlock.AsObserver());
 
             var cts = new CancellationTokenSource();
 
