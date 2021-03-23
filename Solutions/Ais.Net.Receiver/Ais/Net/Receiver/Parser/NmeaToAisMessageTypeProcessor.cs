@@ -16,12 +16,13 @@ namespace Ais.Net.Receiver.Parser
     /// </summary>
     public class NmeaToAisMessageTypeProcessor : INmeaAisMessageStreamProcessor
     {
-        private readonly Subject<IAisMessage> messages = new();
+        private readonly Subject<Tuple<IAisMessage, long?, byte[]>> messages = new();
 
-        public IObservable<IAisMessage> Messages => this.messages;
+        public IObservable<Tuple<IAisMessage, long?, byte[]>> Messages => this.messages;
 
         public void OnNext(in NmeaLineParser parsedLine, in ReadOnlySpan<byte> asciiPayload, uint padding)
         {
+            long? timestamp = parsedLine.TagBlock.UnixTimestamp;
             int messageType = NmeaPayloadParser.PeekMessageType(asciiPayload, padding);
 
             try
@@ -30,31 +31,31 @@ namespace Ais.Net.Receiver.Parser
                 {
                     case >= 1 and <= 3:
                         {
-                            this.ParseMessageTypes1Through3(asciiPayload, padding, messageType);
+                            this.ParseMessageTypes1Through3(asciiPayload, padding, messageType, timestamp);
                             return;
                         }
 
                     case 5:
                         {
-                            this.ParseMessageType5(asciiPayload, padding);
+                            this.ParseMessageType5(asciiPayload, padding, timestamp);
                             return;
                         }
 
                     case 18:
                         {
-                            this.ParseMessageType18(asciiPayload, padding);
+                            this.ParseMessageType18(asciiPayload, padding, timestamp);
                             return;
                         }
 
                     case 19:
                         {
-                            this.ParseMessageType19(asciiPayload, padding);
+                            this.ParseMessageType19(asciiPayload, padding, timestamp);
                             return;
                         }
 
                     case 24:
                         {
-                            this.ParseMessageType24(asciiPayload, padding);
+                            this.ParseMessageType24(asciiPayload, padding, timestamp);
                             return;
                         }
                 }
@@ -87,7 +88,7 @@ namespace Ais.Net.Receiver.Parser
             throw new NotImplementedException();
         }
 
-        private void ParseMessageTypes1Through3(ReadOnlySpan<byte> asciiPayload, uint padding, int messageType)
+        private void ParseMessageTypes1Through3(ReadOnlySpan<byte> asciiPayload, uint padding, int messageType, long? timestamp)
         {
             var parser = new NmeaAisPositionReportClassAParser(asciiPayload, padding);
 
@@ -110,10 +111,10 @@ namespace Ais.Net.Receiver.Parser
                 TimeStampSecond: parser.TimeStampSecond,
                 TrueHeadingDegrees: parser.TrueHeadingDegrees);
 
-            this.messages.OnNext(message);
+            this.messages.OnNext(new (message, timestamp, asciiPayload.ToArray()));
         }
 
-        private void ParseMessageType5(ReadOnlySpan<byte> asciiPayload, uint padding)
+        private void ParseMessageType5(ReadOnlySpan<byte> asciiPayload, uint padding, long? timestamp)
         {
             var parser = new NmeaAisStaticAndVoyageRelatedDataParser(asciiPayload, padding);
 
@@ -139,10 +140,10 @@ namespace Ais.Net.Receiver.Parser
                 Spare423: parser.Spare423,
                 PositionFixType: parser.PositionFixType);
 
-            this.messages.OnNext(message);
+            this.messages.OnNext(new(message, timestamp, asciiPayload.ToArray()));
         }
 
-        private void ParseMessageType18(ReadOnlySpan<byte> asciiPayload, uint padding)
+        private void ParseMessageType18(ReadOnlySpan<byte> asciiPayload, uint padding, long? timestamp)
         {
             var parser = new NmeaAisPositionReportClassBParser(asciiPayload, padding);
 
@@ -166,10 +167,10 @@ namespace Ais.Net.Receiver.Parser
                 RaimFlag: parser.RaimFlag,
                 RepeatIndicator: parser.RepeatIndicator);
 
-            this.messages.OnNext(message);
+            this.messages.OnNext(new(message, timestamp, asciiPayload.ToArray()));
         }
 
-        private void ParseMessageType19(ReadOnlySpan<byte> asciiPayload, uint padding)
+        private void ParseMessageType19(ReadOnlySpan<byte> asciiPayload, uint padding, long? timestamp)
         {
             var parser = new NmeaAisPositionReportExtendedClassBParser(asciiPayload, padding);
 
@@ -199,10 +200,10 @@ namespace Ais.Net.Receiver.Parser
                 TrueHeadingDegrees: parser.TrueHeadingDegrees,
                 Position: Position.From10000thMins(parser.Latitude10000thMins, parser.Longitude10000thMins));
 
-            this.messages.OnNext(message);
+            this.messages.OnNext(new(message, timestamp, asciiPayload.ToArray()));
         }
 
-        private void ParseMessageType24(ReadOnlySpan<byte> asciiPayload, uint padding)
+        private void ParseMessageType24(ReadOnlySpan<byte> asciiPayload, uint padding, long? timestamp)
         {
             uint part = NmeaAisStaticDataReportParser.GetPartNumber(asciiPayload, padding);
 
@@ -221,7 +222,7 @@ namespace Ais.Net.Receiver.Parser
                             RepeatIndicator: parser.RepeatIndicator,
                             Spare160: parser.Spare160);
 
-                        this.messages.OnNext(message);
+                        this.messages.OnNext(new(message, timestamp, asciiPayload.ToArray()));
                         break;
                     }
 
@@ -255,7 +256,7 @@ namespace Ais.Net.Receiver.Parser
                             VendorIdRev3: vendorIdRev3Ascii.GetString(),
                             VendorIdRev4: vendorIdRev4Ascii.GetString());
 
-                        this.messages.OnNext(message);
+                        this.messages.OnNext(new(message, timestamp, asciiPayload.ToArray()));
                         break;
                     }
             }

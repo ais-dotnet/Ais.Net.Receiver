@@ -6,7 +6,9 @@ namespace Ais.Net.Receiver.Host.Console
 {
     using System;
     using System.Collections.Generic;
+    using System.IO;
     using System.Reactive.Linq;
+    using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
     using System.Threading.Tasks.Dataflow;
@@ -20,6 +22,8 @@ namespace Ais.Net.Receiver.Host.Console
     using Ais.Net.Receiver.Storage.Azure.Blob.Configuration;
 
     using Microsoft.Extensions.Configuration;
+
+    using NDepend.Path;
 
     public static class Program
     {
@@ -37,38 +41,53 @@ namespace Ais.Net.Receiver.Host.Console
 
             var receiverHost = new ReceiverHost(aisConfig);
 
-            // Decode teh sentences into messages, and group by the vessel by Id
-            IObservable<IGroupedObservable<uint, IAisMessage>> byVessel = receiverHost.Messages.GroupBy(m => m.Mmsi);
-
-            // Combine the various message types required to create a stream containing name and navigation
-            IObservable<(uint mmsi, IVesselNavigation navigation, IVesselName name)>? vesselNavigationWithNameStream =
-                from perVesselMessages in byVessel
-                let vesselNavigationUpdates = perVesselMessages.OfType<IVesselNavigation>()
-                let vesselNames = perVesselMessages.OfType<IVesselName>()
-                let vesselLocationsWithNames = vesselNavigationUpdates.CombineLatest(vesselNames, (navigation, name) => (navigation, name))
-                from vesselLocationAndName in vesselLocationsWithNames
-                select (mmsi: perVesselMessages.Key, vesselLocationAndName.navigation, vesselLocationAndName.name);
-
-            vesselNavigationWithNameStream.Subscribe(navigationWithName =>
+            receiverHost.Messages.Subscribe(x => 
             {
-                (uint mmsi, IVesselNavigation navigation, IVesselName name) = navigationWithName;
-                string positionText = navigation.Position is null ? "unknown position" : $"{navigation.Position.Latitude},{navigation.Position.Longitude}";
+                var timestamp = DateTimeOffset.FromUnixTimeSeconds(seconds: x.Item2.Value);
+                var file = @$"C:\Temp\nmea-ais\projection\vessel-by-id\{x.Item1.Mmsi}\{timestamp:yyyy}\{timestamp:MM}\{timestamp:dd}\{timestamp:yyyyMMddTHH}.nm4".ToAbsoluteFilePath();
                 
-                Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"[{mmsi}: '{name.VesselName.CleanVesselName()}'] - [{positionText}] - [{navigation.CourseOverGroundDegrees ?? 0}]");
-                Console.ResetColor();
+                if (!file.Exists)
+                {
+                    Directory.CreateDirectory(file.ParentDirectoryPath.ToString());
+                }
+
+                File.AppendAllText(file.ToString(), Encoding.ASCII.GetString(x.Item3) + Environment.NewLine);
+                
+                Console.WriteLine(file);
             });
 
-            var batchBlock = new BatchBlock<string>(storageConfig.WriteBatchSize);
-            var actionBlock = new ActionBlock<IEnumerable<string>>(storageClient.PersistAsync);
+            /*            // Decode teh sentences into messages, and group by the vessel by Id
+                        IObservable<IGroupedObservable<uint, IAisMessage>> byVessel = receiverHost.Messages.Select(m => m.Item1).GroupBy(m => m.Mmsi);
 
-            batchBlock.LinkTo(actionBlock);
+                        // Combine the various message types required to create a stream containing name and navigation
+                        IObservable<(uint mmsi, IVesselNavigation navigation, IVesselName name)>? vesselNavigationWithNameStream =
+                            from perVesselMessages in byVessel
+                            let vesselNavigationUpdates = perVesselMessages.OfType<IVesselNavigation>()
+                            let vesselNames = perVesselMessages.OfType<IVesselName>()
+                            let vesselLocationsWithNames = vesselNavigationUpdates.CombineLatest(vesselNames, (navigation, name) => (navigation, name))
+                            from vesselLocationAndName in vesselLocationsWithNames
+                            select (mmsi: perVesselMessages.Key, vesselLocationAndName.navigation, vesselLocationAndName.name);
 
-            // Write out the messages as they are received over the wire.
-            receiverHost.Sentences.Subscribe(sentence => Console.WriteLine(sentence));
+                        vesselNavigationWithNameStream.Subscribe(navigationWithName =>
+                        {
+                            (uint mmsi, IVesselNavigation navigation, IVesselName name) = navigationWithName;
+                            string positionText = navigation.Position is null ? "unknown position" : $"{navigation.Position.Latitude},{navigation.Position.Longitude}";
 
-            // Persist the messages as they are received over the wire.
-            receiverHost.Sentences.Subscribe(batchBlock.AsObserver());
+                            Console.ForegroundColor = ConsoleColor.Green;
+                            Console.WriteLine($"[{mmsi}: '{name.VesselName.CleanVesselName()}'] - [{positionText}] - [{navigation.CourseOverGroundDegrees ?? 0}]");
+                            Console.ResetColor();
+                        });
+
+                        var batchBlock = new BatchBlock<string>(storageConfig.WriteBatchSize);
+                        var actionBlock = new ActionBlock<IEnumerable<string>>(storageClient.PersistAsync);
+
+                        batchBlock.LinkTo(actionBlock);
+
+                        // Write out the messages as they are received over the wire.
+                        receiverHost.Sentences.Subscribe(sentence => Console.WriteLine(sentence));
+
+                        // Persist the messages as they are received over the wire.
+                        receiverHost.Sentences.Subscribe(batchBlock.AsObserver());*/
 
             var cts = new CancellationTokenSource();
 

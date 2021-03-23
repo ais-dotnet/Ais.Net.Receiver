@@ -25,7 +25,7 @@ namespace Ais.Net.Receiver.Receiver
         private readonly AisConfig configuration;
         private readonly NmeaReceiver receiver;
         private readonly Subject<string> sentences = new();
-        private readonly Subject<IAisMessage> messages = new();
+        private readonly Subject<Tuple<IAisMessage, long?, byte[]>> messages = new();
 
         public ReceiverHost(AisConfig configuration)
         {
@@ -39,7 +39,7 @@ namespace Ais.Net.Receiver.Receiver
 
         public IObservable<string> Sentences => this.sentences;
 
-        public IObservable<IAisMessage> Messages => this.messages;
+        public IObservable<Tuple<IAisMessage, long?, byte[]>> Messages => this.messages;
 
         public Task StartAsync(CancellationToken cancellationToken = default)
         {
