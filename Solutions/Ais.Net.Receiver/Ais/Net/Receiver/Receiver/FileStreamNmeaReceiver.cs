@@ -9,14 +9,22 @@ namespace Ais.Net.Receiver.Receiver
     using System.IO;
     using System.Runtime.CompilerServices;
     using System.Threading;
+    using System.Threading.Tasks;
 
     public class FileStreamNmeaReceiver : INmeaReceiver
     {
         private readonly string path;
+        private readonly TimeSpan delay = TimeSpan.Zero;
 
         public FileStreamNmeaReceiver(string path)
         {
             this.path = path;
+        }
+        
+        public FileStreamNmeaReceiver(string path, TimeSpan delay)
+        {
+            this.path = path;
+            this.delay = delay;
         }
 
         public int RetryAttemptLimit { get; }
@@ -32,6 +40,11 @@ namespace Ais.Net.Receiver.Receiver
                 if (cancellationToken.IsCancellationRequested)
                 {
                     break;
+                }
+
+                if (this.delay > TimeSpan.Zero)
+                {
+                    await Task.Delay(this.delay, cancellationToken).ConfigureAwait(false);
                 }
 
                 string? line = await sr.ReadLineAsync().ConfigureAwait(false);
