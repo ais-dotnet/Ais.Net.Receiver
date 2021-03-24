@@ -27,10 +27,6 @@ namespace Ais.Net.Receiver.Receiver
             this.delay = delay;
         }
 
-        public int RetryAttemptLimit { get; }
-
-        public TimeSpan RetryPeriodicity { get; }
-
         public async IAsyncEnumerable<string> GetAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             using var sr = new StreamReader(this.path);
