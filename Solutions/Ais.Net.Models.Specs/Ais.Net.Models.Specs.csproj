@@ -20,7 +20,7 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Corvus.Testing.SpecFlow.NUnit" Version="1.4.2" />
+    <PackageReference Include="Corvus.Testing.SpecFlow.NUnit" Version="1.4.4" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Ais.Net.Models\Ais.Net.Models.csproj" />
