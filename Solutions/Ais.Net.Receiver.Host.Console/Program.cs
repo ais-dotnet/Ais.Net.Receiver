@@ -45,7 +45,7 @@ namespace Ais.Net.Receiver.Host.Console
 
             var receiverHost = new ReceiverHost(receiver);
 
-            // Decode teh sentences into messages, and group by the vessel by Id
+            // Decode the sentences into messages, and group by the vessel by Id
             IObservable<IGroupedObservable<uint, IAisMessage>> byVessel = receiverHost.Messages.GroupBy(m => m.Mmsi);
 
             // Combine the various message types required to create a stream containing name and navigation
