@@ -23,7 +23,7 @@ namespace Ais.Net.Receiver.Host.Console
 
     public static class Program
     {
-        public static async Task Main(string[] args)
+        public static async Task Main()
         {
             IConfiguration config = new ConfigurationBuilder()
                             .AddJsonFile("settings.json", true, true)
