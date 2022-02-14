@@ -9,6 +9,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 	ProjectSection(SolutionItems) = preProject
 		.editorconfig = .editorconfig
 		..\GitVersion.yml = ..\GitVersion.yml
+		NuGet.config = NuGet.config
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Ais.Net.Models", "Ais.Net.Models\Ais.Net.Models.csproj", "{5B090F5E-28EA-4394-83DB-8C2764970FDC}"
@@ -18,6 +19,8 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Ais.Net.Receiver.Host.Console", "Ais.Net.Receiver.Host.Console\Ais.Net.Receiver.Host.Console.csproj", "{F7297F19-858C-4663-BA47-D001876F9868}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Ais.Net.Models.Specs", "Ais.Net.Models.Specs\Ais.Net.Models.Specs.csproj", "{AA6F29A1-3F00-4796-A7C7-9EDFD6C677F8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ais.Net.EventHubExporter", "Ais.Net.EventHubExporter\Ais.Net.EventHubExporter.csproj", "{7E5BEDE1-48EE-4CAC-8BDB-4A5FB2166F38}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -45,6 +48,10 @@ Global
 		{AA6F29A1-3F00-4796-A7C7-9EDFD6C677F8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{AA6F29A1-3F00-4796-A7C7-9EDFD6C677F8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{AA6F29A1-3F00-4796-A7C7-9EDFD6C677F8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7E5BEDE1-48EE-4CAC-8BDB-4A5FB2166F38}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7E5BEDE1-48EE-4CAC-8BDB-4A5FB2166F38}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7E5BEDE1-48EE-4CAC-8BDB-4A5FB2166F38}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7E5BEDE1-48EE-4CAC-8BDB-4A5FB2166F38}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
