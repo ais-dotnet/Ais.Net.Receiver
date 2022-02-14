@@ -121,7 +121,7 @@ $EnableGitVersionAdoVariableWorkaround = $false
 #
 # Build process configuration
 #
-$SolutionToBuild = (Resolve-Path (Join-Path $here ".\Solutions\Ais.sln")).Path
+$SolutionToBuild = (Resolve-Path (Join-Path $here ".\Solutions\Ais.Net.Receiver.sln")).Path
 
 
 # Synopsis: Build, Test and Package
