@@ -8,6 +8,11 @@
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <RestoreLockedMode Condition="$(ContinuousIntegrationBuild) == 'true'">true</RestoreLockedMode>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\Ais.Net.Models\Ais.Net.Models.csproj" />
     <ProjectReference Include="..\Ais.Net.Receiver.Storage.Azure.Blob\Ais.Net.Receiver.Storage.Azure.Blob.csproj" />
