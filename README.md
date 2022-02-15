@@ -212,7 +212,7 @@ Use the following commands to install .NET 6.0 on your Pi.
 
 Use the following commands to install PowerShell on your Pi.
 
-1. Download the latest package `wget https://github.com/PowerShell/PowerShell/releases/download/v7.1.2/powershell-7.2.1-linux-arm32.tar.gz`
+1. Download the latest package `wget https://github.com/PowerShell/PowerShell/releases/download/v7.2.1/powershell-7.2.1-linux-arm32.tar.gz`
 1. Create a directory for it to be unpacked into `mkdir ~/powershell`
 1. Unpack `tar -xvf ./powershell-7.2.1-linux-arm32.tar.gz -C ~/powershell`
 1. Give it executable rights `sudo chmod +x /opt/microsoft/powershell/7/pwsh`
