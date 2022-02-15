@@ -24,7 +24,7 @@ This project contains a [NmeaReceiver](https://github.com/ais-dotnet/Ais.Net.Rec
 
 The project also includes a [demo console](https://github.com/ais-dotnet/Ais.Net.Receiver/blob/master/Solutions/Ais.Net.Receiver.Host.Console/Program.cs) which shows how the various pieces can fit together, including subscribing to the `IObservable<string>` and `IObservable<IAisMessage>` streams and displaying the results or batch the AIVDM/AIVDO sentences and write them to Azure Blob Storage using the [Append Blob](https://docs.microsoft.com/en-us/rest/api/storageservices/append-block) feature, to create timestamped hour-long rolling logs.
 
-The purpose of this application is to provide sample data for [Ais.Net](https://github.com/ais-dotnet/Ais.Net) - the .NET Standard, high performance, zero allocation AIS decoder. The majority of raw AIS data is only available via commerical sources, and thus creating AIS datasets large enough to test / benchmark [Ais.Net](https://github.com/ais-dotnet/Ais.Net) is almost impossible. 
+The purpose of this application is to provide sample data for [Ais.Net](https://github.com/ais-dotnet/Ais.Net) - the .NET Standard, high performance, zero allocation AIS decoder. The majority of raw AIS data is only available via commercial sources, and thus creating AIS datasets large enough to test / benchmark [Ais.Net](https://github.com/ais-dotnet/Ais.Net) is almost impossible. 
 
 The Norwegian Costal Administration TCP endpoint produces:
  
@@ -186,7 +186,7 @@ From the command line: `dotnet Ais.Net.Receiver.Host.Console.exe`
 
 # Raspberry Pi
 
-As the AIS.NET stack is written in .NET 5.0 and .NET Standard you can publish the Ais.Net.Recevier.Host.Console application with a target runtime of Portable. This will allow you to run the recevier on a Raspberry Pi if you want to capture your own AIS data.
+As the AIS.NET stack is written in .NET 6.0 and .NET Standard you can publish the Ais.Net.Recevier.Host.Console application with a target runtime of Portable. This will allow you to run the recevier on a Raspberry Pi if you want to capture your own AIS data.
 
 For reliability you can run `Ais.Net.Recevier.Host.Console.dll` as daemon.
 
@@ -198,11 +198,11 @@ Install [Windows Terminal](https://github.com/microsoft/terminal). You can downl
 
 Open Windows Terminal and use `ssh pi@<Raspberry PI IP Address>` to connect to your Pi.
 
-### Install .NET 5.0
+### Install .NET 6.0
 
-Use the following commands to install .NET 5.0 on your Pi.
+Use the following commands to install .NET 6.0 on your Pi.
 
-1. `curl -sSL https://dot.net/v1/dotnet-install.sh | bash /dev/stdin -c 5.0`
+1. `curl -sSL https://dot.net/v1/dotnet-install.sh | bash /dev/stdin --channel Current`
 1. `echo 'export DOTNET_ROOT=$HOME/.dotnet' >> ~/.bashrc`
 1. `echo 'export PATH=$PATH:$HOME/.dotnet' >> ~/.bashrc`
 1. `source ~/.bashrc`
@@ -212,9 +212,9 @@ Use the following commands to install .NET 5.0 on your Pi.
 
 Use the following commands to install PowerShell on your Pi.
 
-1. Download the latest package `wget https://github.com/PowerShell/PowerShell/releases/download/v7.1.2/powershell-7.1.2-linux-arm32.tar.gz`
+1. Download the latest package `wget https://github.com/PowerShell/PowerShell/releases/download/v7.1.2/powershell-7.2.1-linux-arm32.tar.gz`
 1. Create a directory for it to be unpacked into `mkdir ~/powershell`
-1. Unpack `tar -xvf ./powershell-7.1.2-linux-arm32.tar.gz -C ~/powershell`
+1. Unpack `tar -xvf ./powershell-7.2.1-linux-arm32.tar.gz -C ~/powershell`
 1. Give it executable rights `sudo chmod +x /opt/microsoft/powershell/7/pwsh`
 1. Create a symbolic link `sudo ln -s /opt/microsoft/powershell/7/pwsh /usr/bin/pwsh`
 
