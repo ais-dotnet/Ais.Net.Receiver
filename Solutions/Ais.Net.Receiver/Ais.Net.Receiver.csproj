@@ -35,7 +35,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Update="StyleCop.Analyzers" Version="1.2.0-beta.321" />
+    <PackageReference Update="StyleCop.Analyzers" Version="1.2.0-beta.66" />
   </ItemGroup>
 
 </Project>
