@@ -77,6 +77,14 @@ namespace Ais.Net.Receiver.Host.Console
 
             // Persist the messages as they are received over the wire.
             receiverHost.Sentences.Subscribe(batchBlock.AsObserver());
+            
+            // Write out errors in the console
+            receiverHost.Errors.Subscribe(error =>
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"Error received: {error.Message}");
+                Console.ResetColor();
+            });
 
             var cts = new CancellationTokenSource();
 
