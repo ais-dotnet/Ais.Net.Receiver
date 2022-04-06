@@ -24,7 +24,7 @@ namespace Ais.Net.Receiver.Receiver
         private readonly INmeaReceiver receiver;
         private readonly Subject<string> sentences = new();
         private readonly Subject<IAisMessage> messages = new();
-        private readonly Subject<Exception> errors = new();
+        private readonly Subject<(Exception Exception, string Line)> errors = new();
 
         public ReceiverHost(INmeaReceiver receiver)
         {
@@ -35,7 +35,7 @@ namespace Ais.Net.Receiver.Receiver
 
         public IObservable<IAisMessage> Messages => this.messages;
 
-        public IObservable<Exception> Errors => this.errors;
+        public IObservable<(Exception Exception, string Line)> Errors => this.errors;
 
         public Task StartAsync(CancellationToken cancellationToken = default)
         {
@@ -56,7 +56,7 @@ namespace Ais.Net.Receiver.Receiver
 
             await foreach (string? message in this.GetAsync(cancellationToken).WithCancellation(cancellationToken))
             {
-                static void ProcessLineNonAsync(string line, INmeaLineStreamProcessor lineStreamProcessor, Subject<Exception> errorSubject)
+                static void ProcessLineNonAsync(string line, INmeaLineStreamProcessor lineStreamProcessor, Subject<(Exception Exception, string Line)> errorSubject)
                 {
                     byte[]? lineAsAscii = Encoding.ASCII.GetBytes(line);
 
@@ -68,7 +68,7 @@ namespace Ais.Net.Receiver.Receiver
                     {
                         if (errorSubject.HasObservers)
                         {
-                            errorSubject.OnNext(ex);
+                            errorSubject.OnNext((ex, line));
                         }
                     }
                 }

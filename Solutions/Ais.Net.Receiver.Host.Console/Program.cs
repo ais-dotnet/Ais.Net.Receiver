@@ -82,7 +82,8 @@ namespace Ais.Net.Receiver.Host.Console
             receiverHost.Errors.Subscribe(error =>
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"Error received: {error.Message}");
+                Console.WriteLine($"Error received: {error.Exception.Message}");
+                Console.WriteLine($"Bad line: {error.Line}");
                 Console.ResetColor();
             });
 
