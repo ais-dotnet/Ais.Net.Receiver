@@ -24,6 +24,7 @@ namespace Ais.Net.Receiver.Receiver
         private readonly INmeaReceiver receiver;
         private readonly Subject<string> sentences = new();
         private readonly Subject<IAisMessage> messages = new();
+        private readonly Subject<(Exception Exception, string Line)> errors = new();
 
         public ReceiverHost(INmeaReceiver receiver)
         {
@@ -33,6 +34,8 @@ namespace Ais.Net.Receiver.Receiver
         public IObservable<string> Sentences => this.sentences;
 
         public IObservable<IAisMessage> Messages => this.messages;
+
+        public IObservable<(Exception Exception, string Line)> Errors => this.errors;
 
         public Task StartAsync(CancellationToken cancellationToken = default)
         {
@@ -53,17 +56,28 @@ namespace Ais.Net.Receiver.Receiver
 
             await foreach (string? message in this.GetAsync(cancellationToken).WithCancellation(cancellationToken))
             {
-                static void ProcessLineNonAsync(string line, INmeaLineStreamProcessor lineStreamProcessor)
+                static void ProcessLineNonAsync(string line, INmeaLineStreamProcessor lineStreamProcessor, Subject<(Exception Exception, string Line)> errorSubject)
                 {
                     byte[]? lineAsAscii = Encoding.ASCII.GetBytes(line);
-                    lineStreamProcessor.OnNext(new NmeaLineParser(lineAsAscii), 0);
+
+                    try
+                    {
+                        lineStreamProcessor.OnNext(new NmeaLineParser(lineAsAscii), 0);
+                    }
+                    catch (ArgumentException ex)
+                    {
+                        if (errorSubject.HasObservers)
+                        {
+                            errorSubject.OnNext((ex, line));
+                        }
+                    }
                 }
 
                 this.sentences.OnNext(message);
 
                 if (this.messages.HasObservers)
                 {
-                    ProcessLineNonAsync(message, adapter);
+                    ProcessLineNonAsync(message, adapter, errors);
                 }
             }
         }
