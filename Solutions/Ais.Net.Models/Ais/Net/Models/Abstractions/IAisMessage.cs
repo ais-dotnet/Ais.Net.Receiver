@@ -4,7 +4,7 @@
 
 namespace Ais.Net.Models.Abstractions
 {
-    public interface IAisMessage : IVesselIdentity, IAisMessageType
+    public interface IAisMessage : IVesselIdentity, IAisMessageType, ITimestamp
     {
     }
 }
