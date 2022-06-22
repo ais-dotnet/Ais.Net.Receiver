@@ -57,6 +57,12 @@ namespace Ais.Net.Receiver.Parser
                             this.ParseMessageType24(parsedLine, asciiPayload, padding);
                             return;
                         }
+
+                    case 27:
+                        {
+                            this.ParseMessageType27(parsedLine, asciiPayload, padding);
+                            return;
+                        }
                 }
             }
             catch (Exception e)
@@ -265,6 +271,25 @@ namespace Ais.Net.Receiver.Parser
                         break;
                     }
             }
+        }
+
+        private void ParseMessageType27(NmeaLineParser nmeaLineParser, ReadOnlySpan<byte> asciiPayload, uint padding)
+        {
+            var parser = new NmeaAisLongRangeAisBroadcastParser(asciiPayload, padding);
+
+            var message = new AisMessageType27(
+                Mmsi: parser.Mmsi,
+                Position: Position.From10thMins(parser.Latitude10thMins, parser.Longitude10thMins),
+                CourseOverGroundDegrees: parser.CourseOverGroundDegrees,
+                PositionAccuracy: parser.PositionAccuracy,
+                SpeedOverGround: parser.SpeedOverGroundTenths.FromTenths(),
+                RaimFlag: parser.RaimFlag,
+                RepeatIndicator: parser.RepeatIndicator,
+                NotGnssPosition: parser.NotGnssPosition,
+                NavigationStatus: parser.NavigationStatus,
+                UnixTimestamp: nmeaLineParser.TagBlock.UnixTimestamp);
+
+            this.messages.OnNext(message);
         }
     }
 }
