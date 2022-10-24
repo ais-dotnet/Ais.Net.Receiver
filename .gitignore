@@ -336,3 +336,10 @@ coverage.cobertura.xml
 
 # VS Code config files
 /.vscode
+
+_packages
+_codeCoverage
+/Ais.Net.Receiver.sbom.spdx.json
+/Ais.Net.Receiver.sbom.json
+/Ais.Net.Receiver.sbom.html
+/Ais.Net.Receiver.sbom.cyclonedx.xml
