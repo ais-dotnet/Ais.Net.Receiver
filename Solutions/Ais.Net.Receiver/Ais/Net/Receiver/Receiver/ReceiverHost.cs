@@ -71,13 +71,20 @@ namespace Ais.Net.Receiver.Receiver
                             errorSubject.OnNext((ex, line));
                         }
                     }
+                    catch (NotImplementedException ex)
+                    {
+                        if (errorSubject.HasObservers)
+                        {
+                            errorSubject.OnNext((ex, line));
+                        }
+                    }
                 }
 
                 this.sentences.OnNext(message);
 
                 if (this.messages.HasObservers)
                 {
-                    ProcessLineNonAsync(message, adapter, errors);
+                    ProcessLineNonAsync(message, adapter, this.errors);
                 }
             }
         }
