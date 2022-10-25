@@ -6,7 +6,6 @@ namespace Ais.Net.Receiver.Host.Console
 {
     using System;
     using System.Collections.Generic;
-    using System.Reactive.Linq;
     using System.Threading;
     using System.Threading.Tasks;
     using System.Threading.Tasks.Dataflow;
@@ -32,60 +31,67 @@ namespace Ais.Net.Receiver.Host.Console
 
             AisConfig aisConfig = config.GetSection("Ais").Get<AisConfig>();
             StorageConfig storageConfig = config.GetSection("Storage").Get<StorageConfig>();
-
-            IStorageClient storageClient = new AzureAppendBlobStorageClient(storageConfig);
-
+            
             INmeaReceiver receiver = new NetworkStreamNmeaReceiver(
                 aisConfig.Host,
                 aisConfig.Port,
                 aisConfig.RetryPeriodicity,
                 aisConfig.RetryAttempts);
 
-            // INmeaReceiver receiver = new FileStreamNmeaReceiver(@"PATH-TO-RECORDING.nm4");
+            // If you wanted to run from a captured stream:
+            //INmeaReceiver receiver = new FileStreamNmeaReceiver(@"PATH-TO-RECORDING.nm4");
 
             var receiverHost = new ReceiverHost(receiver);
 
-            // Decode teh sentences into messages, and group by the vessel by Id
-            IObservable<IGroupedObservable<uint, IAisMessage>> byVessel = receiverHost.Messages.GroupBy(m => m.Mmsi);
-
-            // Combine the various message types required to create a stream containing name and navigation
-            IObservable<(uint mmsi, IVesselNavigation navigation, IVesselName name)>? vesselNavigationWithNameStream =
-                from perVesselMessages in byVessel
-                let vesselNavigationUpdates = perVesselMessages.OfType<IVesselNavigation>()
-                let vesselNames = perVesselMessages.OfType<IVesselName>()
-                let vesselLocationsWithNames = vesselNavigationUpdates.CombineLatest(vesselNames, (navigation, name) => (navigation, name))
-                from vesselLocationAndName in vesselLocationsWithNames
-                select (mmsi: perVesselMessages.Key, vesselLocationAndName.navigation, vesselLocationAndName.name);
-
-            vesselNavigationWithNameStream.Subscribe(navigationWithName =>
+            if (aisConfig.LoggerVerbosity == LoggerVerbosity.Minimal)
             {
-                (uint mmsi, IVesselNavigation navigation, IVesselName name) = navigationWithName;
-                string positionText = navigation.Position is null ? "unknown position" : $"{navigation.Position.Latitude},{navigation.Position.Longitude}";
-                
-                Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"[{mmsi}: '{name.VesselName.CleanVesselName()}'] - [{positionText}] - [{navigation.CourseOverGroundDegrees ?? 0}]");
-                Console.ResetColor();
-            });
+                receiverHost.GetStreamStatistics(aisConfig.StatisticsPeriodicity)
+                    .Subscribe(stat => Console.WriteLine($"{DateTime.UtcNow.ToUniversalTime()}: Sentences: {stat.sentence} | Messages: {stat.message} | Errors {stat.error}"));
+            }
 
-            var batchBlock = new BatchBlock<string>(storageConfig.WriteBatchSize);
-            var actionBlock = new ActionBlock<IEnumerable<string>>(storageClient.PersistAsync);
-
-            batchBlock.LinkTo(actionBlock);
-
-            // Write out the messages as they are received over the wire.
-            receiverHost.Sentences.Subscribe(sentence => Console.WriteLine(sentence));
-
-            // Persist the messages as they are received over the wire.
-            receiverHost.Sentences.Subscribe(batchBlock.AsObserver());
+            if (aisConfig.LoggerVerbosity == LoggerVerbosity.Normal)
+            {
+                receiverHost.Messages.VesselNavigationWithNameStream().Subscribe(navigationWithName =>
+                {
+                    (uint mmsi, IVesselNavigation navigation, IVesselName name) = navigationWithName;
+                    string positionText = navigation.Position is null ? "unknown position" : $"{navigation.Position.Latitude},{navigation.Position.Longitude}";
+                    
+                    Console.ForegroundColor = ConsoleColor.Green;
+                    Console.WriteLine($"[{mmsi}: '{name.VesselName.CleanVesselName()}'] - [{positionText}] - [{navigation.CourseOverGroundDegrees ?? 0}]");
+                    Console.ResetColor();
+                });
+            }
             
-            // Write out errors in the console
-            receiverHost.Errors.Subscribe(error =>
+            if (aisConfig.LoggerVerbosity == LoggerVerbosity.Detailed)
             {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"Error received: {error.Exception.Message}");
-                Console.WriteLine($"Bad line: {error.Line}");
-                Console.ResetColor();
-            });
+                // Write out the messages as they are received over the wire.
+                receiverHost.Sentences.Subscribe(Console.WriteLine);
+            }
+
+            if (aisConfig.LoggerVerbosity == LoggerVerbosity.Diagnostic)
+            {
+                receiverHost.Messages.Subscribe(Console.WriteLine);
+
+                // Write out errors in the console
+                receiverHost.Errors.Subscribe(error =>
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine($"Error received: {error.Exception.Message}");
+                    Console.WriteLine($"Bad line: {error.Line}");
+                    Console.ResetColor();
+                });
+            }
+
+            if (storageConfig.EnableCapture)
+            {
+                IStorageClient storageClient = new AzureAppendBlobStorageClient(storageConfig);
+                var batchBlock = new BatchBlock<string>(storageConfig.WriteBatchSize);
+                var actionBlock = new ActionBlock<IEnumerable<string>>(storageClient.PersistAsync);
+                batchBlock.LinkTo(actionBlock);
+
+                // Persist the messages as they are received over the wire.
+                receiverHost.Sentences.Subscribe(batchBlock.AsObserver());
+            }
 
             var cts = new CancellationTokenSource();
 

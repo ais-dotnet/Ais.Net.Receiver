@@ -14,6 +14,8 @@ namespace Ais.Net.Receiver.Storage.Azure.Blob.Configuration
 
         public string ContainerName { get; set; }
 
+        public bool EnableCapture { get; set; }
+
         public int WriteBatchSize { get; set; }
     }
 }

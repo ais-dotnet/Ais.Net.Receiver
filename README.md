@@ -212,9 +212,9 @@ Use the following commands to install .NET 6.0 on your Pi.
 
 Use the following commands to install PowerShell on your Pi.
 
-1. Download the latest package `wget https://github.com/PowerShell/PowerShell/releases/download/v7.2.1/powershell-7.2.1-linux-arm32.tar.gz`
+1. Download the latest package `wget https://github.com/PowerShell/PowerShell/releases/download/v7.2.7/powershell-7.2.7-linux-arm32.tar.gz`
 1. Create a directory for it to be unpacked into `mkdir ~/powershell`
-1. Unpack `tar -xvf ./powershell-7.2.1-linux-arm32.tar.gz -C ~/powershell`
+1. Unpack `tar -xvf ./powershell-7.2.7-linux-arm32.tar.gz -C ~/powershell`
 1. Give it executable rights `sudo chmod +x /opt/microsoft/powershell/7/pwsh`
 1. Create a symbolic link `sudo ln -s /opt/microsoft/powershell/7/pwsh /usr/bin/pwsh`
 
@@ -237,6 +237,54 @@ You can use `sudo systemctl restart aisr` to restart the service.
 If you need to look at / edit the deployed `aisr.service` use `sudo nano  /lib/systemd/system/aisr.service` make your edits then use `Ctrl+O` and `Ctrl+X` to save the file and exit.
 
 Use [Azure Storage Explorer](https://azure.microsoft.com/en-us/features/storage-explorer/) to browse to where files are captured.
+
+### Configuration
+
+Configuration is read from `settings.json` and can also be overridden for local development by using a `settings.local.json` file.
+
+```json
+{
+  "Ais": {
+    "host": "153.44.253.27",
+    "port": "5631",
+    "loggerVerbosity": "Minimal", 
+    "statisticsPeriodicity": "00:01:00",
+    "retryAttempts": 100,
+    "retryPeriodicity": "00:00:00:00.500"
+  },
+  "Storage": {
+    "enableCapture": true,
+    "connectionString": "DefaultEndpointsProtocol=https;AccountName=<ACCOUNT_NAME>;AccountKey=<ACCOUNT_KEY>",
+    "containerName": "nmea-ais-dev",
+    "writeBatchSize": 500
+  }
+}
+```
+
+#### AIS
+
+These settings control the `ReceiverHost` and its behaviour.
+
+- `host`: IP Address or FQDN of the AIS Source
+- `port`: Port number for the AIS Source
+- `loggerVerbosity`: Controls the output to the console.
+  - `Quiet` = Essential only,
+  - `Minimal` = Statistics only. Sample rate of statistics controlled by `statisticsPeriodicity`,
+  - `Normal` = Vessel Names and Positions,
+  - `Detailed` = NMEA Sentences,
+  - `Diagnostic` = Messages and Errors
+- `statisticsPeriodicity`: TimeSpan defining the sample rate of statistics to display
+- `retryAttempts`: Number of retry attempts when a connection error occurs
+- `retryPeriodicity`: How long to wait before a retry attempt.
+- 
+#### Storage
+
+These settings control the capturing NMEA sentences to Azure Blob Storage.
+
+- `enableCapture`: Whether you want to capture the NMEA sentences and write them to Azure Blob Storage
+- `connectionString`: Azure Storage Account Connection String
+- `containerName`: Name of the container to capture the NMEA sentences. You can use this to separate a local dev storage container from your production storage container, within the same storage account.
+- `writeBatchSize`: How many NMEA sentences to batch before writing to Azure Blob Storage.
 
 ## Licenses
 

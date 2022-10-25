@@ -14,6 +14,10 @@ namespace Ais.Net.Receiver.Configuration
     {
         public string Host { get; set; }
 
+        public LoggerVerbosity LoggerVerbosity { get; set; }
+
+        public TimeSpan StatisticsPeriodicity { get; set; }
+
         public int Port { get; set; }
 
         public int RetryAttempts { get; set; }
