@@ -1,5 +1,5 @@
-﻿// <copyright file="Program.cs" company="Endjin">
-// Copyright (c) Endjin. All rights reserved.
+﻿// <copyright file="Program.cs" company="Endjin Limited">
+// Copyright (c) Endjin Limited. All rights reserved.
 // </copyright>
 
 namespace Ais.Net.Receiver.Host.Console
@@ -20,8 +20,15 @@ namespace Ais.Net.Receiver.Host.Console
 
     using Microsoft.Extensions.Configuration;
 
+    /// <summary>
+    /// Host application for the <see cref="ReceiverHost"/>.
+    /// </summary>
     public static class Program
     {
+        /// <summary>
+        /// Entry point for the application.
+        /// </summary>
+        /// <returns>Task representing the operation.</returns>
         public static async Task Main()
         {
             IConfiguration config = new ConfigurationBuilder()
@@ -31,22 +38,22 @@ namespace Ais.Net.Receiver.Host.Console
 
             AisConfig aisConfig = config.GetSection("Ais").Get<AisConfig>();
             StorageConfig storageConfig = config.GetSection("Storage").Get<StorageConfig>();
-            
+
             INmeaReceiver receiver = new NetworkStreamNmeaReceiver(
                 aisConfig.Host,
                 aisConfig.Port,
                 aisConfig.RetryPeriodicity,
                 aisConfig.RetryAttempts);
 
-            // If you wanted to run from a captured stream:
-            //INmeaReceiver receiver = new FileStreamNmeaReceiver(@"PATH-TO-RECORDING.nm4");
+            // If you wanted to run from a captured stream uncomment this line:
+            /*INmeaReceiver receiver = new FileStreamNmeaReceiver(@"PATH-TO-RECORDING.nm4");*/
 
             var receiverHost = new ReceiverHost(receiver);
 
             if (aisConfig.LoggerVerbosity == LoggerVerbosity.Minimal)
             {
                 receiverHost.GetStreamStatistics(aisConfig.StatisticsPeriodicity)
-                    .Subscribe(stat => Console.WriteLine($"{DateTime.UtcNow.ToUniversalTime()}: Sentences: {stat.sentence} | Messages: {stat.message} | Errors {stat.error}"));
+                            .Subscribe(statistics => Console.WriteLine($"{DateTime.UtcNow.ToUniversalTime()}: Sentences: {statistics.Sentence} | Messages: {statistics.Message} | Errors: {statistics.Error}"));
             }
 
             if (aisConfig.LoggerVerbosity == LoggerVerbosity.Normal)
@@ -55,13 +62,13 @@ namespace Ais.Net.Receiver.Host.Console
                 {
                     (uint mmsi, IVesselNavigation navigation, IVesselName name) = navigationWithName;
                     string positionText = navigation.Position is null ? "unknown position" : $"{navigation.Position.Latitude},{navigation.Position.Longitude}";
-                    
+
                     Console.ForegroundColor = ConsoleColor.Green;
                     Console.WriteLine($"[{mmsi}: '{name.VesselName.CleanVesselName()}'] - [{positionText}] - [{navigation.CourseOverGroundDegrees ?? 0}]");
                     Console.ResetColor();
                 });
             }
-            
+
             if (aisConfig.LoggerVerbosity == LoggerVerbosity.Detailed)
             {
                 // Write out the messages as they are received over the wire.
@@ -98,7 +105,7 @@ namespace Ais.Net.Receiver.Host.Console
             Task task = receiverHost.StartAsync(cts.Token);
 
             // If you wanted to cancel the long running process:
-            // cts.Cancel();
+            /* cts.Cancel(); */
 
             await task;
         }
