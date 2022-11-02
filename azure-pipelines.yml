@@ -20,6 +20,5 @@ jobs:
   parameters:
     vmImage: 'ubuntu-latest'
     service_connection_nuget_org: $(Endjin_Service_Connection_NuGet_Org)
-    service_connection_github: $(Endjin_Service_Connection_GitHub)
-    solution_to_build: $(Endjin_Solution_To_Build)
+    service_connection_github: endjin-test-org-dotnet-github
     netSdkVersion: '6.x'
