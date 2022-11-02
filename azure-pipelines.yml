@@ -12,7 +12,8 @@ resources:
     - repository: recommended_practices
       type: github
       name: endjin/Endjin.RecommendedPractices.AzureDevopsPipelines.GitHub
-      endpoint: ais-dotnet-github
+      endpoint: endjin-test-org-dotnet-github
+      ref: feature/fix-scripted-build-release-issues
 
 jobs:
 - template: templates/build.and.release.scripted.yml@recommended_practices
