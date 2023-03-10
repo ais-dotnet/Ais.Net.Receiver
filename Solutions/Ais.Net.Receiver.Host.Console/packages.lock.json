@@ -4,11 +4,11 @@
     "net6.0": {
       "Endjin.RecommendedPractices.GitHub": {
         "type": "Direct",
-        "requested": "[2.1.2, )",
-        "resolved": "2.1.2",
-        "contentHash": "mBUCmeSdWWrIQKuuYd9zflcwupRDmpF39dsbb07e6azlNIQqaE1J5TQa17c3SFVRXn9IZrClsmKoMporRTAWwQ==",
+        "requested": "[2.1.4, )",
+        "resolved": "2.1.4",
+        "contentHash": "SUBvnwWuKtklIv9NWqY9PI/J1nONyvcOlitIhUTq5Hk8K0QnBoISc1xTZTe0C0tOtUW1JIAZeEYwAAeuzQwtYg==",
         "dependencies": {
-          "Endjin.RecommendedPractices": "2.1.2",
+          "Endjin.RecommendedPractices": "2.1.4",
           "Microsoft.SourceLink.GitHub": "1.1.1"
         }
       },
@@ -59,9 +59,9 @@
       },
       "Roslynator.Analyzers": {
         "type": "Direct",
-        "requested": "[4.1.1, )",
-        "resolved": "4.1.1",
-        "contentHash": "3cPVlrB1PytlO1ztZZBOExDKQWpMZgI15ZDa0BqLu0l6xv+xIRfEpqjNRcpvUy3aLxWTkPgSKZbbaO+VoFEJ1g=="
+        "requested": "[4.2.0, )",
+        "resolved": "4.2.0",
+        "contentHash": "3N8CNx1Q/Q5VDDL7qgfZRgTURyMqzHAkAB59AZKRnsOXoh2n9xRzhiBMIbJaUtBATmieECBx68GcjRn2xoNDug=="
       },
       "StyleCop.Analyzers": {
         "type": "Direct",
@@ -88,8 +88,8 @@
       },
       "Azure.Core": {
         "type": "Transitive",
-        "resolved": "1.25.0",
-        "contentHash": "X8Dd4sAggS84KScWIjEbFAdt2U1KDolQopTPoHVubG2y3CM54f9l6asVrP5Uy384NWXjsspPYaJgz5xHc+KvTA==",
+        "resolved": "1.28.0",
+        "contentHash": "IY6rGo8r8MfcmIxaNGFhIn/5PTz2Eld6Uqmy3bL/NX+2+g7hroo69jcJ9jeRPkuKXZPPreXTr8zt49No11Wbug==",
         "dependencies": {
           "Microsoft.Bcl.AsyncInterfaces": "1.1.1",
           "System.Diagnostics.DiagnosticSource": "4.6.0",
@@ -102,19 +102,19 @@
       },
       "Azure.Storage.Blobs": {
         "type": "Transitive",
-        "resolved": "12.14.1",
-        "contentHash": "DvRBWUDMB2LjdRbsBNtz/LiVIYk56hqzSooxx4uq4rCdLj2M+7Vvoa1r+W35Dz6ZXL6p+SNcgEae3oZ+CkPfow==",
+        "resolved": "12.15.0",
+        "contentHash": "IclKNYNpJGtr8WY9284iJni9yMMoERscRb4Oxc+CF0U45mi749Dbpva1psc7u/R07fa+WgIupVIPczkfo2NQmA==",
         "dependencies": {
-          "Azure.Storage.Common": "12.13.0",
+          "Azure.Storage.Common": "12.14.0",
           "System.Text.Json": "4.7.2"
         }
       },
       "Azure.Storage.Common": {
         "type": "Transitive",
-        "resolved": "12.13.0",
-        "contentHash": "jDv8xJWeZY2Er9zA6QO25BiGolxg87rItt9CwAp7L/V9EPJeaz8oJydaNL9Wj0+3ncceoMgdiyEv66OF8YUwWQ==",
+        "resolved": "12.14.0",
+        "contentHash": "Fd6xg64hJy3NRBBcIijahJgUPyCv3qXaR61RqBnkTsDCywlVrdb8neulFJPd4smj2yvXogFdja0IteVKugr4nw==",
         "dependencies": {
-          "Azure.Core": "1.25.0",
+          "Azure.Core": "1.28.0",
           "System.IO.Hashing": "6.0.0"
         }
       },
@@ -125,8 +125,8 @@
       },
       "Endjin.RecommendedPractices": {
         "type": "Transitive",
-        "resolved": "2.1.2",
-        "contentHash": "Nbj0WS3zVDD2wjfU2/nbkWIWS9Ljg8VN+SSpaCuf5lHBOIEb0Ra201lGcyJHtRHybAciz+hQA9lHj7TnG52qqw==",
+        "resolved": "2.1.4",
+        "contentHash": "3B8zpRU3LEwHNZvEU8NHhzFZKZDpVaI4sMhv8bXcEoLQhRvJiBKQ90hibZIz7veX1Zi9PXrsH11HzdZBQMmntQ==",
         "dependencies": {
           "Microsoft.Build.Tasks.Git": "1.1.1"
         }
@@ -287,7 +287,7 @@
         "type": "Project",
         "dependencies": {
           "Ais.Net.Receiver": "[1.0.0, )",
-          "Azure.Storage.Blobs": "[12.14.1, )"
+          "Azure.Storage.Blobs": "[12.15.0, )"
         }
       }
     }
