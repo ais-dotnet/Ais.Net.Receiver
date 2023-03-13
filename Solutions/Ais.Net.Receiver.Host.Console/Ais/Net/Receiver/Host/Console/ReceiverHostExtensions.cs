@@ -31,6 +31,7 @@ namespace Ais.Net.Receiver.Host.Console
                     (messages, sentences, errors) => (messages, sentences, errors));
 
             return runningCounts.Buffer(period)
+                                .Where(window => window.Count >= 2)
                                 .Select(window => (window[0], window[^1]))
                                 .Select<((long, long, long), (long, long, long)), (long, long, long)>(
                                     (((long Messages, long Sentences, long Errors) First,
