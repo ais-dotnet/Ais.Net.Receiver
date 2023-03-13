@@ -238,8 +238,8 @@
       },
       "System.Reactive": {
         "type": "Transitive",
-        "resolved": "5.0.0",
-        "contentHash": "erBZjkQHWL9jpasCE/0qKAryzVBJFxGHVBAvgRN1bzM0q2s1S4oYREEEL0Vb+1kA/6BKb5FjUZMp5VXmy+gzkQ=="
+        "resolved": "6.0.0-preview.1",
+        "contentHash": "fGwipNRKMjjYs/EvipEgJYJVyrTEt3xkGtaLTwLaowiWlQCCtmci6j0O4hIon2Z4viYWvOcnp/VtK1yLEUI2wQ=="
       },
       "System.Runtime.CompilerServices.Unsafe": {
         "type": "Transitive",
@@ -280,7 +280,7 @@
           "Ais.Net.Models": "[1.0.0, )",
           "Corvus.Retry": "[1.0.2, )",
           "System.Linq.Async": "[6.0.*, )",
-          "System.Reactive": "[5.0.*, )"
+          "System.Reactive": "[6.0.0-preview.1, )"
         }
       },
       "ais.net.receiver.storage.azure.blob": {
