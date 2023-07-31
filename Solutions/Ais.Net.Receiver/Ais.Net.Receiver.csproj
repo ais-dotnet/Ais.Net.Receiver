@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <Import Project="$(EndjinProjectPropsPath)" Condition="$(EndjinProjectPropsPath) != ''" />
   
@@ -35,7 +35,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Update="StyleCop.Analyzers" Version="1.2.0-beta.321" />
+    <PackageReference Update="StyleCop.Analyzers" Version="1.2.0-beta.507" />
   </ItemGroup>
 
 </Project>
