@@ -14,6 +14,11 @@ namespace Ais.Net.Models
         {
             return value / 600000.0;
         }
+        
+        public static double From10thMinsToDegrees(this int value)
+        {
+            return value / 600.0;
+        }
 
         public static float? FromTenths(this uint value)
         {

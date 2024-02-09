@@ -8,5 +8,7 @@ namespace Ais.Net.Models.Abstractions
     {
         public static Position From10000thMins(int latitude, int longitude) =>
             new (latitude.From10000thMinsToDegrees(), longitude.From10000thMinsToDegrees());
+        public static Position From10thMins(int latitude, int longitude) =>
+            new (latitude.From10thMinsToDegrees(), longitude.From10thMinsToDegrees());
     }
 }

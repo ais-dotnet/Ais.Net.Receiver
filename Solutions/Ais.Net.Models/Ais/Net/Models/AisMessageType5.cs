@@ -26,8 +26,9 @@ namespace Ais.Net.Models
         uint RepeatIndicator,
         ShipType ShipType,
         uint Spare423,
-        string VesselName) :
-            AisMessageBase(MessageType: 5, Mmsi),
+        string VesselName,
+        long? UnixTimestamp) :
+            AisMessageBase(MessageType: 5, Mmsi, UnixTimestamp),
             IAisMessageType5,
             IAisIsDteNotReady,
             IAisPositionFixType,

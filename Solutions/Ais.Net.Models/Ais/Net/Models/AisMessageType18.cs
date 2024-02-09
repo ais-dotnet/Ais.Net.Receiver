@@ -24,8 +24,9 @@ namespace Ais.Net.Models
         uint RepeatIndicator,
         float? SpeedOverGround,
         uint TimeStampSecond,
-        uint TrueHeadingDegrees) :
-            AisMessageBase(MessageType: 18, Mmsi),
+        uint TrueHeadingDegrees,
+        long? UnixTimestamp) :
+            AisMessageBase(MessageType: 18, Mmsi, UnixTimestamp),
             IAisMessageType18,
             IAisIsAssigned,
             IRaimFlag,
