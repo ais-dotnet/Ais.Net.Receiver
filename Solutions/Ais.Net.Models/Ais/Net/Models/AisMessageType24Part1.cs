@@ -21,8 +21,9 @@ namespace Ais.Net.Models
         ShipType ShipType,
         uint UnitModelCode,
         string VendorIdRev3,
-        string VendorIdRev4) :
-            AisMessageBase(MessageType: 24, Mmsi),
+        string VendorIdRev4,
+        long? UnixTimestamp) :
+            AisMessageBase(MessageType: 24, Mmsi, UnixTimestamp),
             IAisMessageType24Part1,
             IAisMultipartMessage,
             ICallSign,

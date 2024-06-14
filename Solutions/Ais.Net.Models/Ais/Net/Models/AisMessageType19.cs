@@ -27,8 +27,9 @@ namespace Ais.Net.Models
         uint Spare308,
         float? SpeedOverGround,
         uint TimeStampSecond,
-        uint TrueHeadingDegrees) :
-            AisMessageBase(MessageType: 19, Mmsi),
+        uint TrueHeadingDegrees,
+        long? UnixTimestamp) :
+            AisMessageBase(MessageType: 19, Mmsi, UnixTimestamp),
             IAisMessageType19,
             IAisIsAssigned,
             IAisIsDteNotReady,

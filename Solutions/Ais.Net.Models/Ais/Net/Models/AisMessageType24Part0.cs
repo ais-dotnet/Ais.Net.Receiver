@@ -10,8 +10,9 @@ namespace Ais.Net.Models
         uint Mmsi,
         uint PartNumber,
         uint RepeatIndicator,
-        uint Spare160) :
-            AisMessageBase(MessageType: 24, Mmsi),
+        uint Spare160,
+        long? UnixTimestamp) :
+            AisMessageBase(MessageType: 24, Mmsi, UnixTimestamp),
             IAisMultipartMessage,
             IRepeatIndicator,
             IAisMessageType24Part0;

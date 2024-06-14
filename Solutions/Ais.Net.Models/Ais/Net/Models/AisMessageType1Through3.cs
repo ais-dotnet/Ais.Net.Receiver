@@ -23,8 +23,9 @@ namespace Ais.Net.Models
         uint SpareBits145,
         float? SpeedOverGround,
         uint TimeStampSecond,
-        uint TrueHeadingDegrees) :
-            AisMessageBase(MessageType, Mmsi),
+        uint TrueHeadingDegrees,
+        long? UnixTimestamp) :
+            AisMessageBase(MessageType, Mmsi, UnixTimestamp),
             IAisMessageType1to3,
             IRaimFlag,
             IRepeatIndicator,
