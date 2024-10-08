@@ -48,7 +48,7 @@ public static class Program
             aisConfig.Host,
             aisConfig.Port,
             aisConfig.RetryPeriodicity,
-            aisConfig.RetryAttempts);
+            retryAttemptLimit: aisConfig.RetryAttempts);
 
         // If you wanted to run from a captured stream uncomment this line:
 
@@ -56,7 +56,7 @@ public static class Program
         INmeaReceiver receiver = new FileStreamNmeaReceiver(@"PATH-TO-RECORDING.nm4");
         */
 
-        ReceiverHost receiverHost = new ReceiverHost(receiver);
+        ReceiverHost receiverHost = new(receiver);
 
         if (aisConfig.LoggerVerbosity == LoggerVerbosity.Minimal)
         {
