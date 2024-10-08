@@ -6,16 +6,15 @@
 // of config files are outside the compiler's control.
 #nullable disable annotations
 
-namespace Ais.Net.Receiver.Storage.Azure.Blob.Configuration
+namespace Ais.Net.Receiver.Storage.Azure.Blob.Configuration;
+
+public class StorageConfig
 {
-    public class StorageConfig
-    {
-        public string ConnectionString { get; set; }
+    public string ConnectionString { get; set; }
 
-        public string ContainerName { get; set; }
+    public string ContainerName { get; set; }
 
-        public bool EnableCapture { get; set; }
+    public bool EnableCapture { get; set; }
 
-        public int WriteBatchSize { get; set; }
-    }
+    public int WriteBatchSize { get; set; }
 }

@@ -1,10 +1,14 @@
  [Unit]
  Description=aisr
  After=multi-user.target
+ StartLimitIntervalSec=500
+ StartLimitBurst=5
 
  [Service]
  Type=idle
  ExecStart=/home/pi/.dotnet/dotnet /home/pi/aisr/Ais.Net.Receiver.Host.Console.dll
+ Restart=on-failure
+ RestartSec=5s
 
  [Install]
  WantedBy=multi-user.target
