@@ -2,13 +2,12 @@
 // Copyright (c) Endjin Limited. All rights reserved.
 // </copyright>
 
-namespace Ais.Net.Receiver.Storage
-{
-    using System.Collections.Generic;
-    using System.Threading.Tasks;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
-    public interface IStorageClient
-    {
-        Task PersistAsync(IEnumerable<string> messages);
-    }
+namespace Ais.Net.Receiver.Storage;
+
+public interface IStorageClient
+{
+    Task PersistAsync(IEnumerable<string> messages);
 }

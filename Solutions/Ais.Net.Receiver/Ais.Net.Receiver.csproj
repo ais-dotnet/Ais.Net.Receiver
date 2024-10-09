@@ -3,7 +3,7 @@
   <Import Project="$(EndjinProjectPropsPath)" Condition="$(EndjinProjectPropsPath) != ''" />
   
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <EndjinDisableCodeAnalysis>True</EndjinDisableCodeAnalysis>
@@ -21,17 +21,14 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Ais.Net.Models" Version="0.2.1" />
     <PackageReference Include="Corvus.Retry" Version="1.0.7" />
-    <PackageReference Include="Endjin.RecommendedPractices.GitHub" Version="2.1.12">
+    <PackageReference Include="Endjin.RecommendedPractices.GitHub" Version="2.1.13">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="System.Linq.Async" Version="[6.0.*,)" />
-    <PackageReference Include="System.Reactive" Version="[5.0.*,)" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\Ais.Net.Models\Ais.Net.Models.csproj" />
+    <PackageReference Include="System.Reactive" Version="6.0.1" />
   </ItemGroup>
 
   <ItemGroup>
