@@ -72,7 +72,7 @@ public static class Program
                 string positionText = navigation.Position is null ? "unknown position" : $"{navigation.Position.Latitude},{navigation.Position.Longitude}";
 
                 System.Console.ForegroundColor = ConsoleColor.Green;
-                System.Console.WriteLine($"[{mmsi}: '{name.VesselName.CleanVesselName()}'] - [{positionText}] - [{navigation.CourseOverGroundDegrees ?? 0}]");
+                System.Console.WriteLine($"[{mmsi}: '{name.VesselName.CleanVesselName()}'] - [{positionText}] - [{navigation.CourseOverGround ?? 0}]");
                 System.Console.ResetColor();
             });
         }
