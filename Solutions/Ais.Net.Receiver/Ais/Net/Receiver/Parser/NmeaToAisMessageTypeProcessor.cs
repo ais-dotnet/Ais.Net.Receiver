@@ -57,6 +57,12 @@ public class NmeaToAisMessageTypeProcessor : INmeaAisMessageStreamProcessor
                     this.ParseMessageType24(asciiPayload, padding);
                     return;
                 }
+
+                case 27:
+                {
+                    this.ParseMessageType27(asciiPayload, padding);
+                    return;
+                }
             }
         }
         catch (Exception e)
@@ -92,7 +98,7 @@ public class NmeaToAisMessageTypeProcessor : INmeaAisMessageStreamProcessor
         NmeaAisPositionReportClassAParser parser = new(asciiPayload, padding);
 
         AisMessageType1Through3 message = new(
-            CourseOverGroundDegrees: parser.CourseOverGround10thDegrees.FromTenthsToDegrees(),
+            CourseOverGround: parser.CourseOverGround10thDegrees.FromTenthsToDegrees(),
             ManoeuvreIndicator: parser.ManoeuvreIndicator,
             MessageType: messageType,
             Mmsi: parser.Mmsi,
@@ -157,7 +163,7 @@ public class NmeaToAisMessageTypeProcessor : INmeaAisMessageStreamProcessor
             RadioStatusType: parser.RadioStatusType,
             RegionalReserved139: parser.RegionalReserved139,
             RegionalReserved38: parser.RegionalReserved38,
-            CourseOverGroundDegrees: parser.CourseOverGround10thDegrees.FromTenthsToDegrees(),
+            CourseOverGround: parser.CourseOverGround10thDegrees.FromTenthsToDegrees(),
             PositionAccuracy: parser.PositionAccuracy,
             SpeedOverGround: parser.SpeedOverGroundTenths.FromTenths(),
             TimeStampSecond: parser.TimeStampSecond,
@@ -179,7 +185,7 @@ public class NmeaToAisMessageTypeProcessor : INmeaAisMessageStreamProcessor
         AisMessageType19 message = new(
             Mmsi: parser.Mmsi,
             ShipName: shipNameAscii.GetString(),
-            CourseOverGroundDegrees: parser.CourseOverGround10thDegrees.FromTenthsToDegrees(),
+            CourseOverGround: parser.CourseOverGround10thDegrees.FromTenthsToDegrees(),
             DimensionToBow: parser.DimensionToBow,
             DimensionToPort: parser.DimensionToPort,
             DimensionToStarboard: parser.DimensionToStarboard,
@@ -260,5 +266,23 @@ public class NmeaToAisMessageTypeProcessor : INmeaAisMessageStreamProcessor
                 break;
             }
         }
+    }
+
+    private void ParseMessageType27(ReadOnlySpan<byte> asciiPayload, uint padding)
+    {
+        NmeaAisLongRangeAisBroadcastParser parser = new(asciiPayload, padding);
+
+        AisMessageType27 message = new(
+            Mmsi: parser.Mmsi,
+            Position: Position.From10thMins(parser.Latitude10thMins, parser.Longitude10thMins),
+            CourseOverGround: parser.CourseOverGroundDegrees,
+            PositionAccuracy: parser.PositionAccuracy,
+            SpeedOverGround: parser.SpeedOverGroundTenths.FromTenths(),
+            RaimFlag: parser.RaimFlag,
+            RepeatIndicator: parser.RepeatIndicator,
+            GnssPositionStatus: parser.NotGnssPosition,
+            NavigationStatus: parser.NavigationStatus);
+
+        this.messages.OnNext(message);
     }
 }
