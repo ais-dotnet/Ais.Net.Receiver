@@ -29,40 +29,40 @@ public class NmeaToAisMessageTypeProcessor : INmeaAisMessageStreamProcessor
             switch (messageType)
             {
                 case >= 1 and <= 3:
-                {
-                    this.ParseMessageTypes1Through3(asciiPayload, padding, messageType);
-                    return;
-                }
+                    {
+                        this.ParseMessageTypes1Through3(asciiPayload, padding, messageType);
+                        return;
+                    }
 
                 case 5:
-                {
-                    this.ParseMessageType5(asciiPayload, padding);
-                    return;
-                }
+                    {
+                        this.ParseMessageType5(asciiPayload, padding);
+                        return;
+                    }
 
                 case 18:
-                {
-                    this.ParseMessageType18(asciiPayload, padding);
-                    return;
-                }
+                    {
+                        this.ParseMessageType18(asciiPayload, padding);
+                        return;
+                    }
 
                 case 19:
-                {
-                    this.ParseMessageType19(asciiPayload, padding);
-                    return;
-                }
+                    {
+                        this.ParseMessageType19(asciiPayload, padding);
+                        return;
+                    }
 
                 case 24:
-                {
-                    this.ParseMessageType24(asciiPayload, padding);
-                    return;
-                }
+                    {
+                        this.ParseMessageType24(asciiPayload, padding);
+                        return;
+                    }
 
                 case 27:
-                {
-                    this.ParseMessageType27(asciiPayload, padding);
-                    return;
-                }
+                    {
+                        this.ParseMessageType27(asciiPayload, padding);
+                        return;
+                    }
             }
         }
         catch (Exception e)
@@ -215,56 +215,56 @@ public class NmeaToAisMessageTypeProcessor : INmeaAisMessageStreamProcessor
         switch (part)
         {
             case 0:
-            {
-                NmeaAisStaticDataReportParserPartA parser = new(asciiPayload, padding);
+                {
+                    NmeaAisStaticDataReportParserPartA parser = new(asciiPayload, padding);
 
-                Span<byte> vesselNameAscii = stackalloc byte[(int)parser.VesselName.CharacterCount];
-                parser.VesselName.WriteAsAscii(vesselNameAscii);
+                    Span<byte> vesselNameAscii = stackalloc byte[(int)parser.VesselName.CharacterCount];
+                    parser.VesselName.WriteAsAscii(vesselNameAscii);
 
-                AisMessageType24Part0 message = new(
-                    Mmsi: parser.Mmsi,
-                    PartNumber: parser.PartNumber,
-                    RepeatIndicator: parser.RepeatIndicator,
-                    Spare160: parser.Spare160);
+                    AisMessageType24Part0 message = new(
+                        Mmsi: parser.Mmsi,
+                        PartNumber: parser.PartNumber,
+                        RepeatIndicator: parser.RepeatIndicator,
+                        Spare160: parser.Spare160);
 
-                this.messages.OnNext(message);
+                    this.messages.OnNext(message);
 
-                break;
-            }
+                    break;
+                }
 
             case 1:
-            {
-                NmeaAisStaticDataReportParserPartB parser = new(asciiPayload, padding);
+                {
+                    NmeaAisStaticDataReportParserPartB parser = new(asciiPayload, padding);
 
-                Span<byte> callSignAscii = stackalloc byte[(int)parser.CallSign.CharacterCount];
-                parser.CallSign.WriteAsAscii(callSignAscii);
+                    Span<byte> callSignAscii = stackalloc byte[(int)parser.CallSign.CharacterCount];
+                    parser.CallSign.WriteAsAscii(callSignAscii);
 
-                Span<byte> vendorIdRev3Ascii = stackalloc byte[(int)parser.VendorIdRev3.CharacterCount];
-                parser.VendorIdRev3.WriteAsAscii(vendorIdRev3Ascii);
+                    Span<byte> vendorIdRev3Ascii = stackalloc byte[(int)parser.VendorIdRev3.CharacterCount];
+                    parser.VendorIdRev3.WriteAsAscii(vendorIdRev3Ascii);
 
-                Span<byte> vendorIdRev4Ascii = stackalloc byte[(int)parser.VendorIdRev4.CharacterCount];
-                parser.VendorIdRev3.WriteAsAscii(vendorIdRev4Ascii);
+                    Span<byte> vendorIdRev4Ascii = stackalloc byte[(int)parser.VendorIdRev4.CharacterCount];
+                    parser.VendorIdRev3.WriteAsAscii(vendorIdRev4Ascii);
 
-                AisMessageType24Part1 message = new(
-                    Mmsi: parser.Mmsi,
-                    CallSign: callSignAscii.GetString(),
-                    DimensionToBow: parser.DimensionToBow,
-                    DimensionToPort: parser.DimensionToPort,
-                    DimensionToStarboard: parser.DimensionToStarboard,
-                    DimensionToStern: parser.DimensionToStern,
-                    MothershipMmsi: parser.MothershipMmsi,
-                    PartNumber: parser.PartNumber,
-                    RepeatIndicator: parser.RepeatIndicator,
-                    SerialNumber: parser.SerialNumber,
-                    ShipType: parser.ShipType,
-                    Spare162: parser.Spare162,
-                    UnitModelCode: parser.UnitModelCode,
-                    VendorIdRev3: vendorIdRev3Ascii.GetString(),
-                    VendorIdRev4: vendorIdRev4Ascii.GetString());
+                    AisMessageType24Part1 message = new(
+                        Mmsi: parser.Mmsi,
+                        CallSign: callSignAscii.GetString(),
+                        DimensionToBow: parser.DimensionToBow,
+                        DimensionToPort: parser.DimensionToPort,
+                        DimensionToStarboard: parser.DimensionToStarboard,
+                        DimensionToStern: parser.DimensionToStern,
+                        MothershipMmsi: parser.MothershipMmsi,
+                        PartNumber: parser.PartNumber,
+                        RepeatIndicator: parser.RepeatIndicator,
+                        SerialNumber: parser.SerialNumber,
+                        ShipType: parser.ShipType,
+                        Spare162: parser.Spare162,
+                        UnitModelCode: parser.UnitModelCode,
+                        VendorIdRev3: vendorIdRev3Ascii.GetString(),
+                        VendorIdRev4: vendorIdRev4Ascii.GetString());
 
-                this.messages.OnNext(message);
-                break;
-            }
+                    this.messages.OnNext(message);
+                    break;
+                }
         }
     }
 
