@@ -56,6 +56,21 @@
           "Microsoft.Extensions.FileProviders.Abstractions": "8.0.0"
         }
       },
+      "Roslynator.Analyzers": {
+        "type": "Direct",
+        "requested": "[4.12.4, )",
+        "resolved": "4.12.4",
+        "contentHash": "isl8hAh7yFNjyBEC4YlTSi+xGBblqBUC/2MCMmnBPwuXPewb7XYnMRzT3vXbP/gOGwT8hZUOy1g/aRH3lAF/NQ=="
+      },
+      "StyleCop.Analyzers": {
+        "type": "Direct",
+        "requested": "[1.2.0-beta.556, )",
+        "resolved": "1.2.0-beta.556",
+        "contentHash": "llRPgmA1fhC0I0QyFLEcjvtM2239QzKr/tcnbsjArLMJxJlu0AA5G7Fft0OI30pHF3MW63Gf4aSSsjc5m82J1Q==",
+        "dependencies": {
+          "StyleCop.Analyzers.Unstable": "1.2.0.556"
+        }
+      },
       "System.Threading.Tasks.Dataflow": {
         "type": "Direct",
         "requested": "[8.0.1, )",
@@ -72,8 +87,8 @@
       },
       "Ais.Net.Models": {
         "type": "Transitive",
-        "resolved": "0.2.1",
-        "contentHash": "JKW8/2Vf7D3sfCBnl7Z7hCtH4gOgfOGZNbPLitpEjNKq1EH+jikmPsXthyX9w9nQ6w6mbphsZ0wJV3oXgCkgxA==",
+        "resolved": "0.3.1",
+        "contentHash": "HcqGkzYW9BVZ4s9Jny87cH1c4fDkt3FpYtklH/T+vNFnncJmLDFNbAIOqFnO+JqvygBP6qDWo6WyEylAIFrgwQ==",
         "dependencies": {
           "Ais.Net": "0.4.2"
         }
@@ -184,6 +199,11 @@
           "Microsoft.SourceLink.Common": "1.1.1"
         }
       },
+      "StyleCop.Analyzers.Unstable": {
+        "type": "Transitive",
+        "resolved": "1.2.0.556",
+        "contentHash": "zvn9Mqs/ox/83cpYPignI8hJEM2A93s2HkHs8HYMOAQW0PkampyoErAiIyKxgTLqbbad29HX/shv/6LGSjPJNQ=="
+      },
       "System.ClientModel": {
         "type": "Transitive",
         "resolved": "1.0.0",
@@ -268,7 +288,7 @@
       "ais.net.receiver": {
         "type": "Project",
         "dependencies": {
-          "Ais.Net.Models": "[0.2.1, )",
+          "Ais.Net.Models": "[0.3.1, )",
           "Corvus.Retry": "[1.0.7, )",
           "System.Linq.Async": "[6.0.*, )",
           "System.Reactive": "[6.0.1, )"
