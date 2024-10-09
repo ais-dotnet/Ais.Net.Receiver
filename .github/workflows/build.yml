@@ -40,12 +40,10 @@ jobs:
       id: prepareEnvVarsAndSecrets
       with:
         environmentVariablesYaml: |
-          BUILDVAR_ContainerRegistryFqdn: "endjin.azurecr.io"
-          BUILDVAR_ContainerImageVersionOverride: ""
+          BUILDVAR_NuGetPublishSource: "${{ startsWith(github.ref, 'refs/tags/') && 'https://api.nuget.org/v3/index.json' || 'https://nuget.pkg.github.com/ais-dotnet/index.json' }}"
           BUILDVAR_Configuration: "Release"
         secretsYaml: |
-          {
-          }
+          NUGET_API_KEY: "${{ startsWith(github.ref, 'refs/tags/') && secrets.NUGET_APIKEY || secrets.BUILD_PUBLISHER_PAT }}"
 
   build:
     needs: prepareConfig
@@ -56,4 +54,5 @@ jobs:
       forcePublish: ${{ github.event.inputs.forcePublish == 'true' }}
       buildEnv: ${{ needs.prepareConfig.outputs.RESOLVED_ENV_VARS }}
     secrets:
-      buildAzureCredentials: ${{ secrets.ENDJIN_PROD_ACR_PUBLISH_CREDENTIALS }}
+      buildAzureCredentials: ${{ secrets.AZURE_READER_CREDENTIALS }}
+      buildSecrets: ${{ needs.prepareConfig.outputs.RESOLVED_SECRETS }}
