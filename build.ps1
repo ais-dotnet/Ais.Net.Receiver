@@ -75,7 +75,7 @@ param (
     [string] $BuildModuleVersion = "1.0.0-preview0020",
 
     [Parameter()]
-    [version] $InvokeBuildModuleVersion = "5.11.3"
+    [version] $InvokeBuildModuleVersion = "5.10.3"
 )
 $ErrorActionPreference = 'Stop'
 $here = Split-Path -Parent $PSCommandPath
