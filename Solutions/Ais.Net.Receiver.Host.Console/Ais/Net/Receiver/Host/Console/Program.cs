@@ -61,7 +61,8 @@ public static class Program
         if (aisConfig.LoggerVerbosity == LoggerVerbosity.Minimal)
         {
             receiverHost.GetStreamStatistics(aisConfig.StatisticsPeriodicity)
-                .Subscribe(statistics => System.Console.WriteLine($"{DateTime.UtcNow.ToUniversalTime()}: Sentences: {statistics.Sentence} | Messages: {statistics.Message} | Errors: {statistics.Error}"));
+                        .Subscribe(statistics =>
+                                   System.Console.WriteLine($"{DateTime.UtcNow.ToUniversalTime()}: Sentences: {statistics.Sentence} | Messages: {statistics.Message} | Errors: {statistics.Error}"));
         }
 
         if (aisConfig.LoggerVerbosity == LoggerVerbosity.Normal)
