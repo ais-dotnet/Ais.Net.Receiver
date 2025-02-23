@@ -1,4 +1,3 @@
-#Requires -Version 7
 <#
 .SYNOPSIS
     Runs a .NET flavoured build process.
@@ -44,7 +43,7 @@ param (
     [string[]] $Tasks = @("."),
 
     [Parameter()]
-    [string] $Configuration = "Debug",
+    [string] $Configuration = "Release",
 
     [Parameter()]
     [string] $BuildRepositoryUri = "",
@@ -62,7 +61,7 @@ param (
     [string] $PackagesDir = "_packages",
 
     [Parameter()]
-    [ValidateSet("minimal","normal","detailed")]
+    [ValidateSet("quiet","minimal","normal","detailed")]
     [string] $LogLevel = "minimal",
 
     [Parameter()]
@@ -72,55 +71,106 @@ param (
     [string] $BuildModulePath,
 
     [Parameter()]
-    [string] $BuildModuleVersion = "1.0.0-preview0020",
+    [version] $BuildModuleVersion = "1.5.12",
 
     [Parameter()]
-    [version] $InvokeBuildModuleVersion = "5.11.3"
+    [version] $InvokeBuildModuleVersion = "5.12.1"
 )
-$ErrorActionPreference = 'Stop'
+$ErrorActionPreference = $ErrorActionPreference ? $ErrorActionPreference : 'Stop'
+$InformationPreference = 'Continue'
 $here = Split-Path -Parent $PSCommandPath
 
 #region InvokeBuild setup
+if (!(Get-Module -ListAvailable InvokeBuild)) {
+    Install-Module InvokeBuild -RequiredVersion $InvokeBuildModuleVersion -Scope CurrentUser -Force -Repository PSGallery
+}
+Import-Module InvokeBuild
 # This handles calling the build engine when this file is run like a normal PowerShell script
 # (i.e. avoids the need to have another script to setup the InvokeBuild environment and issue the 'Invoke-Build' command )
 if ($MyInvocation.ScriptName -notlike '*Invoke-Build.ps1') {
-    Install-PSResource InvokeBuild -Version $InvokeBuildModuleVersion -Scope CurrentUser -TrustRepository -Verbose:$false | Out-Null
     try {
         Invoke-Build $Tasks $MyInvocation.MyCommand.Path @PSBoundParameters
     }
     catch {
-        if ($env:GITHUB_ACTIONS) {
-            Write-Host ("::error file={0},line={1},col={2}::{3}" -f `
-                            $_.InvocationInfo.ScriptName,
-                            $_.InvocationInfo.ScriptLineNumber,
-                            $_.InvocationInfo.OffsetInLine,
-                            $_.Exception.Message
-                        )
-        }
-        Write-Host -f Yellow "`n`n***`n*** Build Failure Summary - check previous logs for more details`n***"
-        Write-Host -f Yellow $_.Exception.Message
-        Write-Host -f Yellow $_.ScriptStackTrace
-        exit 1
+        $_.ScriptStackTrace
+        throw
     }
     return
 }
 #endregion
 
 #region Import shared tasks and initialise build framework
-$splat = @{ Force = $true; Verbose = $false}
 if (!($BuildModulePath)) {
-    Install-PSResource endjin-devops -Version $BuildModuleVersion -Scope CurrentUser -TrustRepository -Reinstall:$($BuildModuleVersion -match '-') | Out-Null
-    $BuildModulePath = "endjin-devops"
-    $splat.Add("RequiredVersion", ($BuildModuleVersion -split '-')[0])
+    if (!(Get-Module -ListAvailable Endjin.RecommendedPractices.Build | ? { $_.Version -eq $BuildModuleVersion })) {
+        Write-Information "Installing 'Endjin.RecommendedPractices.Build' module..."
+        Install-Module Endjin.RecommendedPractices.Build -RequiredVersion $BuildModuleVersion -Scope CurrentUser -Force -Repository PSGallery
+    }
+    $BuildModulePath = "Endjin.RecommendedPractices.Build"
 }
 else {
-    Write-Host "BuildModulePath: $BuildModulePath"
+    Write-Information "BuildModulePath: $BuildModulePath"
 }
-$splat.Add("Name", $BuildModulePath)
-Import-Module @splat
-$ver = "{0} {1}" -f (Get-Module endjin-devops).Version, (Get-Module endjin-devops).PrivateData.PsData.PreRelease
-Write-Host "Using Build module version: $ver"
+Import-Module $BuildModulePath -RequiredVersion $BuildModuleVersion -Force
+# Load the build process & tasks
+. Endjin.RecommendedPractices.Build.tasks
 #endregion
 
-# Load the build configuration
-. $here/.devops/config.ps1
+#
+# Build process control options
+#
+$SkipInit = $false
+$SkipVersion = $false
+$SkipBuild = $false
+$CleanBuild = $Clean
+$SkipTest = $false
+$SkipTestReport = $false
+$SkipPackage = $false
+$SkipAnalysis = $false
+#
+# Build process configuration
+#
+$SolutionToBuild = (Resolve-Path (Join-Path $here ".\Solutions\Ais.Net.Receiver.sln")).Path
+$ProjectsToPublish = @(
+    # "Solutions/MySolution/MyWebSite/MyWebSite.csproj"
+)
+$NuSpecFilesToPackage = @(
+    # "Solutions/MySolution/MyProject/MyProject.nuspec"
+)
+$CreateGitHubRelease = $true
+$PublishNuGetPackagesAsGitHubReleaseArtefacts = $true
+# Synopsis: Build, Test and Package
+task . FullBuild
+# build extensibility tasks
+task RunFirst {}
+task PreInit {}
+task PostInit {}
+task PreVersion {}
+task PostVersion {}
+task PreBuild {
+    Write-Host "Initialising submodule"
+    exec { & git submodule init }
+    exec { & git submodule update }
+}
+task PostBuild {}
+task PreTest {
+    # Turn down logging when running Specs, otherwise it overloads the GitHub Actions web interface
+    if ($IsRunningOnBuildServer) {
+        $script:LogLevelBackup = $LogLevel
+        $script:LogLevel = "quiet"
+    }
+}
+task PostTest {
+    # Revert back to original logging level
+    if ($IsRunningOnBuildServer) {
+        $script:LogLevel = $LogLevelBackup
+    }
+}
+task PreTestReport {}
+task PostTestReport {}
+task PreAnalysis {}
+task PostAnalysis {}
+task PrePackage {}
+task PostPackage {}
+task PrePublish {}
+task PostPublish {}
+task RunLast {}
