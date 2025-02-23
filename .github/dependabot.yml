@@ -1,0 +1,15 @@
+version: 2
+updates:
+- package-ecosystem: nuget
+  directory: /Solutions
+  schedule:
+    interval: daily
+  open-pull-requests-limit: 10
+  groups:
+    microsoft-identity:
+      patterns:
+      - Microsoft.Identity.*
+    microsoft-extensions:
+      patterns:
+      - Microsoft.Extensions.*
+
