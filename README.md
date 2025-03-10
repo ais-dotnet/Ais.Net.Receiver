@@ -11,6 +11,13 @@ The AIS.NET project contains a series of layers, from a low-level high performan
 
 ![https://github.com/ais-dotnet](https://endjincdn.blob.core.windows.net/assets/ais-dotnet-project-layers.png)
 
+While Ais.NET aim for zero allocation, Ais.Net.Models and Ais.Net.Reciever aim for convenience of a higher level programming model, while still being efficient. Ais.Net.Receiver has run on a Raspberry Pi 4 robustly for many years, and uses very little CPU and Memory to ingest all the Norwegian Coastal Administration in real-time.
+
+```
+PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND
+679 root      20   0  287176  71536  43744 S   0.3   1.8  77:21.28 dotnet
+```
+
 # Ais.Net.Receiver
 
 A simple .NET AIS Receiver for capturing the Norwegian Coastal Administration's marine Automatic Identification System (AIS) [AIVDM/AIVDO](https://gpsd.gitlab.io/gpsd/AIVDM.html) NMEA message network data (available under [Norwegian license for public data (NLOD)](https://data.norge.no/nlod/en/2.0)) and persisting in Microsoft Azure Blob Storage.
