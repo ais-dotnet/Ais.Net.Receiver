@@ -216,6 +216,10 @@ These settings control the capturing NMEA sentences to Azure Blob Storage.
 - `containerName`: Name of the container to capture the NMEA sentences. You can use this to separate a local dev storage container from your production storage container, within the same storage account.
 - `writeBatchSize`: How many NMEA sentences to batch before writing to Azure Blob Storage.
 
+## Running as WASM
+
+A [Proof of Concept](https://github.com/endjin/componentize-dotnet-demo?tab=readme-ov-file#aisnetreceiverhostwasi-demo) using [componentize-dotnet](https://github.com/bytecodealliance/componentize-dotnet) and a custom [WASI](https://github.com/WebAssembly/WASI) implmementation of `WasiSocketNmeaStreamReader` enables the receiver to run as WASM via Wasmtime.
+
 ## Licenses
 
 [![GitHub license](https://img.shields.io/badge/license-Apache%202-blue.svg)](https://raw.githubusercontent.com/ais-dotnet/Ais.Net.Receiver/master/LICENSE)
