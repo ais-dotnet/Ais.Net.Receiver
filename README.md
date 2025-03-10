@@ -18,6 +18,17 @@ PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND
 679 root      20   0  287176  71536  43744 S   0.3   1.8  77:21.28 dotnet
 ```
 
+```
+:~ $ sudo systemctl status aisr
+● aisr.service - aisr
+   Loaded: loaded (/lib/systemd/system/aisr.service; enabled; vendor preset: enabled)
+   Active: active (running) since Mon 2025-03-03 12:17:19 GMT; 6 days ago
+ Main PID: 679 (dotnet)
+    Tasks: 16 (limit: 4915)
+   CGroup: /system.slice/aisr.service
+           └─679 /home/pi/.dotnet/dotnet /home/pi/aisr/Ais.Net.Receiver.Host.Console.dll
+```
+
 # Ais.Net.Receiver
 
 A simple .NET AIS Receiver for capturing the Norwegian Coastal Administration's marine Automatic Identification System (AIS) [AIVDM/AIVDO](https://gpsd.gitlab.io/gpsd/AIVDM.html) NMEA message network data (available under [Norwegian license for public data (NLOD)](https://data.norge.no/nlod/en/2.0)) and persisting in Microsoft Azure Blob Storage.
