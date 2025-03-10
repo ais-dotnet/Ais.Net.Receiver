@@ -298,6 +298,5 @@ This project has adopted a code of conduct adapted from the [Contributor Covenan
 [![Packaging](https://imm.endjin.com/api/imm/github/ais-dotnet/Ais.Net.Receiver/rule/547fd9f5-9caf-449f-82d9-4fba9e7ce13a?cache=false)](https://imm.endjin.com/api/imm/github/ais-dotnet/Ais.Net.Receiver/rule/547fd9f5-9caf-449f-82d9-4fba9e7ce13a?cache=false)
 
 [![Deployment](https://imm.endjin.com/api/imm/github/ais-dotnet/Ais.Net.Receiver/rule/edea4593-d2dd-485b-bc1b-aaaf18f098f9?cache=false)](https://imm.endjin.com/api/imm/github/ais-dotnet/Ais.Net.Receiver/rule/edea4593-d2dd-485b-bc1b-aaaf18f098f9?cache=false)
+
 [![OpenChain](https://imm.endjin.com/api/imm/github/ais-dotnet/Ais.Net.Receiver/rule/66efac1a-662c-40cf-b4ec-8b34c29e9fd7?cache=false)](https://imm.endjin.com/api/imm/github/ais-dotnet/Ais.Net.Receiver/rule/66efac1a-662c-40cf-b4ec-8b34c29e9fd7?cache=false)
-
-
