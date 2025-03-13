@@ -23,7 +23,7 @@
   <ItemGroup>
     <PackageReference Include="Ais.Net.Models" Version="0.3.1" />
     <PackageReference Include="Corvus.Retry" Version="1.0.7" />
-    <PackageReference Include="Endjin.RecommendedPractices.GitHub" Version="2.1.16">
+    <PackageReference Include="Endjin.RecommendedPractices.GitHub" Version="2.1.18">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
