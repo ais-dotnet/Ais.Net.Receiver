@@ -58,9 +58,9 @@
       },
       "System.Threading.Tasks.Dataflow": {
         "type": "Direct",
-        "requested": "[8.0.1, )",
-        "resolved": "8.0.1",
-        "contentHash": "4pjq2vIPNZkKA9asAXzf5IRBb7K+b0+UQZZbpv6g029sAPZgnKdg/NNOC/DbJL8SWqYcFMVjb/T/YEmb0PHUYg=="
+        "requested": "[9.0.3, )",
+        "resolved": "9.0.3",
+        "contentHash": "m/1HEjn2ipNAhZIVEaKbfkQZTInHJ5oG92Jiixs3ZOsiuF71QDPwTtem/YjBkRrXeOEqXb2itd06rTyKGY98tg=="
       },
       "Ais.Net": {
         "type": "Transitive",
