@@ -5,6 +5,7 @@
     <DockerTargetOS>Linux</DockerTargetOS>
     <DockerPublishLocally>False</DockerPublishLocally>
     <ProjectGuid>81dded9d-158b-e303-5f62-77a2896d2a5a</ProjectGuid>
+    <IsPackable>false</IsPackable>
   </PropertyGroup>
   <ItemGroup>
     <None Include="docker-compose.override.yml">
