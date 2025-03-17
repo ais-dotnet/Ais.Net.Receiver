@@ -74,7 +74,7 @@ param (
     [version] $BuildModuleVersion = "1.5.12",
 
     [Parameter()]
-    [version] $InvokeBuildModuleVersion = "5.11.3"
+    [version] $InvokeBuildModuleVersion = "5.12.1"
 )
 $ErrorActionPreference = $ErrorActionPreference ? $ErrorActionPreference : 'Stop'
 $InformationPreference = 'Continue'
@@ -138,12 +138,12 @@ $NuSpecFilesToPackage = @(
 )
 
 $ContainerRegistryType = 'docker'
-$ContainerRegistryFqdn = 'docker.io'
-$ContainerRegistryPublishPrefix = ''
+$ContainerRegistryPublishPrefix = 'endjin'  # publish the container images to the 'endjin' DockerHub namespace
+$ContainerImageVersionOverride = 'local'    # override the GitVersion-generated SemVer used for tagging container images
 $ContainersToBuild = @(
     @{
        Dockerfile = 'Solutions/Ais.Net.Receiver.Host.Console/Dockerfile'
-       ImageName = 'endjin/ais-dotnet-receiver'
+       ImageName = 'ais-dotnet-receiver'
        ContextDir = "$here/Solutions"
        Arguments = @{ BUILD_CONFIGURATION = $Configuration; }
     }
@@ -151,8 +151,10 @@ $ContainersToBuild = @(
 
 $CreateGitHubRelease = $true
 $PublishNuGetPackagesAsGitHubReleaseArtefacts = $true
+
 # Synopsis: Build, Test and Package
 task . FullBuild
+
 # build extensibility tasks
 task RunFirst {}
 task PreInit {}
@@ -169,6 +171,20 @@ task PreAnalysis {}
 task PostAnalysis {}
 task PrePackage {}
 task PostPackage {}
-task PrePublish {}
+task PrePublish {
+    # Ensure the build agent is logged-in to DockerHub before trying to publish any images
+    if ($env:DOCKERHUB_ACCESSTOKEN) {
+        if (!$DockerRegistryUsername) {
+            Write-Warning "The 'DockerRegistryUsername' variable is not set - skipping DockerHub login, publishing container images may fail."
+        }
+        else {
+            Write-Build White "Attempting to login to DockerHub as user '$DockerRegistryUsername'..."
+            $env:DOCKERHUB_ACCESSTOKEN | docker login -u $DockerRegistryUsername --password-stdin
+        }
+    }
+    else {
+        Write-Warning "The 'DOCKERHUB_ACCESSTOKEN' environment variable is not set - skipping DockerHub login, publishing container images may fail."
+    }
+}
 task PostPublish {}
 task RunLast {}
