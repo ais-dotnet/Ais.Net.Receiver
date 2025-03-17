@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Ais.Net.Receiver.Host.Console": {
+      "commandName": "Project"
+    },
+    "Container (Dockerfile)": {
+      "commandName": "Docker"
+    }
+  }
+}
