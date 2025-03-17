@@ -131,11 +131,24 @@ $SkipAnalysis = $false
 #
 $SolutionToBuild = (Resolve-Path (Join-Path $here ".\Solutions\Ais.Net.Receiver.sln")).Path
 $ProjectsToPublish = @(
-    # "Solutions/MySolution/MyWebSite/MyWebSite.csproj"
+   "Solutions/Ais.Net.Receiver.Host.Console/Ais.Net.Receiver.Host.Console.csproj"
 )
 $NuSpecFilesToPackage = @(
     # "Solutions/MySolution/MyProject/MyProject.nuspec"
 )
+
+$ContainerRegistryType = 'docker'
+$ContainerRegistryFqdn = 'docker.io'
+$ContainerRegistryPublishPrefix = ''
+$ContainersToBuild = @(
+    @{
+       Dockerfile = '.Solutions/Ais.Net.Receiver.Host.Console/Dockerfile'
+       ImageName = 'endjin/ais-dotnet-receiver'
+       ContextDir = './_packages/ais-net-receiver-host-console'
+       Arguments = @{ Configuration = $Configuration; SrcDir = '.' }
+    }
+)
+
 $CreateGitHubRelease = $true
 $PublishNuGetPackagesAsGitHubReleaseArtefacts = $true
 # Synopsis: Build, Test and Package
@@ -146,25 +159,10 @@ task PreInit {}
 task PostInit {}
 task PreVersion {}
 task PostVersion {}
-task PreBuild {
-    Write-Host "Initialising submodule"
-    exec { & git submodule init }
-    exec { & git submodule update }
-}
+task PreBuild {}
 task PostBuild {}
-task PreTest {
-    # Turn down logging when running Specs, otherwise it overloads the GitHub Actions web interface
-    if ($IsRunningOnBuildServer) {
-        $script:LogLevelBackup = $LogLevel
-        $script:LogLevel = "quiet"
-    }
-}
-task PostTest {
-    # Revert back to original logging level
-    if ($IsRunningOnBuildServer) {
-        $script:LogLevel = $LogLevelBackup
-    }
-}
+task PreTest {}
+task PostTest {}
 task PreTestReport {}
 task PostTestReport {}
 task PreAnalysis {}
