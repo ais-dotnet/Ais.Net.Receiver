@@ -131,7 +131,7 @@ $SkipAnalysis = $false
 #
 $SolutionToBuild = (Resolve-Path (Join-Path $here ".\Solutions\Ais.Net.Receiver.sln")).Path
 $ProjectsToPublish = @(
-   "Solutions/Ais.Net.Receiver.Host.Console/Ais.Net.Receiver.Host.Console.csproj"
+    # "Solutions/Ais.Net.Receiver.Host.Console/Ais.Net.Receiver.Host.Console.csproj"
 )
 $NuSpecFilesToPackage = @(
     # "Solutions/MySolution/MyProject/MyProject.nuspec"
@@ -142,10 +142,10 @@ $ContainerRegistryFqdn = 'docker.io'
 $ContainerRegistryPublishPrefix = ''
 $ContainersToBuild = @(
     @{
-       Dockerfile = '.Solutions/Ais.Net.Receiver.Host.Console/Dockerfile'
+       Dockerfile = 'Solutions/Ais.Net.Receiver.Host.Console/Dockerfile'
        ImageName = 'endjin/ais-dotnet-receiver'
-       ContextDir = './_packages/ais-net-receiver-host-console'
-       Arguments = @{ Configuration = $Configuration; SrcDir = '.' }
+       ContextDir = "$here/Solutions"
+       Arguments = @{ BUILD_CONFIGURATION = $Configuration; }
     }
 )
 
