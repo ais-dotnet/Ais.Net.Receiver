@@ -30,13 +30,30 @@ public static class ReceiverHostExtensions
                 (messages, sentences, errors) => (messages, sentences, errors));
 
         return runningCounts.Buffer(period)
-            .Select(window => (window[0], window[^1]))
-            .Select<((long, long, long), (long, long, long)), (long, long, long)>(
-                (((long Messages, long Sentences, long Errors) First,
-                        (long Messages, long Sentences, long Errors) Last) pair)
-                    => (pair.Last.Messages - pair.First.Messages,
-                        pair.Last.Sentences - pair.First.Sentences,
-                        pair.Last.Errors - pair.First.Errors));
+            .Select(window =>
+            {
+                // Handle empty window or window with only one element
+                if (window.Count == 0)
+                {
+                    return (Message: 0L, Sentence: 0L, Error: 0L);
+                }
+
+                if (window.Count == 1)
+                {
+                    // With only one element, there's no difference to calculate
+                    return (Message: 0L, Sentence: 0L, Error: 0L);
+                }
+
+                // Normal case with at least two elements
+                (long Messages, long Sentences, long Errors) first = window[0];
+                (long Messages, long Sentences, long Errors) last = window[^1];
+
+                return (
+                    Message: last.Messages - first.Messages,
+                    Sentence: last.Sentences - first.Sentences,
+                    Error: last.Errors - first.Errors
+                );
+            });
     }
 
     /// <summary>
