@@ -149,7 +149,7 @@ $ContainersToBuild = @(
     }
 )
 
-$CreateGitHubRelease = $true
+$CreateGitHubRelease = $false   # temporarily disable until we figure out why the git tag is being added to 'main'
 $PublishNuGetPackagesAsGitHubReleaseArtefacts = $true
 
 # Synopsis: Build, Test and Package
