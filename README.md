@@ -159,6 +159,7 @@ sudo usermod -aG docker $USER
 sudo reboot
 sudo apt install docker-compose
 mkdir aisr
+sudo apt-get update && sudo apt-get upgrade && sudo apt autoremove
 exit
 ```
 
