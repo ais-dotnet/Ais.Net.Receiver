@@ -54,7 +54,7 @@ public class ReceiverHost
 
         processor.Messages.Subscribe(this.messages);
 
-        await foreach (string? message in this.GetAsync(cancellationToken).WithCancellation(cancellationToken))
+        await foreach (string? message in this.GetAsync(cancellationToken))
         {
             static void ProcessLineNonAsync(string line, INmeaLineStreamProcessor lineStreamProcessor, Subject<(Exception Exception, string Line)> errorSubject)
             {
