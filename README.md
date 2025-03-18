@@ -118,9 +118,7 @@ From the command line: `dotnet Ais.Net.Receiver.Host.Console.exe`
 
 # Raspberry Pi
 
-As the AIS.NET stack is written in .NET you can publish the Ais.Net.Receiver.Host.Console application with a target runtime of Portable. This will allow you to run the receiver on a Raspberry Pi if you want to capture your own AIS data.
-
-For reliability you can run `Ais.Net.Receiver.Host.Console.dll` as daemon.
+You have two options for running the AIS Receiver on a Raspberry Pi: using a Docker container or as a systemd service.
 
 ## Installation
 
@@ -129,8 +127,6 @@ The combination of Windows Terminal, .NET and PowerShell make a Raspberry Pi a v
 Install [Windows Terminal](https://github.com/microsoft/terminal). You can download Windows Terminal from the [Microsoft Store](https://www.microsoft.com/en-gb/p/windows-terminal/9n0dx20hk701) or from the [GitHub releases page](https://github.com/microsoft/terminal/releases).
 
 Open Windows Terminal and use `ssh pi@<Raspberry PI IP Address>` to connect to your Pi.
-
-[Follow this guide](https://endjin.com/blog/2019/09/passwordless-ssh-from-windows-10-to-raspberry-pi) if you want to configure your Pi to run passwordless using certificates.
 
 ### Using Docker
 
@@ -176,7 +172,7 @@ cd aisr
 docker-compose up -d
 ```
 
-Use Azure Storage Explorer to browse to where files are captured. You should see entries added within the first minute of the service starting.
+This will automatically pull the latest [image from Docker Hub](https://hub.docker.com/r/endjin/ais-dotnet-receiver) and run the AIS Receiver using the Azure Storage Connection String you configured as an environment variable. Use [Azure Storage Explorer](https://azure.microsoft.com/en-us/features/storage-explorer/) to browse to where files are captured. You should see entries added within the first minute of the service starting.
 
 ### Install as a systemd service
 
