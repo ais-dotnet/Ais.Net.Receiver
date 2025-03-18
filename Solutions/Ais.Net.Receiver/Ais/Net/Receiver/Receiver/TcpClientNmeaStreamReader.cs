@@ -33,15 +33,6 @@ public class TcpClientNmeaStreamReader : INmeaStreamReader
         try
         {
             await this.tcpClient.ConnectAsync(host, port, cancellationToken);
-
-            // Configure socket options for better detection of broken connections
-            if (this.tcpClient.Client is { } socket)
-            {
-                socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
-                socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveTime, 30);
-                socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveInterval, 5);
-            }
-
             this.stream = this.tcpClient.GetStream();
             this.reader = new StreamReader(this.stream);
         }
