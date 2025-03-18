@@ -16,15 +16,9 @@ public class TcpClientNmeaStreamReader : INmeaStreamReader
     private NetworkStream? stream;
     private StreamReader? reader;
 
-    public bool DataAvailable
-    {
-        get { return this.stream?.DataAvailable ?? false; }
-    }
+    public bool DataAvailable => this.stream?.DataAvailable ?? false;
 
-    public bool Connected
-    {
-        get { return this.tcpClient?.Connected ?? (this.stream?.Socket.Connected) ?? false; }
-    }
+    public bool Connected => this.tcpClient?.Connected ?? (this.stream?.Socket.Connected) ?? false;
 
     public async Task ConnectAsync(string host, int port, CancellationToken cancellationToken)
     {
