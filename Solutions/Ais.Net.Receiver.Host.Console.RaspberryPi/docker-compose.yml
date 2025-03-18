@@ -13,4 +13,6 @@ services:
       - Storage__connectionString=${AIS_NET_RECEIVER_AZURE_CONNECTION_STRING}
       - Storage__containerName=nmea-ais-dev
       - Storage__writeBatchSize=500
+    dns:
+      - 8.8.8.8
     restart: unless-stopped
