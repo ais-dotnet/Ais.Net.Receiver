@@ -55,10 +55,13 @@ jobs:
     - uses: endjin/Endjin.RecommendedPractices.GitHubActions/actions/prepare-env-vars-and-secrets@main
       id: prepareEnvVarsAndSecrets
       with:
+        # We disable the Container part of the build when running in GHA, since we need to use the
+        # Docker action to build the multi-arch images at the end of the build.
         environmentVariablesYaml: |
           BUILDVAR_NuGetPublishSource: "${{ startsWith(github.ref, 'refs/tags/') && 'https://api.nuget.org/v3/index.json' || format('https://nuget.pkg.github.com/{0}/index.json', github.repository_owner) }}"
           BUILDVAR_ContainerImageVersionOverride: ""
           BUILDVAR_DockerRegistryUsername: "${{ secrets.DOCKERHUB_USERNAME }}"
+          BUILDVAR_SkipContainerImages: "true"
         secretsYaml: |
           NUGET_API_KEY: "${{ startsWith(github.ref, 'refs/tags/') && secrets.NUGET_APIKEY || secrets.BUILD_PUBLISHER_PAT }}"
           DOCKERHUB_ACCESSTOKEN: "${{ secrets.DOCKERHUB_ACCESSTOKEN }}"
