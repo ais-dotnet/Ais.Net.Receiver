@@ -79,7 +79,7 @@ jobs:
         token: ${{ secrets.GITHUB_TOKEN }}
 
     - run: |
-        & dotnet-gitversion /output json /nofetch /config .\GitVersion.yml | Tee-Object -Variable gitVersionOutput
+        & dotnet-gitversion /output json /nofetch /config '${{ github.workspace }}/GitVersion.yml' | Tee-Object -Variable gitVersionOutput
         $semVer = $gitVersionOutput | ConvertFrom-Json | Select-Object -ExpandProperty SemVer
         Write-Host "Image version tag will be: $semVer"
         "SemVer=$semVer" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
