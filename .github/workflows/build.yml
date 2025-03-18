@@ -75,7 +75,7 @@ jobs:
 
     - run: |
         $semVer = & dotnet-gitversion /output json /nofetch /config .\GitVersion.yml | ConvertFrom-Json | Select-Object -ExpandProperty SemVer
-        "SemVer=$semVer" | Out-File $env:GITHUB_OUTPUT"
+        "SemVer=$semVer" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
       id: get_semver
       name: Get SemVer
       shell: pwsh
