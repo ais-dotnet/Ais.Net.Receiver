@@ -4,13 +4,13 @@
     "port": "5631",
     "loggerVerbosity": "Minimal",
     "statisticsPeriodicity": "00:00:01:00",
-    "retryAttempts": 100,
+    "retryAttempts": 5,
     "retryPeriodicity": "00:00:00:01"
   },
   "Storage": {
-    "enableCapture": false,
+    "enableCapture": true,
     "connectionString": "",
-    "containerName": "nmea-ais",
+    "containerName": "nmea-ais-dev",
     "writeBatchSize": 500
   }
 }

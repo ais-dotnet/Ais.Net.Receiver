@@ -11,7 +11,7 @@ The AIS.NET project contains a series of layers, from a low-level high performan
 
 ![https://github.com/ais-dotnet](https://endjincdn.blob.core.windows.net/assets/ais-dotnet-project-layers.png)
 
-While Ais.NET aim for zero allocation, Ais.Net.Models and Ais.Net.Reciever aim for convenience of a higher level programming model, while still being efficient. Ais.Net.Receiver has run on a Raspberry Pi 4 robustly for many years, and uses very little CPU and Memory to ingest all the Norwegian Coastal Administration in real-time.
+While `Ais.Net` aims for zero allocation, `Ais.Net.Models` and `Ais.Net.Receiver` aim for convenience of a higher level programming model, while still being efficient. `Ais.Net.Receiver` has run on a Raspberry Pi 4 as a systemd service robustly for many years, and uses very little CPU and Memory to ingest all the Norwegian Coastal Administration in real-time.
 
 ```
 PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND
@@ -28,6 +28,8 @@ PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND
    CGroup: /system.slice/aisr.service
            └─679 /home/pi/.dotnet/dotnet /home/pi/aisr/Ais.Net.Receiver.Host.Console.dll
 ```
+
+It is also now available as a docker container for ease of install and management.
 
 # Ais.Net.Receiver
 
@@ -101,7 +103,7 @@ Update the values in the `settings.json` file:
   "Ais": {
     "host": "153.44.253.27",
     "port": "5631",
-    "retryAttempts": 100,
+    "retryAttempts": 5,
     "retryPeriodicity": "00:00:00:00.500"
   },
   "Storage": {
@@ -116,9 +118,7 @@ From the command line: `dotnet Ais.Net.Receiver.Host.Console.exe`
 
 # Raspberry Pi
 
-As the AIS.NET stack is written in .NET 6.0 and .NET Standard you can publish the Ais.Net.Receiver.Host.Console application with a target runtime of Portable. This will allow you to run the receiver on a Raspberry Pi if you want to capture your own AIS data.
-
-For reliability you can run `Ais.Net.Receiver.Host.Console.dll` as daemon.
+You have two options for running the AIS Receiver on a Raspberry Pi: using a Docker container or as a systemd service.
 
 ## Installation
 
@@ -128,9 +128,60 @@ Install [Windows Terminal](https://github.com/microsoft/terminal). You can downl
 
 Open Windows Terminal and use `ssh pi@<Raspberry PI IP Address>` to connect to your Pi.
 
-### Install .NET 6.0
+### Using Docker
 
-Use the following commands to install .NET 6.0 on your Pi.
+These steps assume that you have [configured passwordless authentication on your Raspberry Pi](https://endjin.com/blog/2019/09/passwordless-ssh-from-windows-10-to-raspberry-pi).
+
+Set up the required environment variables on your Raspberry Pi:
+
+```bash
+ssh user@pi
+nano ~/.bashrc
+```
+
+Add the following lines to the end of the file:
+
+```bash
+export AIS_NET_RECEIVER_AZURE_CONNECTION_STRING="<YOUR_CONNECTION_STRING>"
+```
+
+Save & Exit nano. To load the environment variables, then run:
+
+```bash
+source ~/.bashrc
+```
+
+Install Docker & Docker Composer on your Raspberry Pi:
+
+```bash
+curl -sSL https://get.docker.com | sh
+sudo usermod -aG docker $USER
+sudo reboot
+sudo apt install docker-compose
+mkdir aisr
+sudo apt-get update && sudo apt-get upgrade && sudo apt autoremove
+exit
+```
+
+On your host machine, open Windows Terminal:
+
+```bash
+cd ./Solutions/Ais.Net.Receiver.Host.Console.RaspberryPi
+scp .\docker-compose.yml user@pi:~/aisr/
+ssh user@pi
+cd aisr
+docker-compose up -d
+```
+
+This will automatically pull the latest [image from Docker Hub](https://hub.docker.com/r/endjin/ais-dotnet-receiver) and run the AIS Receiver using the Azure Storage Connection String you configured as an environment variable. Use [Azure Storage Explorer](https://azure.microsoft.com/en-us/features/storage-explorer/) to browse to where files are captured. You should see entries added within the first minute of the service starting.
+
+### Install as a systemd service
+
+If you want to run the service as a daemon, you can use SystemD to manage the service.
+
+#### Install .NET
+
+Use the following commands to install .NET on your Pi.
 
 1. `curl -sSL https://dot.net/v1/dotnet-install.sh | bash /dev/stdin --channel Current`
 1. `echo 'export DOTNET_ROOT=$HOME/.dotnet' >> ~/.bashrc`
@@ -138,19 +189,19 @@ Use the following commands to install .NET 6.0 on your Pi.
 1. `source ~/.bashrc`
 1. `dotnet --version`
 
-### Install PowerShell 7.x
+#### Install PowerShell 7.x
 
 Use the following commands to install PowerShell on your Pi.
 
-1. Download the latest package `wget https://github.com/PowerShell/PowerShell/releases/download/v7.2.7/powershell-7.2.7-linux-arm32.tar.gz`
+1. Download the latest package `wget https://github.com/PowerShell/PowerShell/releases/download/v7.5.0/powershell-7.5.0-linux-arm64.tar.gz`
 1. Create a directory for it to be unpacked into `mkdir ~/powershell`
-1. Unpack `tar -xvf ./powershell-7.2.7-linux-arm32.tar.gz -C ~/powershell`
+1. Unpack `tar -xvf ./powershell-7.5.0-linux-arm64.tar.gz -C ~/powershell`
 1. Give it executable rights `sudo chmod +x /opt/microsoft/powershell/7/pwsh`
 1. Create a symbolic link `sudo ln -s /opt/microsoft/powershell/7/pwsh /usr/bin/pwsh`
 
 use the command `pwsh` to enter the PowerShell session.
 
-### Install Ais.Net.Receiver.Host.Console
+#### Install Ais.Net.Receiver.Host.Console
 
 2. From the solution root, open a command prompt and type `dotnet publish -c Release .\Solutions\Ais.Net.Receiver.sln`
 3. Add your Azure Blob Storage Account connection string to `settings.json`
@@ -168,7 +219,7 @@ If you need to look at / edit the deployed `aisr.service` use `sudo nano  /lib/s
 
 Use [Azure Storage Explorer](https://azure.microsoft.com/en-us/features/storage-explorer/) to browse to where files are captured.
 
-### Configuration
+#### Configuration
 
 Configuration is read from `settings.json` and can also be overridden for local development by using a `settings.local.json` file.
 
@@ -179,7 +230,7 @@ Configuration is read from `settings.json` and can also be overridden for local 
     "port": "5631",
     "loggerVerbosity": "Minimal", 
     "statisticsPeriodicity": "00:01:00",
-    "retryAttempts": 100,
+    "retryAttempts": 5,
     "retryPeriodicity": "00:00:00:00.500"
   },
   "Storage": {
@@ -191,7 +242,7 @@ Configuration is read from `settings.json` and can also be overridden for local 
 }
 ```
 
-#### AIS
+##### AIS
 
 These settings control the `ReceiverHost` and its behaviour.
 
@@ -206,8 +257,8 @@ These settings control the `ReceiverHost` and its behaviour.
 - `statisticsPeriodicity`: TimeSpan defining the sample rate of statistics to display
 - `retryAttempts`: Number of retry attempts when a connection error occurs
 - `retryPeriodicity`: How long to wait before a retry attempt.
-- 
-#### Storage
+  
+##### Storage
 
 These settings control the capturing NMEA sentences to Azure Blob Storage.
 
@@ -218,7 +269,7 @@ These settings control the capturing NMEA sentences to Azure Blob Storage.
 
 ## Running as WASM
 
-A [Proof of Concept](https://github.com/endjin/componentize-dotnet-demo?tab=readme-ov-file#aisnetreceiverhostwasi-demo) using [componentize-dotnet](https://github.com/bytecodealliance/componentize-dotnet) and a custom [WASI](https://github.com/WebAssembly/WASI) implmementation of `WasiSocketNmeaStreamReader` enables the receiver to run as WASM via Wasmtime.
+A [Proof of Concept](https://github.com/endjin/componentize-dotnet-demo?tab=readme-ov-file#aisnetreceiverhostwasi-demo) using [componentize-dotnet](https://github.com/bytecodealliance/componentize-dotnet) and a custom [WASI](https://github.com/WebAssembly/WASI) implementation of `WasiSocketNmeaStreamReader` enables the receiver to run as WASM via Wasmtime.
 
 ## Licenses
 

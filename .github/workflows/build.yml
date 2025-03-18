@@ -33,47 +33,81 @@ permissions:
   packages: write  # enable publishing packages
   pull-requests: write  # enable test result annotations
 
+# Since we need to build & publish a container image to DockerHub we need to use the shared workflow 
+# that allows us to run the build inside a single job. When using the multi-job reusable workflow
+# we would use ACR Tasks to build the image, but this will not work when publishing to DockerHub.
 jobs:
-  prepareConfig:
-    name: Prepare Configuration
+  build:
+    name: Run Build
     runs-on: ubuntu-latest
     outputs:
-      RESOLVED_ENV_VARS: ${{ steps.prepareEnvVarsAndSecrets.outputs.environmentVariablesYamlBase64 }}
-      RESOLVED_SECRETS: ${{ steps.prepareEnvVarsAndSecrets.outputs.secretsYamlBase64 }}
+      semver: ${{ steps.run_build.outputs.semver }}
+      major: ${{ steps.run_build.outputs.major }}
+      majorMinor: ${{ steps.run_build.outputs.majorMinor }}
+      preReleaseTag: ${{ steps.run_build.outputs.preReleaseTag }}
+
     steps:
-    # Declare any environment variables and/or secrets that need to be available inside the build process
+    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 #v4.2.2
+      with:
+        fetch-depth: 0
+        submodules: true
+      
     - uses: endjin/Endjin.RecommendedPractices.GitHubActions/actions/prepare-env-vars-and-secrets@main
       id: prepareEnvVarsAndSecrets
       with:
+        # We disable the Container part of the build when running in GHA, since we need to use the
+        # Docker action to build the multi-arch images at the end of the build.
         environmentVariablesYaml: |
           BUILDVAR_NuGetPublishSource: "${{ startsWith(github.ref, 'refs/tags/') && 'https://api.nuget.org/v3/index.json' || format('https://nuget.pkg.github.com/{0}/index.json', github.repository_owner) }}"
+          BUILDVAR_ContainerImageVersionOverride: ""
+          BUILDVAR_DockerRegistryUsername: "${{ secrets.DOCKERHUB_USERNAME }}"
+          BUILDVAR_SkipContainerImages: "true"
         secretsYaml: |
           NUGET_API_KEY: "${{ startsWith(github.ref, 'refs/tags/') && secrets.NUGET_APIKEY || secrets.BUILD_PUBLISHER_PAT }}"
+          DOCKERHUB_ACCESSTOKEN: "${{ secrets.DOCKERHUB_ACCESSTOKEN }}"
         secretsEncryptionKey: ${{ secrets.SHARED_WORKFLOW_KEY }}
 
+    - uses: endjin/Endjin.RecommendedPractices.GitHubActions/actions/run-build-process@main
+      id: run_build
+      with:
+        netSdkVersion: '8.0.x'
+        additionalNetSdkVersion: '9.0.x'
+        forcePublish: ${{ github.event.inputs.forcePublish == 'true' }}
+        sbomOutputStorageAccountName: ${{ vars.SBOM_OUTPUT_STORAGE_ACCOUNT_NAME }}
+        sbomOutputStorageContainerName: ${{ vars.SBOM_OUTPUT_STORAGE_CONTAINER_NAME }}
+        buildEnv: ${{ steps.prepareEnvVarsAndSecrets.outputs.environmentVariablesYamlBase64 }}
+        buildSecrets: ${{ steps.prepareEnvVarsAndSecrets.outputs.secretsYamlBase64 }}
+        buildAzureCredentials: ${{ secrets.AZURE_READER_CREDENTIALS }}
+        secretsEncryptionKey: ${{ secrets.SHARED_WORKFLOW_KEY }}
+        token: ${{ secrets.GITHUB_TOKEN }}
 
-  build:
-    needs: prepareConfig
-    uses: endjin/Endjin.RecommendedPractices.GitHubActions/.github/workflows/scripted-build-pipeline.yml@main
-    with:
-      netSdkVersion: '8.0.x'
-      additionalNetSdkVersion: '9.0.x'
-      # workflow_dispatch inputs are always strings, the type property is just for the UI
-      forcePublish: ${{ github.event.inputs.forcePublish == 'true' }}
-      skipCleanup: ${{ github.event.inputs.skipCleanup == 'true' }}
-      # testArtifactName: ''
-      # testArtifactPath: ''
-      compilePhaseEnv: ${{ needs.prepareConfig.outputs.RESOLVED_ENV_VARS }}
-      testPhaseEnv: ${{ needs.prepareConfig.outputs.RESOLVED_ENV_VARS }}
-      packagePhaseEnv: ${{ needs.prepareConfig.outputs.RESOLVED_ENV_VARS }}
-      publishPhaseEnv: ${{ needs.prepareConfig.outputs.RESOLVED_ENV_VARS }}
-    secrets:
-      compilePhaseAzureCredentials: ${{ secrets.AZURE_READER_CREDENTIALS }}
-      # testPhaseAzureCredentials: ${{ secrets.TESTS_KV_READER_CREDENTIALS }}
-      # packagePhaseAzureCredentials: ${{ secrets.AZURE_PUBLISH_CREDENTIALS }}
-      # publishPhaseAzureCredentials: ${{ secrets.AZURE_PUBLISH_CREDENTIALS }}
-      # compilePhaseSecrets: ${{ needs.prepareConfig.outputs.RESOLVED_SECRETS }}
-      # testPhaseSecrets: ${{ needs.prepareConfig.outputs.RESOLVED_SECRETS }}
-      # packagePhaseSecrets: ${{ needs.prepareConfig.outputs.RESOLVED_SECRETS }}
-      publishPhaseSecrets: ${{ needs.prepareConfig.outputs.RESOLVED_SECRETS }}
-      secretsEncryptionKey: ${{ secrets.SHARED_WORKFLOW_KEY }}
+    - run: |
+        & dotnet-gitversion /output json /nofetch /config '${{ github.workspace }}/GitVersion.yml' | Tee-Object -Variable gitVersionOutput
+        $semVer = $gitVersionOutput | ConvertFrom-Json | Select-Object -ExpandProperty SemVer
+        Write-Host "Image version tag will be: $semVer"
+        "SemVer=$semVer" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+      id: get_semver
+      name: Get SemVer
+      shell: pwsh
+
+    # Additional build steps to produce an ARM version of the container image
+    - name: Login to Docker Hub
+      uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772    # v3.4.0
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_ACCESSTOKEN }}
+
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392   # v3.6.0
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2   # v3.10.0
+
+    - name: Build ARM-based container image
+      uses: docker/build-push-action@471d1dc4e07e5cdedd4c2171150001c434f0b7a4   # v6.15.0
+      with:
+        context: ./Solutions
+        file: ./Solutions/Ais.Net.Receiver.Host.Console/Dockerfile
+        platforms: linux/amd64,linux/arm64
+        push: ${{ startsWith(github.ref, 'refs/tags/') || github.event.inputs.forcePublish == 'true' }}
+        tags: "endjin/ais-dotnet-receiver:${{ steps.get_semver.outputs.SemVer }}"

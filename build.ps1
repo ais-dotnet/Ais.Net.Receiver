@@ -74,7 +74,7 @@ param (
     [version] $BuildModuleVersion = "1.5.12",
 
     [Parameter()]
-    [version] $InvokeBuildModuleVersion = "5.11.3"
+    [version] $InvokeBuildModuleVersion = "5.12.1"
 )
 $ErrorActionPreference = $ErrorActionPreference ? $ErrorActionPreference : 'Stop'
 $InformationPreference = 'Continue'
@@ -131,46 +131,60 @@ $SkipAnalysis = $false
 #
 $SolutionToBuild = (Resolve-Path (Join-Path $here ".\Solutions\Ais.Net.Receiver.sln")).Path
 $ProjectsToPublish = @(
-    # "Solutions/MySolution/MyWebSite/MyWebSite.csproj"
+    # "Solutions/Ais.Net.Receiver.Host.Console/Ais.Net.Receiver.Host.Console.csproj"
 )
 $NuSpecFilesToPackage = @(
     # "Solutions/MySolution/MyProject/MyProject.nuspec"
 )
-$CreateGitHubRelease = $true
+
+$ContainerRegistryType = 'docker'
+$ContainerRegistryPublishPrefix = 'endjin'  # publish the container images to the 'endjin' DockerHub namespace
+$ContainerImageVersionOverride = 'local'    # override the GitVersion-generated SemVer used for tagging container images
+$ContainersToBuild = @(
+    @{
+       Dockerfile = 'Solutions/Ais.Net.Receiver.Host.Console/Dockerfile'
+       ImageName = 'ais-dotnet-receiver'
+       ContextDir = "$here/Solutions"
+       Arguments = @{ BUILD_CONFIGURATION = $Configuration; }
+    }
+)
+
+$CreateGitHubRelease = $false   # temporarily disable until we figure out why the git tag is being added to 'main'
 $PublishNuGetPackagesAsGitHubReleaseArtefacts = $true
+
 # Synopsis: Build, Test and Package
 task . FullBuild
+
 # build extensibility tasks
 task RunFirst {}
 task PreInit {}
 task PostInit {}
 task PreVersion {}
 task PostVersion {}
-task PreBuild {
-    Write-Host "Initialising submodule"
-    exec { & git submodule init }
-    exec { & git submodule update }
-}
+task PreBuild {}
 task PostBuild {}
-task PreTest {
-    # Turn down logging when running Specs, otherwise it overloads the GitHub Actions web interface
-    if ($IsRunningOnBuildServer) {
-        $script:LogLevelBackup = $LogLevel
-        $script:LogLevel = "quiet"
-    }
-}
-task PostTest {
-    # Revert back to original logging level
-    if ($IsRunningOnBuildServer) {
-        $script:LogLevel = $LogLevelBackup
-    }
-}
+task PreTest {}
+task PostTest {}
 task PreTestReport {}
 task PostTestReport {}
 task PreAnalysis {}
 task PostAnalysis {}
 task PrePackage {}
 task PostPackage {}
-task PrePublish {}
+task PrePublish {
+    # Ensure the build agent is logged-in to DockerHub before trying to publish any images
+    if ($env:DOCKERHUB_ACCESSTOKEN) {
+        if (!$DockerRegistryUsername) {
+            Write-Warning "The 'DockerRegistryUsername' variable is not set - skipping DockerHub login, publishing container images may fail."
+        }
+        else {
+            Write-Build White "Attempting to login to DockerHub as user '$DockerRegistryUsername'..."
+            $env:DOCKERHUB_ACCESSTOKEN | docker login -u $DockerRegistryUsername --password-stdin
+        }
+    }
+    else {
+        Write-Warning "The 'DOCKERHUB_ACCESSTOKEN' environment variable is not set - skipping DockerHub login, publishing container images may fail."
+    }
+}
 task PostPublish {}
 task RunLast {}

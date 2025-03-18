@@ -34,6 +34,7 @@ public static class Program
         IConfiguration config = new ConfigurationBuilder()
             .AddJsonFile("settings.json", true, true)
             .AddJsonFile("settings.local.json", true, true)
+            .AddEnvironmentVariables()
             .Build();
 
         AisConfig? aisConfig = config.GetSection("Ais").Get<AisConfig>();

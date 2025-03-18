@@ -4,6 +4,7 @@
 
 namespace Ais.Net.Receiver.Receiver;
 
+using System;
 using System.IO;
 using System.Net.Sockets;
 using System.Threading;
@@ -16,33 +17,52 @@ public class TcpClientNmeaStreamReader : INmeaStreamReader
     private StreamReader? reader;
 
     public bool DataAvailable => this.stream?.DataAvailable ?? false;
-    
-    public bool Connected => this.tcpClient?.Connected ?? false;
+
+    public bool Connected => (this.tcpClient?.Connected ?? false) && (this.stream?.Socket.Connected ?? false);
 
     public async Task ConnectAsync(string host, int port, CancellationToken cancellationToken)
     {
         this.tcpClient = new TcpClient();
-        await this.tcpClient.ConnectAsync(host, port, cancellationToken);
-        this.stream = this.tcpClient.GetStream();
-        this.reader = new StreamReader(this.stream);
+
+        try
+        {
+            await this.tcpClient.ConnectAsync(host, port, cancellationToken);
+            this.stream = this.tcpClient.GetStream();
+            this.reader = new StreamReader(this.stream);
+        }
+        catch (Exception)
+        {
+            // If connection fails, clean up resources
+            await this.DisposeAsync();
+            throw;
+        }
     }
 
     public async Task<string?> ReadLineAsync(CancellationToken cancellationToken)
     {
-        return this.reader is not null 
+        return this.reader is not null
             ? await this.reader.ReadLineAsync(cancellationToken).ConfigureAwait(false)
             : null;
     }
 
     public async ValueTask DisposeAsync()
     {
-        this.reader?.Dispose();
+        if (this.reader is not null)
+        {
+            try { this.reader.Dispose(); } catch { /* Ignore any errors during cleanup */ }
+            this.reader = null;
+        }
 
         if (this.stream is not null)
         {
-            await this.stream.DisposeAsync();
+            try { await this.stream.DisposeAsync(); } catch { /* Ignore any errors during cleanup */ }
+            this.stream = null;
         }
 
-        this.tcpClient?.Dispose();
+        if (this.tcpClient is not null)
+        {
+            try { this.tcpClient.Dispose(); } catch { /* Ignore any errors during cleanup */ }
+            this.tcpClient = null;
+        }
     }
 }

@@ -56,25 +56,32 @@ public class NetworkStreamNmeaReceiver : INmeaReceiver
 
                 int retryAttempt = 0;
 
-                while (this.nmeaStreamReader.Connected)
+                try
                 {
-                    while (this.nmeaStreamReader.DataAvailable && !mergedToken.IsCancellationRequested)
+                    while (this.nmeaStreamReader.Connected)
                     {
-                        string? line = await this.nmeaStreamReader.ReadLineAsync(mergedToken).ConfigureAwait(false);
-                        if (line is not null)
+                        while (this.nmeaStreamReader.DataAvailable && !mergedToken.IsCancellationRequested)
                         {
-                            obs.OnNext(line);
+                            string? line = await this.nmeaStreamReader.ReadLineAsync(mergedToken).ConfigureAwait(false);
+                            if (line is not null)
+                            {
+                                obs.OnNext(line);
+                            }
+                            retryAttempt = 0;
                         }
-                        retryAttempt = 0;
-                    }
 
-                    if (mergedToken.IsCancellationRequested || retryAttempt == this.RetryAttemptLimit)
-                    {
-                        break;
-                    }
+                        if (mergedToken.IsCancellationRequested || retryAttempt == this.RetryAttemptLimit)
+                        {
+                            break;
+                        }
 
-                    await Task.Delay(this.RetryPeriodicity, mergedToken).ConfigureAwait(false);
-                    retryAttempt++;
+                        await Task.Delay(this.RetryPeriodicity, mergedToken).ConfigureAwait(false);
+                        retryAttempt++;
+                    }
+                }
+                finally
+                {
+                    await this.nmeaStreamReader.DisposeAsync();
                 }
             }
         });
