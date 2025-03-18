@@ -170,11 +170,7 @@ task PostTestReport {}
 task PreAnalysis {}
 task PostAnalysis {}
 task PrePackage {}
-task PostPackage {
-    # Emit the name of the container image so we don't need to duplicate it in the
-    # additional workflow steps that will build the ARM-flvaoured container image
-    Set-BuildServerVariable -Name "ContainerImageName" -Value "$ContainerRegistryPublishPrefix/$($ContainersToBuild[0].ImageName)"
-}
+task PostPackage {}
 task PrePublish {
     # Ensure the build agent is logged-in to DockerHub before trying to publish any images
     if ($env:DOCKERHUB_ACCESSTOKEN) {
