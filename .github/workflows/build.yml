@@ -78,6 +78,8 @@ jobs:
         echo "SemVer2: ${{ steps.run_build.outputs.semver2 }}"
         echo "AllOutputs: ${{ steps.run_build.outputs.allOutputs }}"
         gci env: | ft | out-string | write-host
+        echo "GITHUB_OUTPUT Contents:"
+        gc $env:GITHUB_OUTPUT
       shell: pwsh
 
     # Additional build steps to produce an ARM version of the container image
