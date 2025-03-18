@@ -18,7 +18,7 @@ public class TcpClientNmeaStreamReader : INmeaStreamReader
 
     public bool DataAvailable => this.stream?.DataAvailable ?? false;
 
-    public bool Connected => this.tcpClient?.Connected ?? (this.stream?.Socket.Connected) ?? false;
+    public bool Connected => (this.tcpClient?.Connected ?? false) && (this.stream?.Socket.Connected ?? false);
 
     public async Task ConnectAsync(string host, int port, CancellationToken cancellationToken)
     {
@@ -47,19 +47,19 @@ public class TcpClientNmeaStreamReader : INmeaStreamReader
 
     public async ValueTask DisposeAsync()
     {
-        if (this.reader != null)
+        if (this.reader is not null)
         {
             try { this.reader.Dispose(); } catch { /* Ignore any errors during cleanup */ }
             this.reader = null;
         }
 
-        if (this.stream != null)
+        if (this.stream is not null)
         {
             try { await this.stream.DisposeAsync(); } catch { /* Ignore any errors during cleanup */ }
             this.stream = null;
         }
 
-        if (this.tcpClient != null)
+        if (this.tcpClient is not null)
         {
             try { this.tcpClient.Dispose(); } catch { /* Ignore any errors during cleanup */ }
             this.tcpClient = null;
