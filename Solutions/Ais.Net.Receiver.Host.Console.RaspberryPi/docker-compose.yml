@@ -14,5 +14,5 @@ services:
       - Storage__containerName=nmea-ais-dev
       - Storage__writeBatchSize=500
     dns:
-      - 8.8.8.8
+      - 8.8.8.8 # Required if you're running on a Raspberry Pi which also hosts pi-hole
     restart: unless-stopped

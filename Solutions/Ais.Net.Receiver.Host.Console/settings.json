@@ -8,9 +8,9 @@
     "retryPeriodicity": "00:00:00:01"
   },
   "Storage": {
-    "enableCapture": false,
+    "enableCapture": true,
     "connectionString": "",
-    "containerName": "nmea-ais",
+    "containerName": "nmea-ais-dev",
     "writeBatchSize": 500
   }
 }

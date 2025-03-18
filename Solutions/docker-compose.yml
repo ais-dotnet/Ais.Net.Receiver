@@ -11,7 +11,7 @@ services:
       - Ais__statisticsPeriodicity=00:00:01:00
       - Ais__retryAttempts=5
       - Ais__retryPeriodicity=00:00:00:01
-      - Storage__enableCapture=false
+      - Storage__enableCapture=true
       - Storage__connectionString=${AIS_NET_RECEIVER_AZURE_CONNECTION_STRING}
       - Storage__containerName=nmea-ais-dev
       - Storage__writeBatchSize=500
