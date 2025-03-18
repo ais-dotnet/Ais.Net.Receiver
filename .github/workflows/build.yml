@@ -59,7 +59,7 @@ jobs:
           DOCKERHUB_ACCESSTOKEN: "${{ secrets.DOCKERHUB_ACCESSTOKEN }}"
         secretsEncryptionKey: ${{ secrets.SHARED_WORKFLOW_KEY }}
 
-    - uses: endjin/Endjin.RecommendedPractices.GitHubActions/actions/run-build-process@feature/fix-outputs
+    - uses: endjin/Endjin.RecommendedPractices.GitHubActions/actions/run-build-process@main
       id: run_build
       with:
         netSdkVersion: '8.0.x'
@@ -74,32 +74,30 @@ jobs:
         token: ${{ secrets.GITHUB_TOKEN }}
 
     - run: |
-        echo "SemVer: ${{ steps.run_build.outputs.semver }}"
-        echo "SemVer2: ${{ steps.run_build.outputs.semver2 }}"
-        echo "AllOutputs: ${{ steps.run_build.outputs.allOutputs }}"
-        gci env: | ft | out-string | write-host
-        echo "GITHUB_OUTPUT Contents:"
-        gc $env:GITHUB_OUTPUT
+        $semVer = & dotnet-gitversion /output json /nofetch /config .\GitVersion.yml | ConvertFrom-Json | Select-Object -ExpandProperty SemVer
+        "SemVer=$semVer" | Out-File $env:GITHUB_OUTPUT"
+      id: get_semver
+      name: Get SemVer
       shell: pwsh
 
     # Additional build steps to produce an ARM version of the container image
-    # - name: Login to Docker Hub
-    #   uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772    # v3.4.0
-    #   with:
-    #     username: ${{ secrets.DOCKERHUB_USERNAME }}
-    #     password: ${{ secrets.DOCKERHUB_ACCESSTOKEN }}
+    - name: Login to Docker Hub
+      uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772    # v3.4.0
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_ACCESSTOKEN }}
 
-    # - name: Set up QEMU
-    #   uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392   # v3.6.0
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392   # v3.6.0
 
-    # - name: Set up Docker Buildx
-    #   uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2   # v3.10.0
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2   # v3.10.0
 
-    # - name: Build ARM-based container image
-    #   uses: docker/build-push-action@471d1dc4e07e5cdedd4c2171150001c434f0b7a4   # v6.15.0
-    #   with:
-    #     context: ./Solutions
-    #     file: ./Solutions/Ais.Net.Receiver.Host.Console/Dockerfile
-    #     platforms: linux/arm64
-    #     push: ${{ startsWith(github.ref, 'refs/tags/') || github.event.inputs.forcePublish == 'true' }}
-    #     tags: "endjin/ais-dotnet-receiver:${{ steps.run_build.outputs.semver }}"
+    - name: Build ARM-based container image
+      uses: docker/build-push-action@471d1dc4e07e5cdedd4c2171150001c434f0b7a4   # v6.15.0
+      with:
+        context: ./Solutions
+        file: ./Solutions/Ais.Net.Receiver.Host.Console/Dockerfile
+        platforms: linux/arm64
+        push: ${{ startsWith(github.ref, 'refs/tags/') || github.event.inputs.forcePublish == 'true' }}
+        tags: "endjin/ais-dotnet-receiver:${{ steps.get_semver.outputs.SemVer }}"
