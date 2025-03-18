@@ -75,7 +75,10 @@ jobs:
 
     - run: |
         echo "SemVer: ${{ steps.run_build.outputs.semver }}"
+        echo "SemVer2: ${{ steps.run_build.outputs.semver2 }}"
         echo "AllOutputs: ${{ steps.run_build.outputs.allOutputs }}"
+        gci env: | ft | out-string | write-host
+      shell: pwsh
 
     # Additional build steps to produce an ARM version of the container image
     # - name: Login to Docker Hub
