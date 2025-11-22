@@ -4,6 +4,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Reactive.Subjects;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -21,6 +22,7 @@ namespace Ais.Net.Receiver.Receiver;
 
 public class ReceiverHost
 {
+    private static readonly ActivitySource ActivitySource = new("Ais.Net.Receiver");
     private readonly INmeaReceiver receiver;
     private readonly Subject<string> sentences = new();
     private readonly Subject<IAisMessage> messages = new();
@@ -57,6 +59,8 @@ public class ReceiverHost
 
         await foreach (ReadOnlyMemory<byte> message in this.GetAsync(cancellationToken))
         {
+            using Activity? activity = ActivitySource.StartActivity("ProcessMessage");
+
             static void ProcessLineNonAsync(ReadOnlyMemory<byte> line, INmeaLineStreamProcessor lineStreamProcessor, Subject<(Exception Exception, string Line)> errorSubject)
             {
                 try

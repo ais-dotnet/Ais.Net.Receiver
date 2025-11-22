@@ -1,13 +1,13 @@
-<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk.Worker">
 
   <Import Project="$(EndjinProjectPropsPath)" Condition="$(EndjinProjectPropsPath) != ''" />
 
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
+    <UserSecretsId>dotnet-Ais.Net.Receiver.Host.Worker-53bc9b9d-9d6a-45d4-8429-2a2761773502</UserSecretsId>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -22,17 +22,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Ais.Net.Receiver.Storage.Azure.Blob\Ais.Net.Receiver.Storage.Azure.Blob.csproj" />
-    <ProjectReference Include="..\Ais.Net.Receiver\Ais.Net.Receiver.csproj" />
+    <ProjectReference Include="..\Ais.Net.Receiver.Storage.Azure.Blob/Ais.Net.Receiver.Storage.Azure.Blob.csproj" />
+    <ProjectReference Include="..\Ais.Net.Receiver/Ais.Net.Receiver.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.FileExtensions" Version="10.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" Version="10.0.0" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.22.1" />
     <PackageReference Include="Endjin.RecommendedPractices.GitHub" Version="2.1.18">
       <PrivateAssets>all</PrivateAssets>
@@ -42,12 +38,6 @@
     <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.14.0" />
     <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.14.0" />
     <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" Version="1.14.0" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Include="settings.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
   </ItemGroup>
 
   <ItemGroup>

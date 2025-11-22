@@ -6,15 +6,16 @@ StartLimitIntervalSec=500
 StartLimitBurst=5
 
 [Service]
-Type=simple
+Type=notify
 User=pi
 WorkingDirectory=/home/pi/aisr
-ExecStart=/home/pi/.dotnet/dotnet Ais.Net.Receiver.Host.Console.dll
+ExecStart=/home/pi/.dotnet/dotnet Ais.Net.Receiver.Host.Worker.dll
 Restart=always
 RestartSec=5s
 SyslogIdentifier=aisr
 Environment=DOTNET_PRINT_TELEMETRY_MESSAGE=false
 Environment=DOTNET_NOLOGO=true
+Environment=OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
 
 [Install]
 WantedBy=multi-user.target

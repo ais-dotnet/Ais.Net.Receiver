@@ -1,9 +1,11 @@
-﻿// <copyright file="Program.cs" company="Endjin Limited">
+// <copyright file="Program.cs" company="Endjin Limited">
 // Copyright (c) Endjin Limited. All rights reserved.
 // </copyright>
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
@@ -17,6 +19,12 @@ using Ais.Net.Receiver.Storage.Azure.Blob;
 using Ais.Net.Receiver.Storage.Azure.Blob.Configuration;
 
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 
 namespace Ais.Net.Receiver.Host.Console;
 
@@ -28,14 +36,28 @@ public static class Program
     /// <summary>
     /// Entry point for the application.
     /// </summary>
+    /// <param name="args">Command line arguments.</param>
     /// <returns>Task representing the operation.</returns>
-    public static async Task Main()
+    public static async Task Main(string[] args)
     {
-        IConfiguration config = new ConfigurationBuilder()
-            .AddJsonFile("settings.json", true, true)
-            .AddJsonFile("settings.local.json", true, true)
-            .AddEnvironmentVariables()
-            .Build();
+        HostApplicationBuilder builder = Microsoft.Extensions.Hosting.Host.CreateApplicationBuilder(args);
+
+        builder.Configuration.AddJsonFile("settings.json", true, true);
+        builder.Configuration.AddJsonFile("settings.local.json", true, true);
+
+        builder.Services.AddOpenTelemetry()
+            .ConfigureResource(resource => resource.AddService("Ais.Net.Receiver.Console"))
+            .WithMetrics(metrics => metrics
+                .AddMeter("Ais.Net.Receiver.Console")
+                .AddRuntimeInstrumentation()
+                .AddOtlpExporter())
+            .WithTracing(tracing => tracing
+                .AddSource("Ais.Net.Receiver.Console")
+                .AddSource("Ais.Net.Receiver")
+                .AddOtlpExporter());
+
+        using IHost host = builder.Build();
+        IConfiguration config = host.Services.GetRequiredService<IConfiguration>();
 
         AisConfig? aisConfig = config.GetSection("Ais").Get<AisConfig>();
         StorageConfig? storageConfig = config.GetSection("Storage").Get<StorageConfig>();
@@ -58,6 +80,8 @@ public static class Program
         */
 
         ReceiverHost receiverHost = new(receiver);
+        using ReceiverTelemetry telemetry = new("Ais.Net.Receiver.Console");
+        telemetry.Bind(receiverHost);
 
         if (aisConfig.LoggerVerbosity == LoggerVerbosity.Minimal)
         {
@@ -108,13 +132,13 @@ public static class Program
 
             // Persist the messages as they are received over the wire.
             receiverHost.Sentences.Subscribe(batchBlock.AsObserver());
-            
+
             // Ensure we wait for the storage to finish flushing
             _ = actionBlock.Completion.ContinueWith(_ => System.Console.WriteLine("Storage flush completed."));
         }
 
         CancellationTokenSource cts = new();
-        
+
         System.Console.CancelKeyPress += (s, e) =>
         {
             e.Cancel = true;

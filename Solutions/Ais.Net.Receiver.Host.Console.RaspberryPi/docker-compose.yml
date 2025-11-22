@@ -1,7 +1,9 @@
 services:
   ais_net_receiver:
     container_name: ais-dotnet-receiver
-    image: endjin/ais-dotnet-receiver:0.3.8-dockerize.1
+    build:
+      context: ../../
+      dockerfile: Solutions/Ais.Net.Receiver.Host.Worker/Dockerfile
     environment:
       - Ais__host=153.44.253.27
       - Ais__port=5631
@@ -13,6 +15,18 @@ services:
       - Storage__connectionString=${AIS_NET_RECEIVER_AZURE_CONNECTION_STRING}
       - Storage__containerName=nmea-ais-dev
       - Storage__writeBatchSize=500
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
     dns:
       - 8.8.8.8 # Required if you're running on a Raspberry Pi which also hosts pi-hole
     restart: unless-stopped
+    depends_on:
+      - otel-collector
+
+  otel-collector:
+    image: otel/opentelemetry-collector:latest
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    ports:
+      - "4317:4317"   # OTLP gRPC receiver
+      - "4318:4318"   # OTLP http receiver

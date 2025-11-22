@@ -1,13 +1,12 @@
-﻿// <copyright file="ReceiverHostExtensions.cs" company="Endjin Limited">
+// <copyright file="ReceiverHostExtensions.cs" company="Endjin Limited">
 // Copyright (c) Endjin Limited. All rights reserved.
 // </copyright>
 
 using System;
 using System.Reactive.Linq;
 using Ais.Net.Models.Abstractions;
-using Ais.Net.Receiver.Receiver;
 
-namespace Ais.Net.Receiver.Host.Console;
+namespace Ais.Net.Receiver.Receiver;
 
 /// <summary>
 /// Extensions for the <see cref="ReceiverHost"/> and its data streams.
