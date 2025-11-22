@@ -1,14 +1,20 @@
  [Unit]
- Description=aisr
- After=multi-user.target
- StartLimitIntervalSec=500
- StartLimitBurst=5
+Description=AIS.NET Receiver Service
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=500
+StartLimitBurst=5
 
- [Service]
- Type=idle
- ExecStart=/home/pi/.dotnet/dotnet /home/pi/aisr/Ais.Net.Receiver.Host.Console.dll
- Restart=on-failure
- RestartSec=5s
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/aisr
+ExecStart=/home/pi/.dotnet/dotnet Ais.Net.Receiver.Host.Console.dll
+Restart=always
+RestartSec=5s
+SyslogIdentifier=aisr
+Environment=DOTNET_PRINT_TELEMETRY_MESSAGE=false
+Environment=DOTNET_NOLOGO=true
 
- [Install]
- WantedBy=multi-user.target
+[Install]
+WantedBy=multi-user.target
