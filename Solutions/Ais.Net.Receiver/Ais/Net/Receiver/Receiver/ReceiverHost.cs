@@ -44,7 +44,7 @@ public class ReceiverHost
         return Retriable.RetryAsync(() =>
                 this.StartAsyncInternal(cancellationToken),
                 cancellationToken,
-                new Backoff(maxTries: 100, deltaBackoff: TimeSpan.FromSeconds(5)),
+                new Linear(periodicity: TimeSpan.FromSeconds(5), maxTries: 100),
                 new AnyExceptionPolicy(),
                 continueOnCapturedContext: false);
     }
