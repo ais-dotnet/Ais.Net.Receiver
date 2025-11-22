@@ -26,6 +26,7 @@ public class ReceiverHost
     private readonly INmeaReceiver receiver;
     private readonly Subject<string> sentences = new();
     private readonly Subject<IAisMessage> messages = new();
+    private readonly Subject<Metadata> metadata = new();
     private readonly Subject<(Exception Exception, string Line)> errors = new();
 
     public ReceiverHost(INmeaReceiver receiver)
@@ -36,6 +37,8 @@ public class ReceiverHost
     public IObservable<string> Sentences => this.sentences;
 
     public IObservable<IAisMessage> Messages => this.messages;
+
+    public IObservable<Metadata> Metadata => this.metadata;
 
     public IObservable<(Exception Exception, string Line)> Errors => this.errors;
 
@@ -54,11 +57,24 @@ public class ReceiverHost
         NmeaToAisMessageTypeProcessor processor = new();
         NmeaLineToAisStreamAdapter adapter = new(processor);
 
-        processor.Messages.Subscribe(this.messages);
+        (int StationId, long UnixTimestamp) currentMetadata = (0, 0);
+
+        processor.Messages.Subscribe(message =>
+        {
+            this.messages.OnNext(message);
+
+            if (this.metadata.HasObservers)
+            {
+                this.metadata.OnNext(new Metadata(currentMetadata.StationId, currentMetadata.UnixTimestamp, message));
+            }
+        });
+
         processor.ParseErrors.Subscribe(this.errors);
 
         await foreach (ReadOnlyMemory<byte> message in this.GetAsync(cancellationToken))
         {
+            currentMetadata = message.Span.ParseNmeaBlockTags();
+
             using Activity? activity = ActivitySource.StartActivity("ProcessMessage");
 
             static void ProcessLineNonAsync(ReadOnlyMemory<byte> line, INmeaLineStreamProcessor lineStreamProcessor, Subject<(Exception Exception, string Line)> errorSubject)
@@ -88,7 +104,7 @@ public class ReceiverHost
                 this.sentences.OnNext(Encoding.ASCII.GetString(message.Span));
             }
 
-            if (this.messages.HasObservers)
+            if (this.messages.HasObservers || this.metadata.HasObservers)
             {
                 ProcessLineNonAsync(message, adapter, this.errors);
             }
@@ -96,6 +112,7 @@ public class ReceiverHost
 
         this.sentences.OnCompleted();
         this.messages.OnCompleted();
+        this.metadata.OnCompleted();
         this.errors.OnCompleted();
     }
 
