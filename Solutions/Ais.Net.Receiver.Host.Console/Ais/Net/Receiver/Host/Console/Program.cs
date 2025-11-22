@@ -4,8 +4,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Diagnostics.Metrics;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
@@ -86,9 +84,10 @@ public static class Program
         if (aisConfig.LoggerVerbosity == LoggerVerbosity.Minimal)
         {
             receiverHost.GetStreamStatistics(aisConfig.StatisticsPeriodicity)
-                        .Subscribe(statistics =>
+                        .Subscribe(
+                            statistics =>
                                    System.Console.WriteLine($"{DateTime.UtcNow.ToUniversalTime()}: Sentences: {statistics.Sentence} | Messages: {statistics.Message} | Errors: {statistics.Error}"),
-                                   error => System.Console.WriteLine($"Error in statistics stream: {error.Message}"));
+                            error => System.Console.WriteLine($"Error in statistics stream: {error.Message}"));
         }
 
         if (aisConfig.LoggerVerbosity == LoggerVerbosity.Normal)

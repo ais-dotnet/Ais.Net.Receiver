@@ -4,8 +4,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Diagnostics.Metrics;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
@@ -59,9 +57,10 @@ public class Worker : BackgroundService
         if (aisConfig.LoggerVerbosity == LoggerVerbosity.Minimal)
         {
             receiverHost.GetStreamStatistics(aisConfig.StatisticsPeriodicity)
-                        .Subscribe(statistics =>
-                                   System.Console.WriteLine($"{DateTime.UtcNow.ToUniversalTime()}: Sentences: {statistics.Sentence} | Messages: {statistics.Message} | Errors: {statistics.Error}"),
-                                   error => this.logger.LogError(error, "Error in statistics stream"));
+                        .Subscribe(
+                            statistics =>
+                            System.Console.WriteLine($"{DateTime.UtcNow.ToUniversalTime()}: Sentences: {statistics.Sentence} | Messages: {statistics.Message} | Errors: {statistics.Error}"),
+                            error => this.logger.LogError(error, "Error in statistics stream"));
         }
 
         if (aisConfig.LoggerVerbosity == LoggerVerbosity.Normal)
@@ -71,23 +70,46 @@ public class Worker : BackgroundService
                 (uint mmsi, IVesselNavigation navigation, IVesselName name) = navigationWithName;
                 string positionText = navigation.Position is null ? "unknown position" : $"{navigation.Position.Latitude},{navigation.Position.Longitude}";
 
-                this.logger.LogInformation("[{Mmsi}: '{VesselName}'] - [{Position}] - [{CourseOverGround}]", mmsi, name.VesselName.CleanVesselName(), positionText, navigation.CourseOverGround ?? 0);
+                if (this.logger.IsEnabled(LogLevel.Information))
+                {
+                    this.logger.LogInformation(
+                        "[{Mmsi}: '{VesselName}'] - [{Position}] - [{CourseOverGround}]",
+                        mmsi,
+                        name.VesselName.CleanVesselName(),
+                        positionText,
+                        navigation.CourseOverGround ?? 0);
+                }
             });
         }
 
         if (aisConfig.LoggerVerbosity == LoggerVerbosity.Detailed)
         {
-            receiverHost.Sentences.Subscribe(s => this.logger.LogInformation("{Sentence}", s));
+            receiverHost.Sentences.Subscribe(s =>
+            {
+                if (this.logger.IsEnabled(LogLevel.Information))
+                {
+                    this.logger.LogInformation("{Sentence}", s);
+                }
+            });
         }
 
         if (aisConfig.LoggerVerbosity == LoggerVerbosity.Diagnostic)
         {
-            receiverHost.Messages.Subscribe(m => this.logger.LogInformation("{Message}", m.ToString()));
+            receiverHost.Messages.Subscribe(m =>
+            {
+                if (this.logger.IsEnabled(LogLevel.Information))
+                {
+                    this.logger.LogInformation("{Message}", m.ToString());
+                }
+            });
 
             receiverHost.Errors.Subscribe(error =>
             {
-                this.logger.LogError("Error received: {Message}", error.Exception.Message);
-                this.logger.LogError("Bad line: {Line}", error.Line);
+                if (this.logger.IsEnabled(LogLevel.Error))
+                {
+                    this.logger.LogError("Error received: {Message}", error.Exception.Message);
+                    this.logger.LogError("Bad line: {Line}", error.Line);
+                }
             });
         }
 

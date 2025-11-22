@@ -73,10 +73,7 @@ public class NmeaToAisMessageTypeProcessor : INmeaAisMessageStreamProcessor
         }
     }
 
-    public void OnError(in ReadOnlySpan<byte> line, Exception error, int lineNumber)
-    {
-        this.parseErrors.OnNext((error, Encoding.ASCII.GetString(line)));
-    }
+    public void OnError(in ReadOnlySpan<byte> line, Exception error, int lineNumber) => this.parseErrors.OnNext((error, Encoding.ASCII.GetString(line)));
 
     public void OnCompleted()
     {
@@ -266,10 +263,9 @@ public class NmeaToAisMessageTypeProcessor : INmeaAisMessageStreamProcessor
                 this.messages.OnNext(message);
                 break;
             }
-
             default:
             {
-                throw new ArgumentOutOfRangeException(nameof(part), part, $"Unknown part number for Message Type 24: {part}");
+                throw new ArgumentOutOfRangeException(nameof(asciiPayload), part, $"Unknown part number for Message Type 24: {part}");
             }
         }
     }

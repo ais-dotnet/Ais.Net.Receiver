@@ -39,5 +39,6 @@ public class ReceiverTelemetry : IDisposable
         }
         
         this.meter.Dispose();
+        GC.SuppressFinalize(this);
     }
 }
