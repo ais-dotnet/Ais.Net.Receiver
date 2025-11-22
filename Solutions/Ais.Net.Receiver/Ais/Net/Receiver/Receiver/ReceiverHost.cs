@@ -53,6 +53,7 @@ public class ReceiverHost
         NmeaLineToAisStreamAdapter adapter = new(processor);
 
         processor.Messages.Subscribe(this.messages);
+        processor.ParseErrors.Subscribe(this.errors);
 
         await foreach (string? message in this.GetAsync(cancellationToken))
         {
@@ -93,14 +94,7 @@ public class ReceiverHost
     {
         await foreach (string message in this.receiver.GetAsync(cancellationToken))
         {
-            if (message.IsMissingNmeaBlockTags())
-            {
-                yield return message.PrependNmeaBlockTags();
-            }
-            else
-            {
-                yield return message;
-            }
+            yield return message.IsMissingNmeaBlockTags() ? message.PrependNmeaBlockTags() : message;
         }
     }
 }

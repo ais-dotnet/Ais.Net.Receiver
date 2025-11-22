@@ -4,7 +4,7 @@
 
 using System;
 using System.Reactive.Subjects;
-
+using System.Text;
 using Ais.Net.Models;
 using Ais.Net.Models.Abstractions;
 
@@ -17,15 +17,17 @@ namespace Ais.Net.Receiver.Parser;
 public class NmeaToAisMessageTypeProcessor : INmeaAisMessageStreamProcessor
 {
     private readonly Subject<IAisMessage> messages = new();
+    private readonly Subject<(Exception Exception, string Line)> parseErrors = new();
 
     public IObservable<IAisMessage> Messages => this.messages;
+    public IObservable<(Exception Exception, string Line)> ParseErrors => this.parseErrors;
 
     public void OnNext(in NmeaLineParser parsedLine, in ReadOnlySpan<byte> asciiPayload, uint padding)
     {
-        int messageType = NmeaPayloadParser.PeekMessageType(asciiPayload, padding);
-
         try
         {
+            int messageType = NmeaPayloadParser.PeekMessageType(asciiPayload, padding);
+
             switch (messageType)
             {
                 case >= 1 and <= 3:
@@ -67,11 +69,14 @@ public class NmeaToAisMessageTypeProcessor : INmeaAisMessageStreamProcessor
         }
         catch (Exception e)
         {
-            Console.WriteLine($"[{messageType}] {e.Message}");
+            this.parseErrors.OnNext((e, Encoding.ASCII.GetString(asciiPayload)));
         }
     }
 
-    public void OnError(in ReadOnlySpan<byte> line, Exception error, int lineNumber) => throw new NotImplementedException();
+    public void OnError(in ReadOnlySpan<byte> line, Exception error, int lineNumber)
+    {
+        this.parseErrors.OnNext((error, Encoding.ASCII.GetString(line)));
+    }
 
     public void OnCompleted() => throw new NotImplementedException();
 
@@ -235,7 +240,7 @@ public class NmeaToAisMessageTypeProcessor : INmeaAisMessageStreamProcessor
                 parser.VendorIdRev3.WriteAsAscii(vendorIdRev3Ascii);
 
                 Span<byte> vendorIdRev4Ascii = stackalloc byte[(int)parser.VendorIdRev4.CharacterCount];
-                parser.VendorIdRev3.WriteAsAscii(vendorIdRev4Ascii);
+                parser.VendorIdRev4.WriteAsAscii(vendorIdRev4Ascii);
 
                 AisMessageType24Part1 message = new(
                     Mmsi: parser.Mmsi,
@@ -256,6 +261,11 @@ public class NmeaToAisMessageTypeProcessor : INmeaAisMessageStreamProcessor
 
                 this.messages.OnNext(message);
                 break;
+            }
+
+            default:
+            {
+                throw new ArgumentOutOfRangeException(nameof(part), part, $"Unknown part number for Message Type 24: {part}");
             }
         }
     }
