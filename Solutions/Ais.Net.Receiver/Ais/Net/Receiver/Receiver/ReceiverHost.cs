@@ -55,46 +55,51 @@ public class ReceiverHost
         processor.Messages.Subscribe(this.messages);
         processor.ParseErrors.Subscribe(this.errors);
 
-        await foreach (string? message in this.GetAsync(cancellationToken))
+        await foreach (ReadOnlyMemory<byte> message in this.GetAsync(cancellationToken))
         {
-            static void ProcessLineNonAsync(string line, INmeaLineStreamProcessor lineStreamProcessor, Subject<(Exception Exception, string Line)> errorSubject)
+            static void ProcessLineNonAsync(ReadOnlyMemory<byte> line, INmeaLineStreamProcessor lineStreamProcessor, Subject<(Exception Exception, string Line)> errorSubject)
             {
-                byte[] lineAsAscii = Encoding.ASCII.GetBytes(line);
-
                 try
                 {
-                    lineStreamProcessor.OnNext(new NmeaLineParser(lineAsAscii), lineNumber: 0);
+                    lineStreamProcessor.OnNext(new NmeaLineParser(line.Span), lineNumber: 0);
                 }
                 catch (ArgumentException ex)
                 {
                     if (errorSubject.HasObservers)
                     {
-                        errorSubject.OnNext((Exception: ex, line));
+                        errorSubject.OnNext((Exception: ex, Encoding.ASCII.GetString(line.Span)));
                     }
                 }
                 catch (NotImplementedException ex)
                 {
                     if (errorSubject.HasObservers)
                     {
-                        errorSubject.OnNext((Exception: ex, line));
+                        errorSubject.OnNext((Exception: ex, Encoding.ASCII.GetString(line.Span)));
                     }
                 }
             }
 
-            this.sentences.OnNext(message);
+            if (this.sentences.HasObservers)
+            {
+                this.sentences.OnNext(Encoding.ASCII.GetString(message.Span));
+            }
 
             if (this.messages.HasObservers)
             {
                 ProcessLineNonAsync(message, adapter, this.errors);
             }
         }
+
+        this.sentences.OnCompleted();
+        this.messages.OnCompleted();
+        this.errors.OnCompleted();
     }
 
-    private async IAsyncEnumerable<string> GetAsync([EnumeratorCancellation]CancellationToken cancellationToken = default)
+    private async IAsyncEnumerable<ReadOnlyMemory<byte>> GetAsync([EnumeratorCancellation]CancellationToken cancellationToken = default)
     {
-        await foreach (string message in this.receiver.GetAsync(cancellationToken))
+        await foreach (ReadOnlyMemory<byte> message in this.receiver.GetAsync(cancellationToken))
         {
-            yield return message.IsMissingNmeaBlockTags() ? message.PrependNmeaBlockTags() : message;
+            yield return message.Span.IsMissingNmeaBlockTags() ? message.PrependNmeaBlockTags() : message;
         }
     }
 }

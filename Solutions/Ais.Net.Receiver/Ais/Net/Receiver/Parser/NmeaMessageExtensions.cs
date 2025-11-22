@@ -24,5 +24,20 @@ public static class NmeaMessageExtensions
         }
     }
 
+    public static bool IsMissingNmeaBlockTags(this ReadOnlySpan<byte> message) => message.Length > 0 && message[0] == '!';
+
+    public static ReadOnlyMemory<byte> PrependNmeaBlockTags(this ReadOnlyMemory<byte> message)
+    {
+        string timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString();
+        string prefix = $@"\s:1000001,c:{timestamp}*{NmeaChecksum("c:" + timestamp)}\";
+        byte[] prefixBytes = System.Text.Encoding.ASCII.GetBytes(prefix);
+        
+        byte[] result = new byte[prefixBytes.Length + message.Length];
+        prefixBytes.CopyTo(result, 0);
+        message.CopyTo(result.AsMemory(prefixBytes.Length));
+        
+        return result;
+    }
+
     private static string NmeaChecksum(string s) => s.Aggregate(0, (t, c) => t ^ c).ToString("X2");
 }

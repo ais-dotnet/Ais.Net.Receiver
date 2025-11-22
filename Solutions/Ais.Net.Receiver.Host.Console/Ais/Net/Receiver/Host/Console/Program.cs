@@ -104,19 +104,31 @@ public static class Program
             IStorageClient storageClient = new AzureAppendBlobStorageClient(storageConfig);
             BatchBlock<string> batchBlock = new(storageConfig.WriteBatchSize);
             ActionBlock<IEnumerable<string>> actionBlock = new(storageClient.PersistAsync);
-            batchBlock.LinkTo(actionBlock);
+            batchBlock.LinkTo(actionBlock, new DataflowLinkOptions { PropagateCompletion = true });
 
             // Persist the messages as they are received over the wire.
             receiverHost.Sentences.Subscribe(batchBlock.AsObserver());
+            
+            // Ensure we wait for the storage to finish flushing
+            _ = actionBlock.Completion.ContinueWith(_ => System.Console.WriteLine("Storage flush completed."));
         }
 
         CancellationTokenSource cts = new();
+        
+        System.Console.CancelKeyPress += (s, e) =>
+        {
+            e.Cancel = true;
+            System.Console.WriteLine("Stopping...");
+            cts.Cancel();
+        };
 
-        Task task = receiverHost.StartAsync(cts.Token);
-
-        // If you wanted to cancel the long-running process:
-        /* cts.Cancel(); */
-
-        await task;
+        try
+        {
+            await receiverHost.StartAsync(cts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected on cancellation
+        }
     }
 }

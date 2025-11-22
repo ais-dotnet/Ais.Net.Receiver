@@ -41,11 +41,11 @@ public class NetworkStreamNmeaReceiver : INmeaReceiver, IAsyncDisposable
     public TimeSpan? IdleTimeout { get; }
 
     // We still provide the IAsyncEnumerable API for backwards compatibility.
-    public IAsyncEnumerable<string> GetAsync(CancellationToken cancellationToken = default) => this.GetObservable(cancellationToken).ToAsyncEnumerable();
+    public IAsyncEnumerable<ReadOnlyMemory<byte>> GetAsync(CancellationToken cancellationToken = default) => this.GetObservable(cancellationToken).ToAsyncEnumerable();
 
-    public IObservable<string> GetObservable(CancellationToken cancellationToken = default)
+    public IObservable<ReadOnlyMemory<byte>> GetObservable(CancellationToken cancellationToken = default)
     {
-        IObservable<string> withoutRetry = Observable.Create<string>(async (obs, innerCancel) =>
+        IObservable<ReadOnlyMemory<byte>> withoutRetry = Observable.Create<ReadOnlyMemory<byte>>(async (obs, innerCancel) =>
         {
             using CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, innerCancel);
             CancellationToken mergedToken = cts.Token;
@@ -73,10 +73,10 @@ public class NetworkStreamNmeaReceiver : INmeaReceiver, IAsyncDisposable
                         {
                             try
                             {
-                                string? line = await this.nmeaStreamReader.ReadLineAsync(timeoutCts.Token).ConfigureAwait(false);
+                                ReadOnlyMemory<byte>? line = await this.nmeaStreamReader.ReadLineAsync(timeoutCts.Token).ConfigureAwait(false);
                                 if (line is not null)
                                 {
-                                    obs.OnNext(line);
+                                    obs.OnNext(line.Value);
                                     
                                     long now = Environment.TickCount64;
                                     if (now - lastResetMs > minResetIntervalMs)

@@ -27,15 +27,16 @@ public class FileStreamNmeaReceiver : INmeaReceiver
         this.delay = delay;
     }
 
-    public async IAsyncEnumerable<string> GetAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
+    public async IAsyncEnumerable<ReadOnlyMemory<byte>> GetAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        using StreamReader sr = new(this.path);
+        await using FileStream fs = new(this.path, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, useAsync: true);
+        using StreamReader sr = new(fs);
 
-        while (sr.Peek() >= 0)
+        while (true)
         {
             if (cancellationToken.IsCancellationRequested)
             {
-                break;
+                yield break;
             }
 
             if (this.delay > TimeSpan.Zero)
@@ -45,7 +46,12 @@ public class FileStreamNmeaReceiver : INmeaReceiver
 
             string? line = await sr.ReadLineAsync(cancellationToken).ConfigureAwait(false);
 
-            if (line is not null) { yield return line; }
+            if (line is null)
+            {
+                break;
+            }
+
+            yield return System.Text.Encoding.ASCII.GetBytes(line);
         }
     }
 }

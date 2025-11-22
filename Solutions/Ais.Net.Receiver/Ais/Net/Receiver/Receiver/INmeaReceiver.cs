@@ -2,6 +2,7 @@
 // Copyright (c) Endjin Limited. All rights reserved.
 // </copyright>
 
+using System;
 using System.Collections.Generic;
 using System.Threading;
 
@@ -9,5 +10,5 @@ namespace Ais.Net.Receiver.Receiver;
 
 public interface INmeaReceiver
 {
-    IAsyncEnumerable<string> GetAsync(CancellationToken cancellationToken = default);
+    IAsyncEnumerable<ReadOnlyMemory<byte>> GetAsync(CancellationToken cancellationToken = default);
 }

@@ -21,7 +21,7 @@ public interface INmeaStreamReader : IAsyncDisposable
     /// <summary>
     /// Reads a line of text asynchronously
     /// </summary>
-    ValueTask<string?> ReadLineAsync(CancellationToken cancellationToken);
+    ValueTask<ReadOnlyMemory<byte>?> ReadLineAsync(CancellationToken cancellationToken);
     
     /// <summary>
     /// Gets whether the connection is established
