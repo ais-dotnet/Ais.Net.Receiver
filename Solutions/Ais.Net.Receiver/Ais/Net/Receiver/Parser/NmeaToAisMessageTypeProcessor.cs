@@ -78,7 +78,11 @@ public class NmeaToAisMessageTypeProcessor : INmeaAisMessageStreamProcessor
         this.parseErrors.OnNext((error, Encoding.ASCII.GetString(line)));
     }
 
-    public void OnCompleted() => throw new NotImplementedException();
+    public void OnCompleted()
+    {
+        this.messages.OnCompleted();
+        this.parseErrors.OnCompleted();
+    }
 
     public void Progress(
         bool done,
