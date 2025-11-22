@@ -38,10 +38,7 @@ public class NetworkStreamNmeaReceiver : INmeaReceiver
     public TimeSpan RetryPeriodicity { get; }
 
     // We still provide the IAsyncEnumerable API for backwards compatibility.
-    public IAsyncEnumerable<string> GetAsync(CancellationToken cancellationToken = default)
-    {
-        return this.GetObservable(cancellationToken).ToAsyncEnumerable();
-    }
+    public IAsyncEnumerable<string> GetAsync(CancellationToken cancellationToken = default) => this.GetObservable(cancellationToken).ToAsyncEnumerable();
 
     public IObservable<string> GetObservable(CancellationToken cancellationToken = default)
     {

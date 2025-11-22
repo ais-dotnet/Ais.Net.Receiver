@@ -82,8 +82,5 @@ public static class ReceiverHostExtensions
     /// <typeparam name="T">Type of events to count.</typeparam>
     /// <param name="eventsForCount">Observable stream of events to count.</param>
     /// <returns>An observable sequence representing the count of events.</returns>
-    private static IObservable<long> RunningCount<T>(this IObservable<T> eventsForCount)
-    {
-        return eventsForCount.Scan(0L, (total, _) => total + 1);
-    }
+    private static IObservable<long> RunningCount<T>(this IObservable<T> eventsForCount) => eventsForCount.Scan(0L, (total, _) => total + 1);
 }

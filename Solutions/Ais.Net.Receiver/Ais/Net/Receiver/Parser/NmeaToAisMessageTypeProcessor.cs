@@ -71,15 +71,9 @@ public class NmeaToAisMessageTypeProcessor : INmeaAisMessageStreamProcessor
         }
     }
 
-    public void OnError(in ReadOnlySpan<byte> line, Exception error, int lineNumber)
-    {
-        throw new NotImplementedException();
-    }
+    public void OnError(in ReadOnlySpan<byte> line, Exception error, int lineNumber) => throw new NotImplementedException();
 
-    public void OnCompleted()
-    {
-        throw new NotImplementedException();
-    }
+    public void OnCompleted() => throw new NotImplementedException();
 
     public void Progress(
         bool done,
@@ -88,10 +82,8 @@ public class NmeaToAisMessageTypeProcessor : INmeaAisMessageStreamProcessor
         int totalTicks,
         int nmeaLinesSinceLastUpdate,
         int aisMessagesSinceLastUpdate,
-        int ticksSinceLastUpdate)
-    {
+        int ticksSinceLastUpdate) =>
         throw new NotImplementedException();
-    }
 
     private void ParseMessageTypes1Through3(ReadOnlySpan<byte> asciiPayload, uint padding, int messageType)
     {

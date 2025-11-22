@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="../GitVersion.yml" />
+    <File Path=".editorconfig" />
+  </Folder>
+  <Project Path="Ais.Net.Receiver.Host.Console/Ais.Net.Receiver.Host.Console.csproj" />
+  <Project Path="Ais.Net.Receiver.Storage.Azure.Blob/Ais.Net.Receiver.Storage.Azure.Blob.csproj" />
+  <Project Path="Ais.Net.Receiver/Ais.Net.Receiver.csproj" />
+  <Project Path="docker-compose.dcproj">
+    <Build />
+  </Project>
+</Solution>

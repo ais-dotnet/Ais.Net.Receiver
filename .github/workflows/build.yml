@@ -70,8 +70,7 @@ jobs:
     - uses: endjin/Endjin.RecommendedPractices.GitHubActions/actions/run-build-process@main
       id: run_build
       with:
-        netSdkVersion: '8.0.x'
-        additionalNetSdkVersion: '9.0.x'
+        netSdkVersion: '10.0.x'
         forcePublish: ${{ github.event.inputs.forcePublish == 'true' }}
         sbomOutputStorageAccountName: ${{ vars.SBOM_OUTPUT_STORAGE_ACCOUNT_NAME }}
         sbomOutputStorageContainerName: ${{ vars.SBOM_OUTPUT_STORAGE_CONTAINER_NAME }}
