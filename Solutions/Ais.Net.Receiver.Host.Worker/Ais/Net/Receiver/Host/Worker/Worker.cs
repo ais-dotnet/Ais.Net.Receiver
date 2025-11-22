@@ -60,7 +60,8 @@ public class Worker : BackgroundService
         {
             receiverHost.GetStreamStatistics(aisConfig.StatisticsPeriodicity)
                         .Subscribe(statistics =>
-                                   System.Console.WriteLine($"{DateTime.UtcNow.ToUniversalTime()}: Sentences: {statistics.Sentence} | Messages: {statistics.Message} | Errors: {statistics.Error}"));
+                                   System.Console.WriteLine($"{DateTime.UtcNow.ToUniversalTime()}: Sentences: {statistics.Sentence} | Messages: {statistics.Message} | Errors: {statistics.Error}"),
+                                   error => this.logger.LogError(error, "Error in statistics stream"));
         }
 
         if (aisConfig.LoggerVerbosity == LoggerVerbosity.Normal)
