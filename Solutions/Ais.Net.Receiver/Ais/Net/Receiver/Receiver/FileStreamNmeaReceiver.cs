@@ -8,28 +8,33 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Spectre.IO;
 
 namespace Ais.Net.Receiver.Receiver;
 
 public class FileStreamNmeaReceiver : INmeaReceiver
 {
-    private readonly string path;
+    private readonly IFileSystem fileSystem;
+    private readonly FilePath path;
     private readonly TimeSpan delay = TimeSpan.Zero;
 
-    public FileStreamNmeaReceiver(string path)
+    public FileStreamNmeaReceiver(IFileSystem fileSystem, string path)
     {
-        this.path = path;
+        this.fileSystem = fileSystem;
+        this.path = new FilePath(path);
     }
         
-    public FileStreamNmeaReceiver(string path, TimeSpan delay)
+    public FileStreamNmeaReceiver(IFileSystem fileSystem, string path, TimeSpan delay)
     {
-        this.path = path;
+        this.fileSystem = fileSystem;
+        this.path = new FilePath(path);
         this.delay = delay;
     }
 
     public async IAsyncEnumerable<ReadOnlyMemory<byte>> GetAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        await using FileStream fs = new(this.path, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, useAsync: true);
+        var file = this.fileSystem.File.Retrieve(this.path);
+        await using Stream fs = file.OpenRead();
         using StreamReader sr = new(fs);
 
         while (true)
