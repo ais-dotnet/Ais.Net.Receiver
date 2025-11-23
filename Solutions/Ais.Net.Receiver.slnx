@@ -9,7 +9,7 @@
   <Project Path="Ais.Net.Receiver.Storage.Azure.Blob/Ais.Net.Receiver.Storage.Azure.Blob.csproj" />
   <Project Path="Ais.Net.Receiver.Tests/Ais.Net.Receiver.Tests.csproj" />
   <Project Path="Ais.Net.Receiver/Ais.Net.Receiver.csproj" />
-  <Project Path="docker-compose.dcproj">
+  <!-- <Project Path="docker-compose.dcproj">
     <Build />
-  </Project>
+  </Project> -->
 </Solution>
