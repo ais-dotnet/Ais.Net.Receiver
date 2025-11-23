@@ -22,6 +22,7 @@ public static class Program
 
         builder.Configuration.AddJsonFile("settings.json", true, true);
         builder.Configuration.AddJsonFile("settings.local.json", true, true);
+        builder.Configuration.AddEnvironmentVariables();
 
         builder.Services.AddOpenTelemetry()
             .ConfigureResource(resource => resource.AddService("Ais.Net.Receiver"))
