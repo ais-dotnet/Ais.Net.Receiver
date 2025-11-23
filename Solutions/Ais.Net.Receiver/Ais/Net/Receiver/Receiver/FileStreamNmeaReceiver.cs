@@ -18,16 +18,16 @@ public class FileStreamNmeaReceiver : INmeaReceiver
     private readonly FilePath path;
     private readonly TimeSpan delay = TimeSpan.Zero;
 
-    public FileStreamNmeaReceiver(IFileSystem fileSystem, string path)
+    public FileStreamNmeaReceiver(IFileSystem fileSystem, FilePath path)
     {
         this.fileSystem = fileSystem;
-        this.path = new FilePath(path);
+        this.path = path;
     }
         
-    public FileStreamNmeaReceiver(IFileSystem fileSystem, string path, TimeSpan delay)
+    public FileStreamNmeaReceiver(IFileSystem fileSystem, FilePath path, TimeSpan delay)
     {
         this.fileSystem = fileSystem;
-        this.path = new FilePath(path);
+        this.path = path;
         this.delay = delay;
     }
 

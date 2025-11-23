@@ -1,23 +1,19 @@
 using System.Text;
-
 using Ais.Net.Receiver.Receiver;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Shouldly;
+using Spectre.IO;
 using Spectre.IO.Testing;
 
 namespace Ais.Net.Receiver.Tests
 {
     [TestClass]
-    public class FileStreamNmeaReceiverTests
+    public class FileStreamNmeaReceiverTestsB
     {
         private FakeFileSystem fileSystem = null!;
-        private const string TestFilePath = "/test/nmea.txt";
+        private readonly FilePath testFilePath = new("/test/nmea.txt");
 
         [TestInitialize]
-        public void Setup()
-        {
-            this.fileSystem = new FakeFileSystem(FakeEnvironment.CreateLinuxEnvironment());
-        }
+        public void Setup() => this.fileSystem = new FakeFileSystem(FakeEnvironment.CreateLinuxEnvironment());
 
         [TestMethod]
         public async Task GetAsync_ReadsLinesFromFile()
@@ -28,13 +24,13 @@ namespace Ais.Net.Receiver.Tests
                 "!AIVDM,1,1,,A,13u?etPv2;0n:dDPwUM1U1Cb069D,0*24",
                 "!AIVDM,1,1,,B,177KQJ5000G?tO`K>RA1wUbN0TKH,0*5C"
             ];
-            
-            this.fileSystem.CreateFile(TestFilePath).SetTextContent(string.Join(Environment.NewLine, lines));
 
-            FileStreamNmeaReceiver receiver = new(this.fileSystem, TestFilePath);
+            this.fileSystem.CreateFile(this.testFilePath).SetTextContent(string.Join(System.Environment.NewLine, lines));
+
+            FileStreamNmeaReceiver receiver = new(this.fileSystem, this.testFilePath);
 
             // Act
-            List<ReadOnlyMemory<byte>> result = await receiver.GetAsync().ToListAsync();
+            List<ReadOnlyMemory<byte>> result = await receiver.GetAsync(TestContext.CancellationToken).ToListAsync(TestContext.CancellationToken);
 
             // Assert
             result.Count.ShouldBe(2);
@@ -47,14 +43,14 @@ namespace Ais.Net.Receiver.Tests
         {
             // Arrange
             string[] lines = ["Line1", "Line2"];
-            this.fileSystem.CreateFile(TestFilePath).SetTextContent(string.Join(Environment.NewLine, lines));
+            this.fileSystem.CreateFile(this.testFilePath).SetTextContent(string.Join(System.Environment.NewLine, lines));
 
             TimeSpan delay = TimeSpan.FromMilliseconds(50);
-            FileStreamNmeaReceiver receiver = new(this.fileSystem, TestFilePath, delay);
+            FileStreamNmeaReceiver receiver = new(this.fileSystem, this.testFilePath, delay);
 
             // Act
             DateTime start = DateTime.UtcNow;
-            List<ReadOnlyMemory<byte>> result = await receiver.GetAsync().ToListAsync();
+            List<ReadOnlyMemory<byte>> result = await receiver.GetAsync(TestContext.CancellationToken).ToListAsync(TestContext.CancellationToken);
             TimeSpan elapsed = DateTime.UtcNow - start;
 
             // Assert
@@ -62,5 +58,7 @@ namespace Ais.Net.Receiver.Tests
             // Should take at least 2 * delay (actually delay is before each read, so 2 delays)
             elapsed.ShouldBeGreaterThanOrEqualTo(delay * 2);
         }
+
+        public TestContext TestContext { get; set; }
     }
 }

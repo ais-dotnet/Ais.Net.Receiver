@@ -461,6 +461,11 @@
           "OpenTelemetry.Api": "1.14.0"
         }
       },
+      "Spectre.IO": {
+        "type": "Transitive",
+        "resolved": "0.21.0",
+        "contentHash": "5YBmNEGBo2c9jxk15nnYWFbtItTMAxsny0izXfEW3OqI553kpXUbwqfqBK+5IzaxmMGni1oNgCPVWa5OpOr4oA=="
+      },
       "StyleCop.Analyzers.Unstable": {
         "type": "Transitive",
         "resolved": "1.2.0.556",
@@ -513,6 +518,7 @@
         "dependencies": {
           "Ais.Net.Models": "[0.3.1, )",
           "Corvus.Retry": "[1.0.7, )",
+          "Spectre.IO": "[0.21.0, )",
           "System.Linq.Async": "[7.0.0, )",
           "System.Reactive": "[6.1.0, )"
         }
