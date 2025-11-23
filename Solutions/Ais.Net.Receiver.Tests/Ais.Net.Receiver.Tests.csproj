@@ -2,7 +2,8 @@
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <OutputType>Exe</OutputType>
-    <EnableMSTestRunner>true</EnableMSTestRunner>
+    <EnableMSTestRunner>false</EnableMSTestRunner>
+    <UseMSBuildTestInfrastructure>true</UseMSBuildTestInfrastructure>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -21,7 +22,6 @@
     <PackageReference Include="NSubstitute" Version="5.3.0" />
     
     <!-- Additional Tools -->
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
     <PackageReference Include="coverlet.collector" Version="6.0.4">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -30,6 +30,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Using Include="Microsoft.VisualStudio.TestTools.UnitTesting" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Ais.Net.Receiver\Ais.Net.Receiver.csproj" />
   </ItemGroup>
+
+  <Target Name="DebugProps" BeforeTargets="Build">
+    <Message Text="DEBUG: TestingPlatformDotnetTestSupport = '$(TestingPlatformDotnetTestSupport)'" Importance="High" />
+  </Target>
 </Project>
