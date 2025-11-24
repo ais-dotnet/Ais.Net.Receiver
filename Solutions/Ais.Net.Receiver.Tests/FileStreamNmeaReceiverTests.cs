@@ -30,7 +30,7 @@ namespace Ais.Net.Receiver.Tests
             FileStreamNmeaReceiver receiver = new(this.fileSystem, this.testFilePath);
 
             // Act
-            List<ReadOnlyMemory<byte>> result = await receiver.GetAsync(TestContext.CancellationToken).ToListAsync(TestContext.CancellationToken);
+            List<ReadOnlyMemory<byte>> result = await receiver.GetAsync(CancellationToken.None).ToListAsync(CancellationToken.None);
 
             // Assert
             result.Count.ShouldBe(2);
@@ -50,7 +50,7 @@ namespace Ais.Net.Receiver.Tests
 
             // Act
             DateTime start = DateTime.UtcNow;
-            List<ReadOnlyMemory<byte>> result = await receiver.GetAsync(TestContext.CancellationToken).ToListAsync(TestContext.CancellationToken);
+            List<ReadOnlyMemory<byte>> result = await receiver.GetAsync(CancellationToken.None).ToListAsync(CancellationToken.None);
             TimeSpan elapsed = DateTime.UtcNow - start;
 
             // Assert

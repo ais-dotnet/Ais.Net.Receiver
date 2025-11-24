@@ -1,31 +1,24 @@
-<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="MSTest.Sdk/3.10.2">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <OutputType>Exe</OutputType>
-    <EnableMSTestRunner>false</EnableMSTestRunner>
-    <UseMSBuildTestInfrastructure>true</UseMSBuildTestInfrastructure>
-    <IsPackable>false</IsPackable>
-    <IsTestProject>true</IsTestProject>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <TestingExtensionsProfile>Default</TestingExtensionsProfile>
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Testing Platform -->
-    <PackageReference Include="MSTest" Version="4.0.2" />
-    <PackageReference Include="Microsoft.Testing.Platform.MSBuild" Version="2.0.2" />
-    
     <!-- Assertion Framework -->
     <PackageReference Include="Shouldly" Version="4.3.0" />
     
     <!-- Mocking Framework -->
     <PackageReference Include="NSubstitute" Version="5.3.0" />
-    
-    <!-- Additional Tools -->
-    <PackageReference Include="coverlet.collector" Version="6.0.4">
+    <PackageReference Include="NSubstitute.Analyzers.CSharp" Version="1.0.17">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    
+    <!-- Additional Tools -->
     <PackageReference Include="Spectre.IO.Testing" Version="0.21.0" />
   </ItemGroup>
 
@@ -36,8 +29,4 @@
   <ItemGroup>
     <ProjectReference Include="..\Ais.Net.Receiver\Ais.Net.Receiver.csproj" />
   </ItemGroup>
-
-  <Target Name="DebugProps" BeforeTargets="Build">
-    <Message Text="DEBUG: TestingPlatformDotnetTestSupport = '$(TestingPlatformDotnetTestSupport)'" Importance="High" />
-  </Target>
 </Project>
