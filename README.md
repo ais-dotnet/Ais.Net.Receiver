@@ -114,7 +114,17 @@ Update the values in the `settings.json` file:
 }
 ```
 
-From the command line: `dotnet Ais.Net.Receiver.Host.Console.exe`
+From the command line: `dotnet Ais.Net.Receiver.Host.Console.dll`
+
+## Running Tests
+
+To run the unit tests, use the following command:
+
+```bash
+dotnet test --solution Solutions/Ais.Net.Receiver.slnx
+```
+
+The test project is configured to use the `Microsoft.Testing.Platform` runner.
 
 # Raspberry Pi
 
@@ -203,9 +213,9 @@ use the command `pwsh` to enter the PowerShell session.
 
 #### Install Ais.Net.Receiver.Host.Console
 
-2. From the solution root, open a command prompt and type `dotnet publish -c Release .\Solutions\Ais.Net.Receiver.sln`
+2. From the solution root, open a command prompt and type `dotnet publish -c Release .\Solutions\Ais.Net.Receiver.slnx`
 3. Add your Azure Blob Storage Account connection string to `settings.json`
-4. Transfer (I use [Beyond Compare](https://www.scootersoftware.com/) as it has native SSH support) the contents of `.\Solutions\Ais.Net.Receiver.Host.Console\bin\Release\net5.0\publish` to a folder called `aisr` in the `home/pi` directory on your Raspberry Pi (assuming you still have the default set up.) 
+4. Transfer (I use [Beyond Compare](https://www.scootersoftware.com/) as it has native SSH support) the contents of `.\Solutions\Ais.Net.Receiver.Host.Console\bin\Release\net10.0\publish` to a folder called `aisr` in the `home/pi` directory on your Raspberry Pi (assuming you still have the default set up.) 
 5. Copy `Solutions\Ais.Net.Receiver.Host.Console.RaspberryPi\aisr.service` to `/lib/systemd/system/aisr.service`
 6. run `sudo chmod 644 /lib/systemd/system/aisr.service`
 7. run `sudo systemctl enable aisr.service`
