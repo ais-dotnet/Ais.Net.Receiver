@@ -15,6 +15,7 @@ $zerofailedExtensions = @(
         # References the extension from its GitHub repository. If not already installed, use latest version from 'main' will be downloaded.
         Name = "ZeroFailed.Build.DotNet"
         GitRepository = "https://github.com/zerofailed/ZeroFailed.Build.DotNet"
+        GitRef = "feature/ms-test-platform"
     }
 )
 . ZeroFailed.tasks -ZfPath $here/.zf
@@ -59,8 +60,8 @@ $MinimumBicepCliVersion = '0.31.92'
 $NuSpecFilesToPackage = @(
     # "Solutions/MySolution/MyProject/MyProject.nuspec"
 )
-$IncludeAssembliesInCodeCoverage = "Endjin*;+Ais*"
-$ExcludeAssembliesInCodeCoverage = "Endjin*.Tests;+Ais*.Tests"
+$IncludeAssembliesInCodeCoverage = "Ais*"
+$ExcludeAssembliesInCodeCoverage = "Ais*.Tests"
 
 task . FullBuild
 
