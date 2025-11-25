@@ -93,3 +93,35 @@ task ApplyEnvironmentVariableOverridesWrapper -Before PreInit ApplyEnvironmentVa
 # TODO: These can be removed once the ZeroFailed container & bicep extensions are implemented
 task BuildContainerWrapper -After PackageCore BuildContainerImages,BuildBicepFiles
 task PublishContainerWrapper -After PublishCore PublishContainerImages
+
+task ApplyEnvironmentVariableOverrides {
+
+    # dot-source the function to load into the same scope as
+    # the InvokeBuild process, otherwise as a module function it
+    # won't havea ccess to any of the variables it needs to update
+    . $here/.zf/extensions/Endjin.RecommendedPractices.Build/1.5.14/functions/_Set-VariableFromEnvVar.ps1
+    
+    $buildEnvVars = Get-ChildItem env:BUILDVAR_*
+    foreach ($buildEnvVar in $buildEnvVars) {
+        Write-Build White "Processing buildEnvVar: $buildEnvVar"
+        # strip the 'BUILDVAR_' prefix to leave the variable name to be overridden
+        $varName = $buildEnvVar.Name -replace "^BUILDVAR_",""
+
+        $res = Set-VariableFromEnvVar -VariableName $varName -EnvironmentVariableName $buildEnvVar.Name
+
+        try {
+            if ($res) {
+                $var = Get-Item variable:/$varName
+                $varValue = $var.Value
+                $varType = $varValue.GetType().Name
+                Write-Build Yellow "Overriding '$varName' from environment variable [Value=$varValue] [Type=$varType)]"
+            }
+        }
+        catch {
+            Write-Build Yellow (ConvertTo-Json $res -Depth 10)
+            Write-Build Red $_.InvocationInfo.PositionMessage
+            Write-Build Red $_.ScriptStackTrace
+            throw $_
+        }
+    }
+}
