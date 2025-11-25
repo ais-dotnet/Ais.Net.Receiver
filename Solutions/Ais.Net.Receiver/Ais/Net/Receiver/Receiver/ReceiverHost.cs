@@ -19,6 +19,8 @@ using Corvus.Retry;
 using Corvus.Retry.Policies;
 using Corvus.Retry.Strategies;
 
+using OpenTelemetry.Trace;
+
 namespace Ais.Net.Receiver.Receiver;
 
 public class ReceiverHost : IAsyncDisposable
@@ -87,6 +89,9 @@ public class ReceiverHost : IAsyncDisposable
                 }
                 catch (ArgumentException ex)
                 {
+                    Activity.Current?.AddException(ex);
+                    Activity.Current?.SetStatus(ActivityStatusCode.Error);
+
                     if (errorSubject.HasObservers)
                     {
                         errorSubject.OnNext((Exception: ex, Encoding.ASCII.GetString(line.Span)));
@@ -94,6 +99,9 @@ public class ReceiverHost : IAsyncDisposable
                 }
                 catch (NotImplementedException ex)
                 {
+                    Activity.Current?.AddException(ex);
+                    Activity.Current?.SetStatus(ActivityStatusCode.Error);
+
                     if (errorSubject.HasObservers)
                     {
                         errorSubject.OnNext((Exception: ex, Encoding.ASCII.GetString(line.Span)));

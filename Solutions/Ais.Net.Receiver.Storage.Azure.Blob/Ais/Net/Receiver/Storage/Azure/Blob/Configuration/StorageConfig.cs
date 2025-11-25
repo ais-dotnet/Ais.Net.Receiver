@@ -17,5 +17,14 @@ public class StorageConfig
     public bool EnableCapture { get; set; }
 
     [Range(1, 10000)]
-    public int WriteBatchSize { get; set; }
+    public int WriteBatchSize { get; set; } = 500;
+
+    [Range(1, 300)]
+    public int BatchTimeoutSeconds { get; set; } = 10;
+
+    [Range(1, 100000)]
+    public int BoundedCapacity { get; set; } = 10000;
+
+    [Range(1, 8)]
+    public int MaxDegreeOfParallelism { get; set; } = 2;
 }

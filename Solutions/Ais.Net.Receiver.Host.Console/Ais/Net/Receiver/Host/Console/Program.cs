@@ -4,7 +4,9 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Reactive.Disposables;
+using System.Threading;
 using System.Threading.Tasks.Dataflow;
 using Ais.Net.Models;
 using Ais.Net.Models.Abstractions;
@@ -76,6 +78,7 @@ telemetry.Bind(receiverHost);
 using CompositeDisposable subscriptions = [];
 BatchBlock<string>? batchBlock = null;
 ActionBlock<IEnumerable<string>>? actionBlock = null;
+Timer? batchTimer = null;
 
 if (aisConfig.LoggerVerbosity == LoggerVerbosity.Minimal)
 {
@@ -121,9 +124,34 @@ if (aisConfig.LoggerVerbosity == LoggerVerbosity.Diagnostic)
 if (storageConfig.EnableCapture)
 {
     IStorageClient storageClient = new AzureAppendBlobStorageClient(storageConfig);
-    batchBlock = new BatchBlock<string>(storageConfig.WriteBatchSize);
-    actionBlock = new ActionBlock<IEnumerable<string>>(storageClient.PersistAsync);
+
+    batchBlock = new BatchBlock<string>(
+        storageConfig.WriteBatchSize,
+        new GroupingDataflowBlockOptions { BoundedCapacity = storageConfig.BoundedCapacity });
+
+    actionBlock = new ActionBlock<IEnumerable<string>>(
+        async batch =>
+        {
+            try
+            {
+                await storageClient.PersistAsync(batch);
+            }
+            catch (Exception ex)
+            {
+                Activity.Current?.AddException(ex);
+                Activity.Current?.SetStatus(ActivityStatusCode.Error);
+                AnsiConsole.MarkupLine($"[red]Storage error: {Markup.Escape(ex.Message)}[/]");
+            }
+        },
+        new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = storageConfig.MaxDegreeOfParallelism });
+
     batchBlock.LinkTo(actionBlock, new DataflowLinkOptions { PropagateCompletion = true });
+
+    batchTimer = new Timer(
+        _ => batchBlock?.TriggerBatch(),
+        null,
+        TimeSpan.FromSeconds(storageConfig.BatchTimeoutSeconds),
+        TimeSpan.FromSeconds(storageConfig.BatchTimeoutSeconds));
 
     // Persist the messages as they are received over the wire.
     subscriptions.Add(receiverHost.Sentences.Subscribe(batchBlock.AsObserver()));
@@ -148,17 +176,26 @@ catch (OperationCanceledException)
 }
 finally
 {
+    batchTimer?.Dispose();
+
     // Complete the dataflow pipeline and wait for it to finish
     if (batchBlock is not null && actionBlock is not null)
     {
         batchBlock.Complete();
         try
         {
-            await actionBlock.Completion;
+            using CancellationTokenSource cts = new(TimeSpan.FromSeconds(30));
+            await actionBlock.Completion.WaitAsync(cts.Token);
             AnsiConsole.MarkupLine("[green]Storage flush completed.[/]");
+        }
+        catch (OperationCanceledException)
+        {
+            AnsiConsole.MarkupLine("[yellow]Storage flush timeout.[/]");
         }
         catch (Exception ex)
         {
+            Activity.Current?.AddException(ex);
+            Activity.Current?.SetStatus(ActivityStatusCode.Error);
             AnsiConsole.MarkupLine($"[red]Storage flush error: {Markup.Escape(ex.Message)}[/]");
         }
     }

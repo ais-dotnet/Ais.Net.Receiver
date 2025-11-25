@@ -97,6 +97,16 @@
           "Microsoft.Extensions.Options": "10.0.0"
         }
       },
+      "Microsoft.Extensions.Options.DataAnnotations": {
+        "type": "Direct",
+        "requested": "[10.0.0, )",
+        "resolved": "10.0.0",
+        "contentHash": "nwyF0pUubUWgzxw5y0g1Vsp2n/Psv4V7HekgUTlFK/pNlzZaQOBp56ww5GFeg4GpaMK8Lu+02XIEjqzoIcFJGw==",
+        "dependencies": {
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.0",
+          "Microsoft.Extensions.Options": "10.0.0"
+        }
+      },
       "Microsoft.VisualStudio.Azure.Containers.Tools.Targets": {
         "type": "Direct",
         "requested": "[1.22.1, )",
@@ -145,6 +155,12 @@
         "requested": "[4.13.1, )",
         "resolved": "4.13.1",
         "contentHash": "KZpLy6ZlCebMk+d/3I5KU2R7AOb4LNJ6tPJqPtvFXmO8bEBHQvCIAvJOnY2tu4C9/aVOROTDYUFADxFqw1gh/g=="
+      },
+      "Spectre.Console": {
+        "type": "Direct",
+        "requested": "[0.49.1, )",
+        "resolved": "0.49.1",
+        "contentHash": "USV+pdu49OJ3nCjxNuw1K9Zw/c1HCBbwbjXZp0EOn6wM99tFdAtN34KEBZUMyRuJuXlUMDqhd8Yq9obW2MslYA=="
       },
       "StyleCop.Analyzers": {
         "type": "Direct",
@@ -514,6 +530,7 @@
         "dependencies": {
           "Ais.Net.Models": "[0.3.1, )",
           "Corvus.Retry": "[1.0.7, )",
+          "OpenTelemetry.Api": "[1.14.0, )",
           "Spectre.IO": "[0.21.0, )",
           "System.Linq.Async": "[7.0.0, )",
           "System.Reactive": "[6.1.0, )"

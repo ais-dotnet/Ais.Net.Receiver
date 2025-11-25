@@ -34,7 +34,9 @@ builder.Services.AddOptions<StorageConfig>()
 builder.Services.Configure<HostOptions>(options =>
 {
     options.BackgroundServiceExceptionBehavior = BackgroundServiceExceptionBehavior.StopHost;
-    options.ShutdownTimeout = TimeSpan.FromSeconds(30);
+
+    // Give the host enough time to allow the Worker's 30s flush to complete
+    options.ShutdownTimeout = TimeSpan.FromSeconds(45);
 });
 
 builder.Services.AddHostedService<Worker>();

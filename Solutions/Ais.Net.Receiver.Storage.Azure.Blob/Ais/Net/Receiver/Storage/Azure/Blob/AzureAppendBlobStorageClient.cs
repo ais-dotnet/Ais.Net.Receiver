@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Ais.Net.Receiver.Storage.Azure.Blob.Configuration;
@@ -15,9 +16,10 @@ using global::Azure.Storage.Blobs.Specialized;
 
 namespace Ais.Net.Receiver.Storage.Azure.Blob;
 
-public class AzureAppendBlobStorageClient : IStorageClient
+public class AzureAppendBlobStorageClient : IStorageClient, IDisposable
 {
     private readonly StorageConfig configuration;
+    private readonly SemaphoreSlim initializationLock = new(1, 1);
     private AppendBlobClient? appendBlobClient;
     private BlobContainerClient? blobContainerClient;
     private string? currentBlobPath;
@@ -44,6 +46,12 @@ public class AzureAppendBlobStorageClient : IStorageClient
         await this.appendBlobClient!.AppendBlockAsync(stream).ConfigureAwait(false);
     }
 
+    public void Dispose()
+    {
+        this.initializationLock.Dispose();
+        GC.SuppressFinalize(this);
+    }
+
     private async Task EnsureClientInitializedAsync()
     {
         DateTimeOffset timestamp = DateTimeOffset.UtcNow;
@@ -54,15 +62,29 @@ public class AzureAppendBlobStorageClient : IStorageClient
             return;
         }
 
-        this.currentBlobPath = newBlobPath;
+        await this.initializationLock.WaitAsync().ConfigureAwait(false);
 
-        this.blobContainerClient ??= new BlobContainerClient(
-            this.configuration.ConnectionString,
-            this.configuration.ContainerName);
+        try
+        {
+            if (this.appendBlobClient is not null && this.currentBlobPath == newBlobPath)
+            {
+                return;
+            }
 
-        this.appendBlobClient = this.blobContainerClient.GetAppendBlobClient(newBlobPath);
+            this.currentBlobPath = newBlobPath;
 
-        await this.blobContainerClient.CreateIfNotExistsAsync().ConfigureAwait(false);
-        await this.appendBlobClient.CreateIfNotExistsAsync().ConfigureAwait(false);
+            this.blobContainerClient ??= new BlobContainerClient(
+                this.configuration.ConnectionString,
+                this.configuration.ContainerName);
+
+            this.appendBlobClient = this.blobContainerClient.GetAppendBlobClient(newBlobPath);
+
+            await this.blobContainerClient.CreateIfNotExistsAsync().ConfigureAwait(false);
+            await this.appendBlobClient.CreateIfNotExistsAsync().ConfigureAwait(false);
+        }
+        finally
+        {
+            this.initializationLock.Release();
+        }
     }
 }

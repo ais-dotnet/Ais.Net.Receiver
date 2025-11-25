@@ -4,11 +4,11 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Reactive.Disposables;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
-
 using Ais.Net.Models;
 using Ais.Net.Models.Abstractions;
 using Ais.Net.Receiver.Configuration;
@@ -16,7 +16,6 @@ using Ais.Net.Receiver.Receiver;
 using Ais.Net.Receiver.Storage;
 using Ais.Net.Receiver.Storage.Azure.Blob;
 using Ais.Net.Receiver.Storage.Azure.Blob.Configuration;
-
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -35,6 +34,7 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
     private BatchBlock<string>? batchBlock;
     private ActionBlock<IEnumerable<string>>? actionBlock;
     private IStorageClient? storageClient;
+    private Timer? batchTimer;
 
     public Worker(
         ILogger<Worker> logger,
@@ -88,26 +88,40 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
     {
         this.logger.LogInformation("Worker stopped - completing dataflow pipeline");
 
+        this.batchTimer?.Dispose();
+        this.subscriptions?.Dispose();
+
         // Complete the dataflow pipeline and wait for it to finish
         if (this.batchBlock is not null && this.actionBlock is not null)
         {
             this.batchBlock.Complete();
             try
             {
-                await this.actionBlock.Completion.WaitAsync(cancellationToken);
+                using CancellationTokenSource cts = new(TimeSpan.FromSeconds(30));
+                await this.actionBlock.Completion.WaitAsync(cts.Token);
                 this.logger.LogInformation("Storage flush completed");
             }
             catch (OperationCanceledException)
             {
-                this.logger.LogWarning("Storage flush cancelled during shutdown");
+                this.logger.LogWarning("Storage flush timed out during shutdown");
+            }
+            catch (Exception ex)
+            {
+                this.logger.LogError(ex, "Storage flush failed with an error");
             }
         }
     }
 
     public async ValueTask DisposeAsync()
     {
+        this.batchTimer?.Dispose();
         this.subscriptions?.Dispose();
         this.telemetry?.Dispose();
+
+        if (this.storageClient is IDisposable disposableStorageClient)
+        {
+            disposableStorageClient.Dispose();
+        }
 
         if (this.receiverHost is not null)
         {
@@ -225,9 +239,34 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
         }
 
         this.storageClient = new AzureAppendBlobStorageClient(storageConfig);
-        this.batchBlock = new BatchBlock<string>(storageConfig.WriteBatchSize);
-        this.actionBlock = new ActionBlock<IEnumerable<string>>(this.storageClient.PersistAsync);
+
+        this.batchBlock = new BatchBlock<string>(
+            storageConfig.WriteBatchSize,
+            new GroupingDataflowBlockOptions { BoundedCapacity = storageConfig.BoundedCapacity });
+
+        this.actionBlock = new ActionBlock<IEnumerable<string>>(
+            async batch =>
+            {
+                try
+                {
+                    await this.storageClient.PersistAsync(batch);
+                }
+                catch (Exception ex)
+                {
+                    Activity.Current?.AddException(ex);
+                    Activity.Current?.SetStatus(ActivityStatusCode.Error);
+                    this.logger.LogError(ex, "Storage persistence failed");
+                }
+            },
+            new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = storageConfig.MaxDegreeOfParallelism });
+
         this.batchBlock.LinkTo(this.actionBlock, new DataflowLinkOptions { PropagateCompletion = true });
+
+        this.batchTimer = new Timer(
+            _ => this.batchBlock?.TriggerBatch(),
+            null,
+            TimeSpan.FromSeconds(storageConfig.BatchTimeoutSeconds),
+            TimeSpan.FromSeconds(storageConfig.BatchTimeoutSeconds));
 
         this.subscriptions.Add(this.receiverHost.Sentences.Subscribe(this.batchBlock.AsObserver()));
     }
