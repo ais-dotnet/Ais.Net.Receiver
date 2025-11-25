@@ -45,7 +45,6 @@ $ProjectsToPublish = @(
 
 $ContainerRegistryType = 'docker'
 $ContainerRegistryPublishPrefix = 'endjin'  # publish the container images to the 'endjin' DockerHub namespace
-$ContainerImageVersionOverride = 'local'    # override the GitVersion-generated SemVer used for tagging container images
 $ContainersToBuild = @(
     @{
        Dockerfile = 'Solutions/Ais.Net.Receiver.Host.Console/Dockerfile'
@@ -54,6 +53,17 @@ $ContainersToBuild = @(
        Arguments = @{ BUILD_CONFIGURATION = $Configuration; }
     }
 )
+
+# Ensure the old-style environment variable override expected by the old scripted build still works
+$ContainerImageVersionOverride = property BUILDVAR_ContainerImageVersionOverride  'local'    # override the GitVersion-generated SemVer used for tagging container images
+$DockerRegistryUsername = property BUILDVAR_DockerRegistryUsername ''
+$NugetPublishSource = property BUILDVAR_NuGetPublishSource "$here/_local-nuget-feed"
+$SkipContainerImages = [Convert]::ToBoolean((property BUILDVAR_SkipContainerImages $false))
+
+# Handle not being able to set an empty environment variable
+if ($ContainerImageVersionOverride -eq '**UNSET**') {
+    $ContainerImageVersionOverride = ''
+}
 
 $UseAcrTasks = $false
 $MinimumBicepCliVersion = '0.31.92'
@@ -88,44 +98,6 @@ task . FullBuild
 # task PostPublish {}
 # task RunLast {}
 
-task ApplyEnvironmentVariableOverridesWrapper -Before PreInit ApplyEnvironmentVariableOverrides
-
-# TODO: These can be removed once the ZeroFailed container & bicep extensions are implemented
-task BuildContainerWrapper -After PackageCore BuildContainerImages,BuildBicepFiles
-task PublishContainerWrapper -After PublishCore PublishContainerImages
-
-task ApplyEnvironmentVariableOverrides {
-
-    # dot-source the function to load into the same scope as
-    # the InvokeBuild process, otherwise as a module function it
-    # won't havea ccess to any of the variables it needs to update
-    . $here/.zf/extensions/Endjin.RecommendedPractices.Build/1.5.14/functions/_Set-VariableFromEnvVar.ps1
-    
-    $buildEnvVars = Get-ChildItem env:BUILDVAR_*
-    foreach ($buildEnvVar in $buildEnvVars) {
-        Write-Build White "Processing buildEnvVar: $buildEnvVar"
-        # strip the 'BUILDVAR_' prefix to leave the variable name to be overridden
-        $varName = $buildEnvVar.Name -replace "^BUILDVAR_",""
-
-        $res = Set-VariableFromEnvVar -VariableName $varName -EnvironmentVariableName $buildEnvVar.Name -Verbose
-
-        try {
-            if ($res) {
-                $var = Get-Item variable:/$varName
-
-                Write-Build Magenta "varName: '$varName'"
-                $varValue = $var.Value
-                Write-Build Magenta "varValue: '$varValue'"
-                $varType = $varValue.GetType().Name
-                Write-Build Magenta "varType: '$varType'"
-
-                Write-Build Yellow "Overriding '$varName' from environment variable [Value=$varValue] [Type=$varType)]"
-            }
-        }
-        catch {
-            Write-Build Red $_.InvocationInfo.PositionMessage
-            Write-Build Red $_.ScriptStackTrace
-            throw $_
-        }
-    }
-}
+# TODO: These can be removed once the ZeroFailed container extension is implemented
+task BuildContainerWrapper -If { !$SkipContainerImages } -After PackageCore BuildContainerImages,BuildBicepFiles
+task PublishContainerWrapper -If { !$SkipContainerImages } -After PublishCore PublishContainerImages

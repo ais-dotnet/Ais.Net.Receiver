@@ -59,7 +59,7 @@ jobs:
         # Docker action to build the multi-arch images at the end of the build.
         environmentVariablesYaml: |
           BUILDVAR_NuGetPublishSource: "${{ startsWith(github.ref, 'refs/tags/') && 'https://api.nuget.org/v3/index.json' || format('https://nuget.pkg.github.com/{0}/index.json', github.repository_owner) }}"
-          BUILDVAR_ContainerImageVersionOverride: ""
+          BUILDVAR_ContainerImageVersionOverride: "**UNSET**"
           BUILDVAR_DockerRegistryUsername: "${{ secrets.DOCKERHUB_USERNAME }}"
           BUILDVAR_SkipContainerImages: "true"
         secretsYaml: |
