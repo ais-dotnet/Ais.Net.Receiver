@@ -2,39 +2,56 @@
 // Copyright (c) Endjin Limited. All rights reserved.
 // </copyright>
 
-using Microsoft.Extensions.Configuration;
+using System;
+
+using Ais.Net.Receiver.Configuration;
+using Ais.Net.Receiver.Host.Worker;
+using Ais.Net.Receiver.Storage.Azure.Blob.Configuration;
+
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 
-namespace Ais.Net.Receiver.Host.Worker;
+HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 
-public static class Program
+builder.Services.AddSystemd();
+
+// Configure options with validation
+builder.Services.AddOptions<AisConfig>()
+    .Bind(builder.Configuration.GetSection("Ais"))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
+builder.Services.AddOptions<StorageConfig>()
+    .Bind(builder.Configuration.GetSection("Storage"))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
+// Configure host options for graceful shutdown and exception behavior
+builder.Services.Configure<HostOptions>(options =>
 {
-    public static void Main(string[] args)
-    {
-        HostApplicationBuilder builder = Microsoft.Extensions.Hosting.Host.CreateApplicationBuilder(args);
+    options.BackgroundServiceExceptionBehavior = BackgroundServiceExceptionBehavior.StopHost;
+    options.ShutdownTimeout = TimeSpan.FromSeconds(30);
+});
 
-        builder.Services.AddSystemd();
-        builder.Services.AddHostedService<Worker>();
+builder.Services.AddHostedService<Worker>();
 
-        builder.Configuration.AddJsonFile("settings.json", true, true);
-        builder.Configuration.AddJsonFile("settings.local.json", true, true);
-        builder.Configuration.AddEnvironmentVariables();
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(resource => resource
+        .AddService(
+            serviceName: "Ais.Net.Receiver",
+            serviceVersion: typeof(Program).Assembly.GetName().Version?.ToString() ?? "1.0.0",
+            serviceInstanceId: Environment.MachineName))
+    .WithMetrics(metrics => metrics
+        .AddMeter("Ais.Net.Receiver")
+        .AddRuntimeInstrumentation()
+        .AddOtlpExporter())
+    .WithTracing(tracing => tracing
+        .AddSource("Ais.Net.Receiver")
+        .AddOtlpExporter());
 
-        builder.Services.AddOpenTelemetry()
-            .ConfigureResource(resource => resource.AddService("Ais.Net.Receiver"))
-            .WithMetrics(metrics => metrics
-                .AddMeter("Ais.Net.Receiver")
-                .AddRuntimeInstrumentation()
-                .AddOtlpExporter())
-            .WithTracing(tracing => tracing
-                .AddSource("Ais.Net.Receiver")
-                .AddOtlpExporter());
-
-        IHost host = builder.Build();
-        host.Run();
-    }
-}
+IHost host = builder.Build();
+await host.RunAsync();

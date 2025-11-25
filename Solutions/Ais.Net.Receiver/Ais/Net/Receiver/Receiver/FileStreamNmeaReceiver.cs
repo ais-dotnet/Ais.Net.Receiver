@@ -1,4 +1,4 @@
-﻿// <copyright file="NmeaReceiver.cs" company="Endjin Limited">
+// <copyright file="NmeaReceiver.cs" company="Endjin Limited">
 // Copyright (c) Endjin Limited. All rights reserved.
 // </copyright>
 
@@ -8,22 +8,26 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Spectre.IO;
 
 namespace Ais.Net.Receiver.Receiver;
 
-public class FileStreamNmeaReceiver : INmeaReceiver
+public class FileStreamNmeaReceiver : INmeaReceiver, IAsyncDisposable
 {
     private readonly IFileSystem fileSystem;
     private readonly FilePath path;
     private readonly TimeSpan delay = TimeSpan.Zero;
+
+    private Stream? fileStream;
+    private StreamReader? streamReader;
 
     public FileStreamNmeaReceiver(IFileSystem fileSystem, FilePath path)
     {
         this.fileSystem = fileSystem;
         this.path = path;
     }
-        
+
     public FileStreamNmeaReceiver(IFileSystem fileSystem, FilePath path, TimeSpan delay)
     {
         this.fileSystem = fileSystem;
@@ -34,29 +38,58 @@ public class FileStreamNmeaReceiver : INmeaReceiver
     public async IAsyncEnumerable<ReadOnlyMemory<byte>> GetAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var file = this.fileSystem.File.Retrieve(this.path);
-        await using Stream fs = file.OpenRead();
-        using StreamReader sr = new(fs);
+        this.fileStream = file.OpenRead();
+        this.streamReader = new StreamReader(this.fileStream);
 
-        while (true)
+        try
         {
-            if (cancellationToken.IsCancellationRequested)
+            while (true)
             {
-                yield break;
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    yield break;
+                }
+
+                if (this.delay > TimeSpan.Zero)
+                {
+                    await Task.Delay(this.delay, cancellationToken).ConfigureAwait(false);
+                }
+
+                string? line = await this.streamReader.ReadLineAsync(cancellationToken).ConfigureAwait(false);
+
+                if (line is null)
+                {
+                    break;
+                }
+
+                yield return System.Text.Encoding.ASCII.GetBytes(line);
             }
+        }
+        finally
+        {
+            // Cleanup when enumeration completes normally or is cancelled
+            await this.CleanupAsync();
+        }
+    }
 
-            if (this.delay > TimeSpan.Zero)
-            {
-                await Task.Delay(this.delay, cancellationToken).ConfigureAwait(false);
-            }
+    public async ValueTask DisposeAsync()
+    {
+        await this.CleanupAsync();
+        GC.SuppressFinalize(this);
+    }
 
-            string? line = await sr.ReadLineAsync(cancellationToken).ConfigureAwait(false);
+    private async ValueTask CleanupAsync()
+    {
+        if (this.streamReader is not null)
+        {
+            this.streamReader.Dispose();
+            this.streamReader = null;
+        }
 
-            if (line is null)
-            {
-                break;
-            }
-
-            yield return System.Text.Encoding.ASCII.GetBytes(line);
+        if (this.fileStream is not null)
+        {
+            await this.fileStream.DisposeAsync();
+            this.fileStream = null;
         }
     }
 }

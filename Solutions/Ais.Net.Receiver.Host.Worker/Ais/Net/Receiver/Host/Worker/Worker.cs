@@ -17,33 +17,40 @@ using Ais.Net.Receiver.Storage;
 using Ais.Net.Receiver.Storage.Azure.Blob;
 using Ais.Net.Receiver.Storage.Azure.Blob.Configuration;
 
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Ais.Net.Receiver.Host.Worker;
 
-public class Worker : BackgroundService
+public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposable
 {
     private readonly ILogger<Worker> logger;
-    private readonly IConfiguration config;
+    private readonly IOptionsMonitor<AisConfig> aisOptionsMonitor;
+    private readonly IOptionsMonitor<StorageConfig> storageOptionsMonitor;
 
-    public Worker(ILogger<Worker> logger, IConfiguration config)
+    private ReceiverHost? receiverHost;
+    private ReceiverTelemetry? telemetry;
+    private CompositeDisposable? subscriptions;
+    private BatchBlock<string>? batchBlock;
+    private ActionBlock<IEnumerable<string>>? actionBlock;
+    private IStorageClient? storageClient;
+
+    public Worker(
+        ILogger<Worker> logger,
+        IOptionsMonitor<AisConfig> aisOptionsMonitor,
+        IOptionsMonitor<StorageConfig> storageOptionsMonitor)
     {
         this.logger = logger;
-        this.config = config;
+        this.aisOptionsMonitor = aisOptionsMonitor;
+        this.storageOptionsMonitor = storageOptionsMonitor;
     }
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    public Task StartingAsync(CancellationToken cancellationToken)
     {
-        AisConfig? aisConfig = this.config.GetSection("Ais").Get<AisConfig>();
-        StorageConfig? storageConfig = this.config.GetSection("Storage").Get<StorageConfig>();
+        this.logger.LogInformation("Worker starting - initializing components");
 
-        if (aisConfig is null || storageConfig is null)
-        {
-            this.logger.LogCritical("Configuration is invalid.");
-            return;
-        }
+        AisConfig aisConfig = this.aisOptionsMonitor.CurrentValue;
 
         INmeaReceiver receiver = new NetworkStreamNmeaReceiver(
             aisConfig.Host,
@@ -51,26 +58,112 @@ public class Worker : BackgroundService
             aisConfig.RetryPeriodicity,
             retryAttemptLimit: aisConfig.RetryAttempts);
 
-        await using ReceiverHost receiverHost = new(receiver);
-        using ReceiverTelemetry telemetry = new("Ais.Net.Receiver");
-        telemetry.Bind(receiverHost);
+        this.receiverHost = new ReceiverHost(receiver);
+        this.telemetry = new ReceiverTelemetry("Ais.Net.Receiver");
+        this.telemetry.Bind(this.receiverHost);
 
-        CompositeDisposable subscriptions = [];
+        this.subscriptions = [];
+
+        this.SetupSubscriptions();
+        this.SetupStorageIfEnabled();
+
+        this.logger.LogInformation("Worker initialization complete");
+        
+        return Task.CompletedTask;
+    }
+
+    public Task StartedAsync(CancellationToken cancellationToken)
+    {
+        this.logger.LogInformation("Worker started");
+        return Task.CompletedTask;
+    }
+
+    public Task StoppingAsync(CancellationToken cancellationToken)
+    {
+        this.logger.LogInformation("Worker stopping");
+        return Task.CompletedTask;
+    }
+
+    public async Task StoppedAsync(CancellationToken cancellationToken)
+    {
+        this.logger.LogInformation("Worker stopped - completing dataflow pipeline");
+
+        // Complete the dataflow pipeline and wait for it to finish
+        if (this.batchBlock is not null && this.actionBlock is not null)
+        {
+            this.batchBlock.Complete();
+            try
+            {
+                await this.actionBlock.Completion.WaitAsync(cancellationToken);
+                this.logger.LogInformation("Storage flush completed");
+            }
+            catch (OperationCanceledException)
+            {
+                this.logger.LogWarning("Storage flush cancelled during shutdown");
+            }
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        this.subscriptions?.Dispose();
+        this.telemetry?.Dispose();
+
+        if (this.receiverHost is not null)
+        {
+            await this.receiverHost.DisposeAsync();
+        }
+
+        GC.SuppressFinalize(this);
+    }
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        if (this.receiverHost is null)
+        {
+            this.logger.LogCritical("ReceiverHost not initialized - cannot execute");
+            return;
+        }
+
+        try
+        {
+            await this.receiverHost.StartAsync(stoppingToken);
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected on cancellation - graceful shutdown
+            this.logger.LogInformation("Worker execution cancelled");
+        }
+    }
+
+    private void SetupSubscriptions()
+    {
+        if (this.receiverHost is null || this.subscriptions is null)
+        {
+            return;
+        }
+
+        AisConfig aisConfig = this.aisOptionsMonitor.CurrentValue;
 
         if (aisConfig.LoggerVerbosity == LoggerVerbosity.Minimal)
         {
-            subscriptions.Add(
-                receiverHost.GetStreamStatistics(aisConfig.StatisticsPeriodicity)
-                            .Subscribe(
-                                statistics =>
-                                System.Console.WriteLine($"{DateTime.UtcNow.ToUniversalTime()}: Sentences: {statistics.Sentence} | Messages: {statistics.Message} | Errors: {statistics.Error}"),
-                                error => this.logger.LogError(error, "Error in statistics stream")));
+            this.subscriptions.Add(
+                this.receiverHost.GetStreamStatistics(aisConfig.StatisticsPeriodicity)
+                    .Subscribe(
+                        statistics =>
+                            this.logger.LogInformation(
+                                "{Timestamp:s}: Sentences: {Sentences} | Messages: {Messages} | Errors: {Errors}",
+                                DateTime.UtcNow.ToUniversalTime(),
+                                statistics.Sentence,
+                                statistics.Message,
+                                statistics.Error),
+                        error => this.logger.LogError(error, "Error in statistics stream")));
         }
 
         if (aisConfig.LoggerVerbosity == LoggerVerbosity.Normal)
         {
-            subscriptions.Add(
-                receiverHost.Messages.VesselNavigationWithNameStream().Subscribe(navigationWithName =>
+            this.subscriptions.Add(
+                this.receiverHost.Messages.VesselNavigationWithNameStream().Subscribe(navigationWithName =>
                 {
                     (uint mmsi, IVesselNavigation navigation, IVesselName name) = navigationWithName;
                     string positionText = navigation.Position is null ? "unknown position" : $"{navigation.Position.Latitude},{navigation.Position.Longitude}";
@@ -89,8 +182,8 @@ public class Worker : BackgroundService
 
         if (aisConfig.LoggerVerbosity == LoggerVerbosity.Detailed)
         {
-            subscriptions.Add(
-                receiverHost.Sentences.Subscribe(s =>
+            this.subscriptions.Add(
+                this.receiverHost.Sentences.Subscribe(s =>
                 {
                     if (this.logger.IsEnabled(LogLevel.Information))
                     {
@@ -101,8 +194,8 @@ public class Worker : BackgroundService
 
         if (aisConfig.LoggerVerbosity == LoggerVerbosity.Diagnostic)
         {
-            subscriptions.Add(
-                receiverHost.Messages.Subscribe(m =>
+            this.subscriptions.Add(
+                this.receiverHost.Messages.Subscribe(m =>
                 {
                     if (this.logger.IsEnabled(LogLevel.Information))
                     {
@@ -110,8 +203,8 @@ public class Worker : BackgroundService
                     }
                 }));
 
-            subscriptions.Add(
-                receiverHost.Errors.Subscribe(error =>
+            this.subscriptions.Add(
+                this.receiverHost.Errors.Subscribe(error =>
                 {
                     if (this.logger.IsEnabled(LogLevel.Error))
                     {
@@ -120,29 +213,22 @@ public class Worker : BackgroundService
                     }
                 }));
         }
+    }
 
-        if (storageConfig.EnableCapture)
-        {
-            IStorageClient storageClient = new AzureAppendBlobStorageClient(storageConfig);
-            BatchBlock<string> batchBlock = new(storageConfig.WriteBatchSize);
-            ActionBlock<IEnumerable<string>> actionBlock = new(storageClient.PersistAsync);
-            batchBlock.LinkTo(actionBlock, new DataflowLinkOptions { PropagateCompletion = true });
+    private void SetupStorageIfEnabled()
+    {
+        StorageConfig storageConfig = this.storageOptionsMonitor.CurrentValue;
 
-            subscriptions.Add(receiverHost.Sentences.Subscribe(batchBlock.AsObserver()));
-            _ = actionBlock.Completion.ContinueWith(_ => this.logger.LogInformation("Storage flush completed."), stoppingToken);
+        if (!storageConfig.EnableCapture || this.receiverHost is null || this.subscriptions is null)
+        {
+            return;
         }
 
-        try
-        {
-            await receiverHost.StartAsync(stoppingToken);
-        }
-        catch (OperationCanceledException)
-        {
-            // Expected on cancellation
-        }
-        finally
-        {
-            subscriptions.Dispose();
-        }
+        this.storageClient = new AzureAppendBlobStorageClient(storageConfig);
+        this.batchBlock = new BatchBlock<string>(storageConfig.WriteBatchSize);
+        this.actionBlock = new ActionBlock<IEnumerable<string>>(this.storageClient.PersistAsync);
+        this.batchBlock.LinkTo(this.actionBlock, new DataflowLinkOptions { PropagateCompletion = true });
+
+        this.subscriptions.Add(this.receiverHost.Sentences.Subscribe(this.batchBlock.AsObserver()));
     }
 }

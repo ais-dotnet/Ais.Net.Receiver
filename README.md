@@ -96,7 +96,7 @@ An example directory listing, with a user defined container name of `nmea-ais` w
 
 ## To Run
 
-Update the values in the `settings.json` file:
+Update the values in the `appsettings.json` file:
 
 ```json
 {
@@ -214,7 +214,7 @@ use the command `pwsh` to enter the PowerShell session.
 #### Install Ais.Net.Receiver.Host.Console
 
 2. From the solution root, open a command prompt and type `dotnet publish -c Release .\Solutions\Ais.Net.Receiver.slnx`
-3. Add your Azure Blob Storage Account connection string to `settings.json`
+3. Add your Azure Blob Storage Account connection string to `appsettings.json`
 4. Transfer (I use [Beyond Compare](https://www.scootersoftware.com/) as it has native SSH support) the contents of `.\Solutions\Ais.Net.Receiver.Host.Console\bin\Release\net10.0\publish` to a folder called `aisr` in the `home/pi` directory on your Raspberry Pi (assuming you still have the default set up.) 
 5. Copy `Solutions\Ais.Net.Receiver.Host.Console.RaspberryPi\aisr.service` to `/lib/systemd/system/aisr.service`
 6. run `sudo chmod 644 /lib/systemd/system/aisr.service`
@@ -231,7 +231,7 @@ Use [Azure Storage Explorer](https://azure.microsoft.com/en-us/features/storage-
 
 #### Configuration
 
-Configuration is read from `settings.json` and can also be overridden for local development by using a `settings.local.json` file.
+Configuration is read from `appsettings.json` and can also be overridden for local development by using an `appsettings.local.json` file.
 
 ```json
 {
