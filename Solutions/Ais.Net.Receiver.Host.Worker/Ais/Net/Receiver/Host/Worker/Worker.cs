@@ -177,7 +177,7 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
         if (aisConfig.LoggerVerbosity == LoggerVerbosity.Normal)
         {
             this.subscriptions.Add(
-                this.receiverHost.Messages.VesselNavigationWithNameStream().Subscribe(navigationWithName =>
+                this.receiverHost.Messages.VesselNavigationWithNameStream(aisConfig.VesselInactivityTimeout).Subscribe(navigationWithName =>
                 {
                     (uint mmsi, IVesselNavigation navigation, IVesselName name) = navigationWithName;
                     string positionText = navigation.Position is null ? "unknown position" : $"{navigation.Position.Latitude},{navigation.Position.Longitude}";

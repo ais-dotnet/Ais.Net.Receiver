@@ -93,7 +93,7 @@ if (aisConfig.LoggerVerbosity == LoggerVerbosity.Minimal)
 if (aisConfig.LoggerVerbosity == LoggerVerbosity.Normal)
 {
     subscriptions.Add(
-        receiverHost.Messages.VesselNavigationWithNameStream().Subscribe(navigationWithName =>
+        receiverHost.Messages.VesselNavigationWithNameStream(aisConfig.VesselInactivityTimeout).Subscribe(navigationWithName =>
         {
             (uint mmsi, IVesselNavigation navigation, IVesselName name) = navigationWithName;
             string positionText = navigation.Position is null ? "unknown position" : $"{navigation.Position.Latitude},{navigation.Position.Longitude}";

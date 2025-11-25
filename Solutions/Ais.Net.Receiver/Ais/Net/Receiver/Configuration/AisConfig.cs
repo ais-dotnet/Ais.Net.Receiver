@@ -23,4 +23,6 @@ public class AisConfig
     public int RetryAttempts { get; set; }
 
     public TimeSpan RetryPeriodicity { get; set; }
+
+    public TimeSpan? VesselInactivityTimeout { get; set; }
 }
