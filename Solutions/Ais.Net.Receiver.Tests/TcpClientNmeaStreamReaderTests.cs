@@ -1,77 +1,74 @@
-using System;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
+
 using Ais.Net.Receiver.Receiver;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+
 using Shouldly;
 
-namespace Ais.Net.Receiver.Tests
+namespace Ais.Net.Receiver.Tests;
+
+[TestClass]
+public class TcpClientNmeaStreamReaderTests
 {
-    [TestClass]
-    public class TcpClientNmeaStreamReaderTests
+    [TestMethod]
+    public async Task ConnectAsync_ConnectsToListener()
     {
-        [TestMethod]
-        public async Task ConnectAsync_ConnectsToListener()
+        // Arrange
+        TcpListener listener = new(IPAddress.Loopback, 0);
+        listener.Start();
+        int port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        TcpClientNmeaStreamReader reader = new();
+
+        try
         {
-            // Arrange
-            var listener = new TcpListener(IPAddress.Loopback, 0);
-            listener.Start();
-            var port = ((IPEndPoint)listener.LocalEndpoint).Port;
-            var reader = new TcpClientNmeaStreamReader();
+            // Act
+            await reader.ConnectAsync("127.0.0.1", port, CancellationToken.None);
 
-            try
-            {
-                // Act
-                await reader.ConnectAsync("127.0.0.1", port, CancellationToken.None);
-
-                // Assert
-                reader.Connected.ShouldBeTrue();
-            }
-            finally
-            {
-                await reader.DisposeAsync();
-                listener.Stop();
-            }
+            // Assert
+            reader.Connected.ShouldBeTrue();
         }
-
-        [TestMethod]
-        public async Task ReadLineAsync_ReadsLinesFromStream()
+        finally
         {
-            // Arrange
-            var listener = new TcpListener(IPAddress.Loopback, 0);
-            listener.Start();
-            var port = ((IPEndPoint)listener.LocalEndpoint).Port;
-            var reader = new TcpClientNmeaStreamReader();
+            await reader.DisposeAsync();
+            listener.Stop();
+        }
+    }
 
-            try
-            {
-                await reader.ConnectAsync("127.0.0.1", port, CancellationToken.None);
+    [TestMethod]
+    public async Task ReadLineAsync_ReadsLinesFromStream()
+    {
+        // Arrange
+        TcpListener listener = new(IPAddress.Loopback, 0);
+        listener.Start();
+        int port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        TcpClientNmeaStreamReader reader = new();
+
+        try
+        {
+            await reader.ConnectAsync("127.0.0.1", port, CancellationToken.None);
                 
-                // Accept client and send data
-                var serverClient = await listener.AcceptTcpClientAsync();
-                var stream = serverClient.GetStream();
-                var data = Encoding.ASCII.GetBytes("Line1\nLine2\r\n");
-                await stream.WriteAsync(data);
+            // Accept client and send data
+            TcpClient serverClient = await listener.AcceptTcpClientAsync();
+            NetworkStream stream = serverClient.GetStream();
+            byte[] data = Encoding.ASCII.GetBytes("Line1\nLine2\r\n");
+            await stream.WriteAsync(data);
 
-                // Act
-                var line1 = await reader.ReadLineAsync(CancellationToken.None);
-                var line2 = await reader.ReadLineAsync(CancellationToken.None);
+            // Act
+            ReadOnlyMemory<byte>? line1 = await reader.ReadLineAsync(CancellationToken.None);
+            ReadOnlyMemory<byte>? line2 = await reader.ReadLineAsync(CancellationToken.None);
 
-                // Assert
-                line1.HasValue.ShouldBeTrue();
-                Encoding.ASCII.GetString(line1.Value.Span).ShouldBe("Line1");
+            // Assert
+            line1.HasValue.ShouldBeTrue();
+            Encoding.ASCII.GetString(line1.Value.Span).ShouldBe("Line1");
                 
-                line2.HasValue.ShouldBeTrue();
-                Encoding.ASCII.GetString(line2.Value.Span).ShouldBe("Line2");
-            }
-            finally
-            {
-                await reader.DisposeAsync();
-                listener.Stop();
-            }
+            line2.HasValue.ShouldBeTrue();
+            Encoding.ASCII.GetString(line2.Value.Span).ShouldBe("Line2");
+        }
+        finally
+        {
+            await reader.DisposeAsync();
+            listener.Stop();
         }
     }
 }
