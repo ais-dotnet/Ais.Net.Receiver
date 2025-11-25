@@ -18,13 +18,13 @@ public class ReceiverHostTests
         INmeaReceiver? receiver = Substitute.For<INmeaReceiver>();
         string message = "!AIVDM,1,1,,A,13u?etPv2;0n:dDPwUM1U1Cb069D,0*24";
         byte[] bytes = Encoding.ASCII.GetBytes(message);
-            
+
         receiver.GetAsync(Arg.Any<CancellationToken>())
             .Returns(new[] { (ReadOnlyMemory<byte>)bytes }.ToAsyncEnumerable());
 
-        ReceiverHost host = new(receiver);
+        await using ReceiverHost host = new(receiver);
         IAisMessage? receivedMessage = null;
-        host.Messages.Subscribe(msg => receivedMessage = msg);
+        using IDisposable subscription = host.Messages.Subscribe(msg => receivedMessage = msg);
 
         // Act
         await host.StartAsync(CancellationToken.None);
@@ -42,13 +42,13 @@ public class ReceiverHostTests
         INmeaReceiver? receiver = Substitute.For<INmeaReceiver>();
         string message = "!AIVDM,1,1,,A,13u?etPv2;0n:dDPwUM1U1Cb069D,0*24";
         byte[] bytes = Encoding.ASCII.GetBytes(message);
-            
+
         receiver.GetAsync(Arg.Any<CancellationToken>())
             .Returns(new[] { (ReadOnlyMemory<byte>)bytes }.ToAsyncEnumerable());
 
-        ReceiverHost host = new(receiver);
+        await using ReceiverHost host = new(receiver);
         string? receivedSentence = null;
-        host.Sentences.Subscribe(s => receivedSentence = s);
+        using IDisposable subscription = host.Sentences.Subscribe(s => receivedSentence = s);
 
         // Act
         await host.StartAsync(CancellationToken.None);
@@ -67,15 +67,15 @@ public class ReceiverHostTests
         // "GARBAGE" causes NmeaLineParser to throw ArgumentException
         string message = "GARBAGE";
         byte[] bytes = Encoding.ASCII.GetBytes(message);
-            
+
         receiver.GetAsync(Arg.Any<CancellationToken>())
             .Returns(new[] { (ReadOnlyMemory<byte>)bytes }.ToAsyncEnumerable());
 
-        ReceiverHost host = new(receiver);
+        await using ReceiverHost host = new(receiver);
         (Exception Exception, string Line)? receivedError = null;
-        host.Errors.Subscribe(e => receivedError = e);
+        using IDisposable errorSubscription = host.Errors.Subscribe(e => receivedError = e);
         // Must subscribe to Messages or Metadata to trigger processing
-        host.Messages.Subscribe(_ => { });
+        using IDisposable messageSubscription = host.Messages.Subscribe(_ => { });
 
         // Act
         await host.StartAsync(CancellationToken.None);
