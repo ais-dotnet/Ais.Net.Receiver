@@ -4,8 +4,11 @@
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
-    <LangVersion>latest</LangVersion>
+    <LangVersion>14.0</LangVersion>
     <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors Condition="'$(Configuration)' == 'Release'">true</TreatWarningsAsErrors>
+    <EnableConfigurationBindingGenerator>true</EnableConfigurationBindingGenerator>
     <IsPackable>false</IsPackable>
     <UserSecretsId>dotnet-Ais.Net.Receiver.Host.Worker-53bc9b9d-9d6a-45d4-8429-2a2761773502</UserSecretsId>
   </PropertyGroup>

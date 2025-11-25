@@ -24,71 +24,77 @@ public static class NmeaMessageExtensions
         }
     }
 
-    public static bool IsMissingNmeaBlockTags(this ReadOnlySpan<byte> message) => message.Length > 0 && message[0] == '!';
-
-    public static ReadOnlyMemory<byte> PrependNmeaBlockTags(this ReadOnlyMemory<byte> message)
+    extension(ReadOnlySpan<byte> message)
     {
-        string timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString();
-        string prefix = $@"\s:1000001,c:{timestamp}*{NmeaChecksum("c:" + timestamp)}\";
-        byte[] prefixBytes = System.Text.Encoding.ASCII.GetBytes(prefix);
-        
-        byte[] result = new byte[prefixBytes.Length + message.Length];
-        prefixBytes.CopyTo(result, 0);
-        message.CopyTo(result.AsMemory(prefixBytes.Length));
-        
-        return result;
+        public bool IsMissingNmeaBlockTags => message.Length > 0 && message[0] == '!';
+
+        public (int StationId, long UnixTimestamp) ParseNmeaBlockTags()
+        {
+            if (message.Length == 0 || message[0] != '\\')
+            {
+                return (0, 0);
+            }
+
+            int endOfTags = message.Slice(1).IndexOf((byte)'\\');
+            if (endOfTags == -1)
+            {
+                return (0, 0);
+            }
+
+            ReadOnlySpan<byte> tags = message.Slice(1, endOfTags);
+            string tagsString = System.Text.Encoding.ASCII.GetString(tags);
+
+            int stationId = 0;
+            long timestamp = 0;
+
+            foreach (string part in tagsString.Split(','))
+            {
+                if (part.StartsWith("s:"))
+                {
+                    string val = part.Substring(2);
+                    int len = 0;
+                    while (len < val.Length && char.IsDigit(val[len]))
+                    {
+                        len++;
+                    }
+
+                    if (len > 0 && int.TryParse(val.AsSpan(0, len), out int sid))
+                    {
+                        stationId = sid;
+                    }
+                }
+                else if (part.StartsWith("c:"))
+                {
+                    string val = part.Substring(2);
+                    int checksumIndex = val.IndexOf('*');
+                    if (checksumIndex != -1)
+                    {
+                        val = val.Substring(0, checksumIndex);
+                    }
+
+                    long.TryParse(val, out timestamp);
+                }
+            }
+
+            return (stationId, timestamp);
+        }
+    }
+
+    extension(ReadOnlyMemory<byte> message)
+    {
+        public ReadOnlyMemory<byte> PrependNmeaBlockTags()
+        {
+            string timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString();
+            string prefix = $@"\s:1000001,c:{timestamp}*{NmeaChecksum("c:" + timestamp)}\";
+            byte[] prefixBytes = System.Text.Encoding.ASCII.GetBytes(prefix);
+            
+            byte[] result = new byte[prefixBytes.Length + message.Length];
+            prefixBytes.CopyTo(result, 0);
+            message.CopyTo(result.AsMemory(prefixBytes.Length));
+            
+            return result;
+        }
     }
 
     private static string NmeaChecksum(string s) => s.Aggregate(0, (t, c) => t ^ c).ToString("X2");
-
-    public static (int StationId, long UnixTimestamp) ParseNmeaBlockTags(this ReadOnlySpan<byte> message)
-    {
-        if (message.Length == 0 || message[0] != '\\')
-        {
-            return (0, 0);
-        }
-
-        int endOfTags = message.Slice(1).IndexOf((byte)'\\');
-        if (endOfTags == -1)
-        {
-            return (0, 0);
-        }
-
-        ReadOnlySpan<byte> tags = message.Slice(1, endOfTags);
-        string tagsString = System.Text.Encoding.ASCII.GetString(tags);
-
-        int stationId = 0;
-        long timestamp = 0;
-
-        foreach (string part in tagsString.Split(','))
-        {
-            if (part.StartsWith("s:"))
-            {
-                string val = part.Substring(2);
-                int len = 0;
-                while (len < val.Length && char.IsDigit(val[len]))
-                {
-                    len++;
-                }
-
-                if (len > 0 && int.TryParse(val.AsSpan(0, len), out int sid))
-                {
-                    stationId = sid;
-                }
-            }
-            else if (part.StartsWith("c:"))
-            {
-                string val = part.Substring(2);
-                int checksumIndex = val.IndexOf('*');
-                if (checksumIndex != -1)
-                {
-                    val = val.Substring(0, checksumIndex);
-                }
-
-                long.TryParse(val, out timestamp);
-            }
-        }
-
-        return (stationId, timestamp);
-    }
 }

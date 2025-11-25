@@ -150,11 +150,26 @@
           "OpenTelemetry.Api": "[1.14.0, 2.0.0)"
         }
       },
+      "Roslynator.Analyzers": {
+        "type": "Direct",
+        "requested": "[4.13.1, )",
+        "resolved": "4.13.1",
+        "contentHash": "KZpLy6ZlCebMk+d/3I5KU2R7AOb4LNJ6tPJqPtvFXmO8bEBHQvCIAvJOnY2tu4C9/aVOROTDYUFADxFqw1gh/g=="
+      },
       "Spectre.Console": {
         "type": "Direct",
         "requested": "[0.54.0, )",
         "resolved": "0.54.0",
         "contentHash": "StDXCFayfy0yB1xzUHT2tgEpV1/HFTiS4JgsAQS49EYTfMixSwwucaQs/bIOCwXjWwIQTMuxjUIxcB5XsJkFJA=="
+      },
+      "StyleCop.Analyzers": {
+        "type": "Direct",
+        "requested": "[1.2.0-beta.556, )",
+        "resolved": "1.2.0-beta.556",
+        "contentHash": "llRPgmA1fhC0I0QyFLEcjvtM2239QzKr/tcnbsjArLMJxJlu0AA5G7Fft0OI30pHF3MW63Gf4aSSsjc5m82J1Q==",
+        "dependencies": {
+          "StyleCop.Analyzers.Unstable": "1.2.0.556"
+        }
       },
       "Ais.Net": {
         "type": "Transitive",
@@ -462,6 +477,11 @@
         "type": "Transitive",
         "resolved": "0.21.0",
         "contentHash": "5YBmNEGBo2c9jxk15nnYWFbtItTMAxsny0izXfEW3OqI553kpXUbwqfqBK+5IzaxmMGni1oNgCPVWa5OpOr4oA=="
+      },
+      "StyleCop.Analyzers.Unstable": {
+        "type": "Transitive",
+        "resolved": "1.2.0.556",
+        "contentHash": "zvn9Mqs/ox/83cpYPignI8hJEM2A93s2HkHs8HYMOAQW0PkampyoErAiIyKxgTLqbbad29HX/shv/6LGSjPJNQ=="
       },
       "System.ClientModel": {
         "type": "Transitive",

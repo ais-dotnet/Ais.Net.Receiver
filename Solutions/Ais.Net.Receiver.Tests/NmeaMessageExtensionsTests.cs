@@ -15,7 +15,7 @@ public class NmeaMessageExtensionsTests
         byte[] bytes = Encoding.ASCII.GetBytes(message);
 
         // Act
-        bool result = bytes.IsMissingNmeaBlockTags();
+        bool result = bytes.IsMissingNmeaBlockTags;
 
         // Assert
         result.ShouldBeFalse();
@@ -29,7 +29,7 @@ public class NmeaMessageExtensionsTests
         byte[] bytes = Encoding.ASCII.GetBytes(message);
 
         // Act
-        bool result = bytes.IsMissingNmeaBlockTags();
+        bool result = bytes.IsMissingNmeaBlockTags;
 
         // Assert
         result.ShouldBeTrue();
@@ -75,7 +75,7 @@ public class NmeaMessageExtensionsTests
         byte[] bytes = [];
 
         // Act
-        bool result = ((ReadOnlySpan<byte>)bytes).IsMissingNmeaBlockTags();
+        bool result = ((ReadOnlySpan<byte>)bytes).IsMissingNmeaBlockTags;
 
         // Assert - empty array returns false (no message to check)
         result.ShouldBeFalse();
@@ -119,7 +119,7 @@ public class NmeaMessageExtensionsTests
         byte[] bytes = Encoding.ASCII.GetBytes(message);
 
         // Act
-        bool result = bytes.IsMissingNmeaBlockTags();
+        bool result = bytes.IsMissingNmeaBlockTags;
 
         // Assert
         result.ShouldBeFalse();

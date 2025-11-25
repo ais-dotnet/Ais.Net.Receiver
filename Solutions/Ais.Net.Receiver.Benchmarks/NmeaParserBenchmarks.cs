@@ -12,7 +12,7 @@ public class NmeaParserBenchmarks
 
     [Benchmark]
     [ArgumentsSource(nameof(GetMessagesWithoutTags))]
-    public bool IsMissingTags(NmeaTestCase testCase) => testCase.Data.IsMissingNmeaBlockTags();
+    public bool IsMissingTags(NmeaTestCase testCase) => testCase.Data.IsMissingNmeaBlockTags;
 
     [Benchmark]
     [ArgumentsSource(nameof(GetMessagesWithoutTags))]

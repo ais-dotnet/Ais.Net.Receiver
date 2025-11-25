@@ -130,7 +130,7 @@ public class ReceiverHost : IAsyncDisposable
     {
         await foreach (ReadOnlyMemory<byte> message in this.receiver.GetAsync(cancellationToken))
         {
-            yield return message.Span.IsMissingNmeaBlockTags() ? message.PrependNmeaBlockTags() : message;
+            yield return message.Span.IsMissingNmeaBlockTags ? message.PrependNmeaBlockTags() : message;
         }
     }
 
