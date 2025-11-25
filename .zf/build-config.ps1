@@ -107,18 +107,22 @@ task ApplyEnvironmentVariableOverrides {
         # strip the 'BUILDVAR_' prefix to leave the variable name to be overridden
         $varName = $buildEnvVar.Name -replace "^BUILDVAR_",""
 
-        $res = Set-VariableFromEnvVar -VariableName $varName -EnvironmentVariableName $buildEnvVar.Name
+        $res = Set-VariableFromEnvVar -VariableName $varName -EnvironmentVariableName $buildEnvVar.Name -Verbose
 
         try {
             if ($res) {
                 $var = Get-Item variable:/$varName
+
+                Write-Build Magenta "varName: '$varName'"
                 $varValue = $var.Value
+                Write-Build Magenta "varValue: '$varValue'"
                 $varType = $varValue.GetType().Name
+                Write-Build Magenta "varType: '$varType'"
+
                 Write-Build Yellow "Overriding '$varName' from environment variable [Value=$varValue] [Type=$varType)]"
             }
         }
         catch {
-            Write-Build Yellow (ConvertTo-Json $res -Depth 10)
             Write-Build Red $_.InvocationInfo.PositionMessage
             Write-Build Red $_.ScriptStackTrace
             throw $_
