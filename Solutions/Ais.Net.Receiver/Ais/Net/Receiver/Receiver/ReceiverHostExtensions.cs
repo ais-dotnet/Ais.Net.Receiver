@@ -3,6 +3,7 @@
 // </copyright>
 
 using System;
+using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using Ais.Net.Models.Abstractions;
 
@@ -19,8 +20,9 @@ public static class ReceiverHostExtensions
     /// </summary>
     /// <param name="receiverHost">The <see cref="ReceiverHost"/> to extend.</param>
     /// <param name="period">The duration statistics should be collected for, before returning.</param>
+    /// <param name="scheduler">Optional scheduler to use for time-based operations.</param>
     /// <returns>An observable sequence of tuple containing statistics.</returns>
-    public static IObservable<(long Message, long Sentence, long Error)> GetStreamStatistics(this ReceiverHost receiverHost, TimeSpan period)
+    public static IObservable<(long Message, long Sentence, long Error)> GetStreamStatistics(this ReceiverHost receiverHost, TimeSpan period, IScheduler? scheduler = null)
     {
         IObservable<(long Messages, long Sentences, long Errors)> runningCounts =
             receiverHost.Messages.RunningCount().CombineLatest(
@@ -28,7 +30,7 @@ public static class ReceiverHostExtensions
                 receiverHost.Errors.RunningCount(),
                 (messages, sentences, errors) => (messages, sentences, errors));
 
-        return runningCounts.Buffer(period)
+        return runningCounts.Buffer(period, scheduler ?? Scheduler.Default)
             .Select(window =>
             {
                 switch (window.Count)

@@ -58,4 +58,58 @@ public class FileStreamNmeaReceiverTests
         // Should take at least 2 * delay (actually delay is before each read, so 2 delays)
         elapsed.ShouldBeGreaterThanOrEqualTo(delay * 2);
     }
+
+    [TestMethod]
+    public async Task GetAsync_EmptyFile_ReturnsNoLines()
+    {
+        // Arrange
+        this.fileSystem.CreateFile(this.testFilePath).SetTextContent(string.Empty);
+        FileStreamNmeaReceiver receiver = new(this.fileSystem, this.testFilePath);
+
+        // Act
+        List<ReadOnlyMemory<byte>> result = await receiver.GetAsync(CancellationToken.None).ToListAsync(CancellationToken.None);
+
+        // Assert
+        result.Count.ShouldBe(0);
+    }
+
+    [TestMethod]
+    public async Task GetAsync_WithCancellation_StopsReading()
+    {
+        // Arrange
+        string[] lines = ["Line1", "Line2", "Line3", "Line4", "Line5"];
+        this.fileSystem.CreateFile(this.testFilePath).SetTextContent(string.Join(System.Environment.NewLine, lines));
+
+        TimeSpan delay = TimeSpan.FromMilliseconds(50);
+        FileStreamNmeaReceiver receiver = new(this.fileSystem, this.testFilePath, delay);
+
+        using CancellationTokenSource cts = new();
+        List<ReadOnlyMemory<byte>> result = [];
+
+        // Act
+        await foreach (ReadOnlyMemory<byte> line in receiver.GetAsync(cts.Token))
+        {
+            result.Add(line);
+            if (result.Count >= 2)
+            {
+                cts.Cancel();  // Synchronous cancel is sufficient since we break immediately
+                break;
+            }
+        }
+
+        // Assert - should have stopped after 2 lines
+        result.Count.ShouldBe(2);
+    }
+
+    [TestMethod]
+    public async Task DisposeAsync_CanBeCalledMultipleTimes()
+    {
+        // Arrange
+        this.fileSystem.CreateFile(this.testFilePath).SetTextContent("Line1");
+        FileStreamNmeaReceiver receiver = new(this.fileSystem, this.testFilePath);
+
+        // Act & Assert - should not throw
+        await receiver.DisposeAsync();
+        await receiver.DisposeAsync();
+    }
 }

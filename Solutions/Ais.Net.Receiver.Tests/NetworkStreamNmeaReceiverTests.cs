@@ -7,6 +7,8 @@ namespace Ais.Net.Receiver.Tests;
 [TestClass]
 public class NetworkStreamNmeaReceiverTests
 {
+    public TestContext TestContext { get; set; } = null!;
+
     private class MockNmeaStreamReader : INmeaStreamReader
     {
         public bool Connected { get; set; } = true;
@@ -118,5 +120,140 @@ public class NetworkStreamNmeaReceiverTests
         // Assert
         result.Count.ShouldBe(1);
         result[0].ShouldBe("Line1");
+    }
+
+    [TestMethod]
+    public async Task GetAsync_MultipleConsecutiveFailures_EventuallySucceeds()
+    {
+        // Arrange
+        MockNmeaStreamReader reader = new();
+        string host = "localhost";
+        int port = 12345;
+
+        // First three connections fail
+        reader.Connects.Enqueue(_ => throw new Exception("Failure 1"));
+        reader.Connects.Enqueue(_ => throw new Exception("Failure 2"));
+        reader.Connects.Enqueue(_ => throw new Exception("Failure 3"));
+        // Fourth connection succeeds (default)
+
+        byte[] line = System.Text.Encoding.ASCII.GetBytes("Success");
+        reader.Reads.Enqueue(_ => new ValueTask<ReadOnlyMemory<byte>?>(line));
+        reader.Reads.Enqueue(_ => new ValueTask<ReadOnlyMemory<byte>?>(result: null));
+
+        NetworkStreamNmeaReceiver receiver = new(reader, host, port, TimeSpan.FromMilliseconds(1));
+
+        // Act
+        using CancellationTokenSource cts = new(TimeSpan.FromSeconds(5));
+        List<string> result = [];
+
+        await foreach (ReadOnlyMemory<byte> item in receiver.GetAsync(cts.Token))
+        {
+            result.Add(System.Text.Encoding.ASCII.GetString(item.Span));
+        }
+
+        // Assert
+        result.Count.ShouldBe(1);
+        result[0].ShouldBe("Success");
+    }
+
+    [TestMethod]
+    public void Properties_ReturnCorrectValues()
+    {
+        // Arrange
+        MockNmeaStreamReader reader = new();
+        string host = "test.example.com";
+        int port = 9876;
+        TimeSpan retryPeriodicity = TimeSpan.FromSeconds(5);
+        int retryAttemptLimit = 50;
+        TimeSpan idleTimeout = TimeSpan.FromMinutes(2);
+
+        // Act
+        NetworkStreamNmeaReceiver receiver = new(reader, host, port, retryPeriodicity, retryAttemptLimit, idleTimeout);
+
+        // Assert
+        receiver.Host.ShouldBe(host);
+        receiver.Port.ShouldBe(port);
+        receiver.RetryPeriodicity.ShouldBe(retryPeriodicity);
+        receiver.RetryAttemptLimit.ShouldBe(retryAttemptLimit);
+        receiver.IdleTimeout.ShouldBe(idleTimeout);
+    }
+
+    [TestMethod]
+    public void Constructor_NullReader_ThrowsArgumentNullException()
+    {
+        // Arrange & Act & Assert
+        Should.Throw<ArgumentNullException>(() =>
+            new NetworkStreamNmeaReceiver(null!, "host", 123, TimeSpan.FromSeconds(1)));
+    }
+
+    [TestMethod]
+    public async Task GetObservable_ReturnsObservableThatEmitsLines()
+    {
+        // Arrange
+        MockNmeaStreamReader reader = new();
+        string host = "localhost";
+        int port = 12345;
+
+        byte[] line1 = "ObservableLine1"u8.ToArray();
+        byte[] line2 = "ObservableLine2"u8.ToArray();
+
+        reader.Reads.Enqueue(_ => new ValueTask<ReadOnlyMemory<byte>?>(line1));
+        reader.Reads.Enqueue(_ => new ValueTask<ReadOnlyMemory<byte>?>(line2));
+        reader.Reads.Enqueue(_ => new ValueTask<ReadOnlyMemory<byte>?>(result: null));
+
+        NetworkStreamNmeaReceiver receiver = new(reader, host, port, TimeSpan.FromMilliseconds(10));
+
+        // Act
+        using CancellationTokenSource cts = new(TimeSpan.FromSeconds(5));
+        List<string> result = [];
+
+        IObservable<ReadOnlyMemory<byte>> observable = receiver.GetObservable(cts.Token);
+
+        TaskCompletionSource tcs = new();
+        using IDisposable subscription = observable.Subscribe(
+            onNext: item => result.Add(System.Text.Encoding.ASCII.GetString(item.Span)),
+            onCompleted: () => tcs.TrySetResult());
+
+        await tcs.Task;
+
+        // Assert
+        result.Count.ShouldBe(2);
+        result[0].ShouldBe("ObservableLine1");
+        result[1].ShouldBe("ObservableLine2");
+    }
+
+    [TestMethod]
+    public async Task DisposeAsync_DisposesStreamReader()
+    {
+        // Arrange
+        bool disposed = false;
+        DisposableStreamReader reader = new(() => disposed = true);
+        NetworkStreamNmeaReceiver receiver = new(reader, "host", 123, TimeSpan.FromSeconds(1));
+
+        // Act
+        await receiver.DisposeAsync();
+
+        // Assert
+        disposed.ShouldBeTrue();
+    }
+
+    private class DisposableStreamReader : INmeaStreamReader
+    {
+        private readonly Action onDispose;
+
+        public DisposableStreamReader(Action onDispose) => this.onDispose = onDispose;
+
+        public bool Connected => false;
+
+        public Task ConnectAsync(string host, int port, CancellationToken cancellationToken) => Task.CompletedTask;
+
+        public ValueTask<ReadOnlyMemory<byte>?> ReadLineAsync(CancellationToken cancellationToken) =>
+            new(result: null);
+
+        public ValueTask DisposeAsync()
+        {
+            this.onDispose();
+            return ValueTask.CompletedTask;
+        }
     }
 }

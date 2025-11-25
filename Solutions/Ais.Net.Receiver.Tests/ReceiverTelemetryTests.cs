@@ -10,6 +10,8 @@ namespace Ais.Net.Receiver.Tests;
 [TestClass]
 public class ReceiverTelemetryTests
 {
+    public TestContext TestContext { get; set; } = null!;
+
     [TestMethod]
     public async Task Bind_RecordsMetrics_WhenEventsOccur()
     {
@@ -45,24 +47,91 @@ public class ReceiverTelemetryTests
         listener.Start();
 
         // Act
-        await host.StartAsync(CancellationToken.None);
-            
+        await host.StartAsync(this.TestContext.CancellationTokenSource.Token);
+
         // Wait for processing
-        await Task.Delay(100);
+        await Task.Delay(100, this.TestContext.CancellationTokenSource.Token);
 
         // Assert
         // We expect:
         // 1 sentence received
         // 1 message received (since it's a valid single-part message)
         // 0 errors
-            
-        // Note: ReceiverHost implementation details determine exact counts.
-        // Assuming StartAsync processes the message.
-            
+
         int sentences = measurements.Count(m => m.Instrument.Name == "ais.sentences.received");
         int messages = measurements.Count(m => m.Instrument.Name == "ais.messages.received");
-            
-        sentences.ShouldBeGreaterThan(0);
-        messages.ShouldBeGreaterThan(0);
+
+        sentences.ShouldBe(1);
+        messages.ShouldBe(1);
+    }
+
+    [TestMethod]
+    public void Dispose_CleansUpSubscriptions()
+    {
+        // Arrange
+        INmeaReceiver? receiver = Substitute.For<INmeaReceiver>();
+        ReceiverHost host = new(receiver);
+        ReceiverTelemetry telemetry = new("TestMeter2");
+        telemetry.Bind(host);
+
+        // Act & Assert - should not throw
+        telemetry.Dispose();
+    }
+
+    [TestMethod]
+    public void Dispose_CanBeCalledMultipleTimes()
+    {
+        // Arrange
+        ReceiverTelemetry telemetry = new("TestMeter3");
+
+        // Act & Assert - should not throw
+        telemetry.Dispose();
+        telemetry.Dispose();
+    }
+
+    [TestMethod]
+    public async Task Bind_RecordsErrors_WhenErrorsOccur()
+    {
+        // Arrange
+        INmeaReceiver? receiver = Substitute.For<INmeaReceiver>();
+        // "GARBAGE" causes parsing error
+        string message = "GARBAGE";
+        byte[] bytes = System.Text.Encoding.ASCII.GetBytes(message);
+
+        receiver.GetAsync(Arg.Any<CancellationToken>())
+            .Returns(new[] { (ReadOnlyMemory<byte>)bytes }.ToAsyncEnumerable());
+
+        await using ReceiverHost host = new(receiver);
+        using ReceiverTelemetry telemetry = new("TestMeter4");
+        telemetry.Bind(host);
+
+        List<(Instrument Instrument, long Value)> measurements = [];
+        using MeterListener listener = new();
+
+        listener.InstrumentPublished = (instrument, listener) =>
+        {
+            if (instrument.Meter.Name == "TestMeter4")
+            {
+                listener.EnableMeasurementEvents(instrument);
+            }
+        };
+
+        listener.SetMeasurementEventCallback<long>((instrument, measurement, tags, state) =>
+        {
+            measurements.Add((instrument, measurement));
+        });
+
+        listener.Start();
+
+        // Subscribe to messages to trigger processing
+        using IDisposable sub = host.Messages.Subscribe(_ => { });
+
+        // Act
+        await host.StartAsync(this.TestContext.CancellationTokenSource.Token);
+        await Task.Delay(100, this.TestContext.CancellationTokenSource.Token);
+
+        // Assert - should have recorded errors
+        int errors = measurements.Count(m => m.Instrument.Name == "ais.errors.count");
+        errors.ShouldBe(1);
     }
 }

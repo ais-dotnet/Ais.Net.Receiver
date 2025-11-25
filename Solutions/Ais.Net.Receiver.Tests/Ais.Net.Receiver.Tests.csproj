@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <!-- Assertion Framework -->
+    <PackageReference Include="Microsoft.Reactive.Testing" Version="6.1.0" />
     <PackageReference Include="Shouldly" Version="4.3.0" />
     
     <!-- Mocking Framework -->

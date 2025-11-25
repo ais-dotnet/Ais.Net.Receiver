@@ -1,5 +1,11 @@
+using System.Reactive;
+using System.Reactive.Concurrency;
+using System.Reactive.Linq;
+
+using Ais.Net.Models.Abstractions;
 using Ais.Net.Receiver.Receiver;
 
+using Microsoft.Reactive.Testing;
 using NSubstitute;
 using Shouldly;
 
@@ -12,6 +18,7 @@ public class ReceiverHostExtensionsStatisticsTests
     public async Task GetStreamStatistics_WithMessages_ReturnsNonZeroCounts()
     {
         // Arrange
+        TestScheduler scheduler = new();
         INmeaReceiver? receiver = Substitute.For<INmeaReceiver>();
         string message = "!AIVDM,1,1,,A,13u?etPv2;0n:dDPwUM1U1Cb069D,0*24";
         byte[] bytes = System.Text.Encoding.ASCII.GetBytes(message);
@@ -27,13 +34,14 @@ public class ReceiverHostExtensionsStatisticsTests
             
         List<(long Message, long Sentence, long Error)> stats = [];
         // Use a small period to ensure we get a buffer
-        using IDisposable sub = host.GetStreamStatistics(TimeSpan.FromMilliseconds(500)).Subscribe(s => stats.Add(s));
+        using IDisposable sub = host.GetStreamStatistics(TimeSpan.FromSeconds(1), scheduler).Subscribe(s => stats.Add(s));
 
         // Act
         await host.StartAsync(CancellationToken.None);
             
-        // Wait a bit to ensure buffer emits (Buffer emits on completion too)
-        await Task.Delay(100, TestContext.CancellationTokenSource.Token);
+        // Buffer emits on completion, so we don't strictly need to advance time if the stream completes.
+        // But to be safe and explicit about the scheduler usage:
+        scheduler.AdvanceBy(TimeSpan.FromSeconds(1.1).Ticks);
 
         // Assert
         // We expect some stats
@@ -41,10 +49,10 @@ public class ReceiverHostExtensionsStatisticsTests
             
         // Check total messages counted
         long totalMessages = stats.Sum(s => s.Message);
-            
-        // Based on analysis, it might be 4 instead of 5
-        totalMessages.ShouldBeGreaterThan(0);
+
+        // 5 messages were yielded
+        totalMessages.ShouldBe(5);
     }
 
-    public TestContext TestContext { get; set; }
+    public TestContext TestContext { get; set; } = null!;
 }
