@@ -4,6 +4,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Reactive.Disposables;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
@@ -50,67 +51,74 @@ public class Worker : BackgroundService
             aisConfig.RetryPeriodicity,
             retryAttemptLimit: aisConfig.RetryAttempts);
 
-        ReceiverHost receiverHost = new(receiver);
+        await using ReceiverHost receiverHost = new(receiver);
         using ReceiverTelemetry telemetry = new("Ais.Net.Receiver");
         telemetry.Bind(receiverHost);
 
+        CompositeDisposable subscriptions = [];
+
         if (aisConfig.LoggerVerbosity == LoggerVerbosity.Minimal)
         {
-            receiverHost.GetStreamStatistics(aisConfig.StatisticsPeriodicity)
-                        .Subscribe(
-                            statistics =>
-                            System.Console.WriteLine($"{DateTime.UtcNow.ToUniversalTime()}: Sentences: {statistics.Sentence} | Messages: {statistics.Message} | Errors: {statistics.Error}"),
-                            error => this.logger.LogError(error, "Error in statistics stream"));
+            subscriptions.Add(
+                receiverHost.GetStreamStatistics(aisConfig.StatisticsPeriodicity)
+                            .Subscribe(
+                                statistics =>
+                                System.Console.WriteLine($"{DateTime.UtcNow.ToUniversalTime()}: Sentences: {statistics.Sentence} | Messages: {statistics.Message} | Errors: {statistics.Error}"),
+                                error => this.logger.LogError(error, "Error in statistics stream")));
         }
 
         if (aisConfig.LoggerVerbosity == LoggerVerbosity.Normal)
         {
-            receiverHost.Messages.VesselNavigationWithNameStream().Subscribe(navigationWithName =>
-            {
-                (uint mmsi, IVesselNavigation navigation, IVesselName name) = navigationWithName;
-                string positionText = navigation.Position is null ? "unknown position" : $"{navigation.Position.Latitude},{navigation.Position.Longitude}";
-
-                if (this.logger.IsEnabled(LogLevel.Information))
+            subscriptions.Add(
+                receiverHost.Messages.VesselNavigationWithNameStream().Subscribe(navigationWithName =>
                 {
-                    this.logger.LogInformation(
-                        "[{Mmsi}: '{VesselName}'] - [{Position}] - [{CourseOverGround}]",
-                        mmsi,
-                        name.VesselName.CleanVesselName(),
-                        positionText,
-                        navigation.CourseOverGround ?? 0);
-                }
-            });
+                    (uint mmsi, IVesselNavigation navigation, IVesselName name) = navigationWithName;
+                    string positionText = navigation.Position is null ? "unknown position" : $"{navigation.Position.Latitude},{navigation.Position.Longitude}";
+
+                    if (this.logger.IsEnabled(LogLevel.Information))
+                    {
+                        this.logger.LogInformation(
+                            "[{Mmsi}: '{VesselName}'] - [{Position}] - [{CourseOverGround}]",
+                            mmsi,
+                            name.VesselName.CleanVesselName(),
+                            positionText,
+                            navigation.CourseOverGround ?? 0);
+                    }
+                }));
         }
 
         if (aisConfig.LoggerVerbosity == LoggerVerbosity.Detailed)
         {
-            receiverHost.Sentences.Subscribe(s =>
-            {
-                if (this.logger.IsEnabled(LogLevel.Information))
+            subscriptions.Add(
+                receiverHost.Sentences.Subscribe(s =>
                 {
-                    this.logger.LogInformation("{Sentence}", s);
-                }
-            });
+                    if (this.logger.IsEnabled(LogLevel.Information))
+                    {
+                        this.logger.LogInformation("{Sentence}", s);
+                    }
+                }));
         }
 
         if (aisConfig.LoggerVerbosity == LoggerVerbosity.Diagnostic)
         {
-            receiverHost.Messages.Subscribe(m =>
-            {
-                if (this.logger.IsEnabled(LogLevel.Information))
+            subscriptions.Add(
+                receiverHost.Messages.Subscribe(m =>
                 {
-                    this.logger.LogInformation("{Message}", m.ToString());
-                }
-            });
+                    if (this.logger.IsEnabled(LogLevel.Information))
+                    {
+                        this.logger.LogInformation("{Message}", m.ToString());
+                    }
+                }));
 
-            receiverHost.Errors.Subscribe(error =>
-            {
-                if (this.logger.IsEnabled(LogLevel.Error))
+            subscriptions.Add(
+                receiverHost.Errors.Subscribe(error =>
                 {
-                    this.logger.LogError("Error received: {Message}", error.Exception.Message);
-                    this.logger.LogError("Bad line: {Line}", error.Line);
-                }
-            });
+                    if (this.logger.IsEnabled(LogLevel.Error))
+                    {
+                        this.logger.LogError("Error received: {Message}", error.Exception.Message);
+                        this.logger.LogError("Bad line: {Line}", error.Line);
+                    }
+                }));
         }
 
         if (storageConfig.EnableCapture)
@@ -120,7 +128,7 @@ public class Worker : BackgroundService
             ActionBlock<IEnumerable<string>> actionBlock = new(storageClient.PersistAsync);
             batchBlock.LinkTo(actionBlock, new DataflowLinkOptions { PropagateCompletion = true });
 
-            receiverHost.Sentences.Subscribe(batchBlock.AsObserver());
+            subscriptions.Add(receiverHost.Sentences.Subscribe(batchBlock.AsObserver()));
             _ = actionBlock.Completion.ContinueWith(_ => this.logger.LogInformation("Storage flush completed."), stoppingToken);
         }
 
@@ -131,6 +139,10 @@ public class Worker : BackgroundService
         catch (OperationCanceledException)
         {
             // Expected on cancellation
+        }
+        finally
+        {
+            subscriptions.Dispose();
         }
     }
 }

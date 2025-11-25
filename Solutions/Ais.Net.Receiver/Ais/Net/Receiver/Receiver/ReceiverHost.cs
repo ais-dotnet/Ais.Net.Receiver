@@ -5,6 +5,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Reactive.Disposables;
 using System.Reactive.Subjects;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -20,7 +21,7 @@ using Corvus.Retry.Strategies;
 
 namespace Ais.Net.Receiver.Receiver;
 
-public class ReceiverHost
+public class ReceiverHost : IAsyncDisposable
 {
     private static readonly ActivitySource ActivitySource = new("Ais.Net.Receiver");
     private readonly INmeaReceiver receiver;
@@ -28,6 +29,7 @@ public class ReceiverHost
     private readonly Subject<IAisMessage> messages = new();
     private readonly Subject<Metadata> metadata = new();
     private readonly Subject<(Exception Exception, string Line)> errors = new();
+    private readonly CompositeDisposable subscriptions = [];
 
     public ReceiverHost(INmeaReceiver receiver)
     {
@@ -54,12 +56,12 @@ public class ReceiverHost
 
     private async Task StartAsyncInternal(CancellationToken cancellationToken = default)
     {
-        NmeaToAisMessageTypeProcessor processor = new();
+        using NmeaToAisMessageTypeProcessor processor = new();
         NmeaLineToAisStreamAdapter adapter = new(processor);
 
         (int StationId, long UnixTimestamp) currentMetadata = (0, 0);
 
-        processor.Messages.Subscribe(message =>
+        this.subscriptions.Add(processor.Messages.Subscribe(message =>
         {
             this.messages.OnNext(message);
 
@@ -67,9 +69,9 @@ public class ReceiverHost
             {
                 this.metadata.OnNext(new Metadata(currentMetadata.StationId, currentMetadata.UnixTimestamp, message));
             }
-        });
+        }));
 
-        processor.ParseErrors.Subscribe(this.errors);
+        this.subscriptions.Add(processor.ParseErrors.Subscribe(this.errors));
 
         await foreach (ReadOnlyMemory<byte> message in this.GetAsync(cancellationToken))
         {
@@ -122,5 +124,26 @@ public class ReceiverHost
         {
             yield return message.Span.IsMissingNmeaBlockTags() ? message.PrependNmeaBlockTags() : message;
         }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        this.subscriptions.Dispose();
+
+        this.sentences.Dispose();
+        this.messages.Dispose();
+        this.metadata.Dispose();
+        this.errors.Dispose();
+
+        if (this.receiver is IAsyncDisposable asyncDisposable)
+        {
+            await asyncDisposable.DisposeAsync();
+        }
+        else if (this.receiver is IDisposable disposable)
+        {
+            disposable.Dispose();
+        }
+
+        GC.SuppressFinalize(this);
     }
 }

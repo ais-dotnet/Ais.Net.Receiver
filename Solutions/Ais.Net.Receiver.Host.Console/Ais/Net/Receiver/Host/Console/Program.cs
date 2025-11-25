@@ -4,6 +4,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Reactive.Disposables;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
@@ -78,50 +79,55 @@ public static class Program
         INmeaReceiver receiver = new FileStreamNmeaReceiver(@"PATH-TO-RECORDING.nm4");
         */
 
-        ReceiverHost receiverHost = new(receiver);
+        await using ReceiverHost receiverHost = new(receiver);
         using ReceiverTelemetry telemetry = new("Ais.Net.Receiver.Console");
         telemetry.Bind(receiverHost);
 
+        CompositeDisposable subscriptions = [];
+
         if (aisConfig.LoggerVerbosity == LoggerVerbosity.Minimal)
         {
-            receiverHost.GetStreamStatistics(aisConfig.StatisticsPeriodicity)
-                        .Subscribe(
-                            statistics =>
-                                   System.Console.WriteLine($"{DateTime.UtcNow.ToUniversalTime()}: Sentences: {statistics.Sentence} | Messages: {statistics.Message} | Errors: {statistics.Error}"),
-                            error => System.Console.WriteLine($"Error in statistics stream: {error.Message}"));
+            subscriptions.Add(
+                receiverHost.GetStreamStatistics(aisConfig.StatisticsPeriodicity)
+                            .Subscribe(
+                                statistics =>
+                                       System.Console.WriteLine($"{DateTime.UtcNow.ToUniversalTime()}: Sentences: {statistics.Sentence} | Messages: {statistics.Message} | Errors: {statistics.Error}"),
+                                error => System.Console.WriteLine($"Error in statistics stream: {error.Message}")));
         }
 
         if (aisConfig.LoggerVerbosity == LoggerVerbosity.Normal)
         {
-            receiverHost.Messages.VesselNavigationWithNameStream().Subscribe(navigationWithName =>
-            {
-                (uint mmsi, IVesselNavigation navigation, IVesselName name) = navigationWithName;
-                string positionText = navigation.Position is null ? "unknown position" : $"{navigation.Position.Latitude},{navigation.Position.Longitude}";
+            subscriptions.Add(
+                receiverHost.Messages.VesselNavigationWithNameStream().Subscribe(navigationWithName =>
+                {
+                    (uint mmsi, IVesselNavigation navigation, IVesselName name) = navigationWithName;
+                    string positionText = navigation.Position is null ? "unknown position" : $"{navigation.Position.Latitude},{navigation.Position.Longitude}";
 
-                System.Console.ForegroundColor = ConsoleColor.Green;
-                System.Console.WriteLine($"[{mmsi}: '{name.VesselName.CleanVesselName()}'] - [{positionText}] - [{navigation.CourseOverGround ?? 0}]");
-                System.Console.ResetColor();
-            });
+                    System.Console.ForegroundColor = ConsoleColor.Green;
+                    System.Console.WriteLine($"[{mmsi}: '{name.VesselName.CleanVesselName()}'] - [{positionText}] - [{navigation.CourseOverGround ?? 0}]");
+                    System.Console.ResetColor();
+                }));
         }
 
         if (aisConfig.LoggerVerbosity == LoggerVerbosity.Detailed)
         {
             // Write out the messages as they are received over the wire.
-            receiverHost.Sentences.Subscribe(System.Console.WriteLine);
+            subscriptions.Add(receiverHost.Sentences.Subscribe(System.Console.WriteLine));
         }
 
         if (aisConfig.LoggerVerbosity == LoggerVerbosity.Diagnostic)
         {
-            receiverHost.Messages.Subscribe(System.Console.WriteLine);
+            subscriptions.Add(receiverHost.Messages.Subscribe(System.Console.WriteLine));
 
             // Write out errors in the console
-            receiverHost.Errors.Subscribe(error =>
-            {
-                System.Console.ForegroundColor = ConsoleColor.Red;
-                System.Console.WriteLine($"Error received: {error.Exception.Message}");
-                System.Console.WriteLine($"Bad line: {error.Line}");
-                System.Console.ResetColor();
-            });
+            subscriptions.Add(
+                receiverHost.Errors.Subscribe(error =>
+                {
+                    System.Console.ForegroundColor = ConsoleColor.Red;
+                    System.Console.WriteLine($"Error received: {error.Exception.Message}");
+                    System.Console.WriteLine($"Bad line: {error.Line}");
+                    System.Console.ResetColor();
+                }));
         }
 
         if (storageConfig.EnableCapture)
@@ -132,13 +138,13 @@ public static class Program
             batchBlock.LinkTo(actionBlock, new DataflowLinkOptions { PropagateCompletion = true });
 
             // Persist the messages as they are received over the wire.
-            receiverHost.Sentences.Subscribe(batchBlock.AsObserver());
+            subscriptions.Add(receiverHost.Sentences.Subscribe(batchBlock.AsObserver()));
 
             // Ensure we wait for the storage to finish flushing
             _ = actionBlock.Completion.ContinueWith(_ => System.Console.WriteLine("Storage flush completed."));
         }
 
-        CancellationTokenSource cts = new();
+        using CancellationTokenSource cts = new();
 
         System.Console.CancelKeyPress += (s, e) =>
         {
@@ -154,6 +160,10 @@ public static class Program
         catch (OperationCanceledException)
         {
             // Expected on cancellation
+        }
+        finally
+        {
+            subscriptions.Dispose();
         }
     }
 }

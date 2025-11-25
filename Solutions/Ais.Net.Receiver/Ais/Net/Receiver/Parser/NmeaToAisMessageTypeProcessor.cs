@@ -14,7 +14,7 @@ namespace Ais.Net.Receiver.Parser;
 /// Receives AIS messages parsed from an NMEA sentence and converts it into an
 /// <see cref="System.IObservable{T}"/> stream of <see cref="IAisMessage"/> based types.
 /// </summary>
-public class NmeaToAisMessageTypeProcessor : INmeaAisMessageStreamProcessor
+public class NmeaToAisMessageTypeProcessor : INmeaAisMessageStreamProcessor, IDisposable
 {
     private readonly Subject<IAisMessage> messages = new();
     private readonly Subject<(Exception Exception, string Line)> parseErrors = new();
@@ -286,5 +286,12 @@ public class NmeaToAisMessageTypeProcessor : INmeaAisMessageStreamProcessor
             NavigationStatus: parser.NavigationStatus);
 
         this.messages.OnNext(message);
+    }
+
+    public void Dispose()
+    {
+        this.messages.Dispose();
+        this.parseErrors.Dispose();
+        GC.SuppressFinalize(this);
     }
 }

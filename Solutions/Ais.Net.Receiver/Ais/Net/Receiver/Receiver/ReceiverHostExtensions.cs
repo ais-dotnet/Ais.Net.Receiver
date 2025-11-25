@@ -57,11 +57,23 @@ public static class ReceiverHostExtensions
     /// Groups and combines the <see cref="IAisMessage">AIS Messages</see> so that vessel name and navigation information can be displayed.
     /// </summary>
     /// <param name="messages">An observable stream of <see cref="IAisMessage">AIS Messages</see>.</param>
+    /// <param name="inactivityTimeout">
+    /// Optional timeout for inactive vessel groups. When a vessel hasn't sent any messages for this duration,
+    /// its group is disposed to prevent memory accumulation. Defaults to 30 minutes if not specified.
+    /// </param>
     /// <returns>An observable sequence of tuple containing vessel information.</returns>
-    public static IObservable<(uint Mmsi, IVesselNavigation Navigation, IVesselName Name)> VesselNavigationWithNameStream(this IObservable<IAisMessage> messages)
+    public static IObservable<(uint Mmsi, IVesselNavigation Navigation, IVesselName Name)> VesselNavigationWithNameStream(
+        this IObservable<IAisMessage> messages,
+        TimeSpan? inactivityTimeout = null)
     {
+        TimeSpan timeout = inactivityTimeout ?? TimeSpan.FromMinutes(30);
+
         // Decode the sentences into messages, and group by the vessel by Id
-        IObservable<IGroupedObservable<uint, IAisMessage>> byVessel = messages.GroupBy(m => m.Mmsi);
+        // Use GroupByUntil to automatically dispose groups after inactivity timeout
+        IObservable<IGroupedObservable<uint, IAisMessage>> byVessel = messages
+            .GroupByUntil(
+                m => m.Mmsi,
+                group => group.Throttle(timeout));
 
         // Combine the various message types required to create a stream containing name and navigation
         return
