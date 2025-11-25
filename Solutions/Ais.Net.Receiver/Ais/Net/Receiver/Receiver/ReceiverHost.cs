@@ -31,7 +31,6 @@ public class ReceiverHost : IAsyncDisposable
     private readonly Subject<IAisMessage> messages = new();
     private readonly Subject<Metadata> metadata = new();
     private readonly Subject<(Exception Exception, string Line)> errors = new();
-    private readonly CompositeDisposable subscriptions = [];
 
     public ReceiverHost(INmeaReceiver receiver)
     {
@@ -60,10 +59,11 @@ public class ReceiverHost : IAsyncDisposable
     {
         using NmeaToAisMessageTypeProcessor processor = new();
         NmeaLineToAisStreamAdapter adapter = new(processor);
+        using CompositeDisposable methodSubscriptions = [];
 
         (int StationId, long UnixTimestamp) currentMetadata = (0, 0);
 
-        this.subscriptions.Add(processor.Messages.Subscribe(message =>
+        methodSubscriptions.Add(processor.Messages.Subscribe(message =>
         {
             this.messages.OnNext(message);
 
@@ -73,7 +73,7 @@ public class ReceiverHost : IAsyncDisposable
             }
         }));
 
-        this.subscriptions.Add(processor.ParseErrors.Subscribe(this.errors));
+        methodSubscriptions.Add(processor.ParseErrors.Subscribe(this.errors));
 
         await foreach (ReadOnlyMemory<byte> message in this.GetAsync(cancellationToken))
         {
@@ -136,8 +136,6 @@ public class ReceiverHost : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        this.subscriptions.Dispose();
-
         this.sentences.Dispose();
         this.messages.Dispose();
         this.metadata.Dispose();
