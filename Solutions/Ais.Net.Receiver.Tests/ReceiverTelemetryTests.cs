@@ -17,8 +17,7 @@ public class ReceiverTelemetryTests
     {
         // Arrange
         INmeaReceiver? receiver = Substitute.For<INmeaReceiver>();
-        string message = "!AIVDM,1,1,,A,13u?etPv2;0n:dDPwUM1U1Cb069D,0*24";
-        byte[] bytes = System.Text.Encoding.ASCII.GetBytes(message);
+        byte[] bytes = "!AIVDM,1,1,,A,13u?etPv2;0n:dDPwUM1U1Cb069D,0*24"u8.ToArray();
             
         // Yield 1 message
         receiver.GetAsync(Arg.Any<CancellationToken>())
@@ -58,24 +57,44 @@ public class ReceiverTelemetryTests
         // 1 message received (since it's a valid single-part message)
         // 0 errors
 
-        int sentences = measurements.Count(m => m.Instrument.Name == "ais.sentences.received");
-        int messages = measurements.Count(m => m.Instrument.Name == "ais.messages.received");
-
-        sentences.ShouldBe(1);
-        messages.ShouldBe(1);
+        measurements.ShouldContain(m => m.Instrument.Name == "ais.sentences.received" && m.Value == 1);
+        measurements.ShouldContain(m => m.Instrument.Name == "ais.messages.received" && m.Value == 1);
+        measurements.ShouldNotContain(m => m.Instrument.Name == "ais.errors.count");
     }
 
     [TestMethod]
-    public void Dispose_CleansUpSubscriptions()
+    public async Task Dispose_CleansUpSubscriptions()
     {
         // Arrange
         INmeaReceiver? receiver = Substitute.For<INmeaReceiver>();
+        byte[] bytes = "!AIVDM,1,1,,A,13u?etPv2;0n:dDPwUM1U1Cb069D,0*24"u8.ToArray();
+        
+        // Setup receiver to yield messages on demand
+        receiver.GetAsync(Arg.Any<CancellationToken>())
+            .Returns(new[] { (ReadOnlyMemory<byte>)bytes }.ToAsyncEnumerable());
+
         ReceiverHost host = new(receiver);
         ReceiverTelemetry telemetry = new("TestMeter2");
         telemetry.Bind(host);
 
-        // Act & Assert - should not throw
+        List<(Instrument Instrument, long Value)> measurements = [];
+        using MeterListener listener = new();
+        listener.InstrumentPublished = (instrument, listener) =>
+        {
+            if (instrument.Meter.Name == "TestMeter2") listener.EnableMeasurementEvents(instrument);
+        };
+        listener.SetMeasurementEventCallback<long>((instrument, measurement, tags, state) => measurements.Add((instrument, measurement)));
+        listener.Start();
+
+        // Act
         telemetry.Dispose();
+        
+        // Trigger host activity after disposal
+        await host.StartAsync(CancellationToken.None);
+        await Task.Delay(50); // Allow for potential async processing
+
+        // Assert
+        measurements.ShouldBeEmpty();
     }
 
     [TestMethod]
@@ -95,8 +114,7 @@ public class ReceiverTelemetryTests
         // Arrange
         INmeaReceiver? receiver = Substitute.For<INmeaReceiver>();
         // "GARBAGE" causes parsing error
-        string message = "GARBAGE";
-        byte[] bytes = System.Text.Encoding.ASCII.GetBytes(message);
+        byte[] bytes = "GARBAGE"u8.ToArray();
 
         receiver.GetAsync(Arg.Any<CancellationToken>())
             .Returns(new[] { (ReadOnlyMemory<byte>)bytes }.ToAsyncEnumerable());

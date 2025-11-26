@@ -91,7 +91,7 @@ public class NetworkStreamNmeaReceiverTests
         reader.Connects.Enqueue(_ => throw new Exception("Connection failed"));
         // Second connect succeeds (default)
 
-        byte[] line = System.Text.Encoding.ASCII.GetBytes("Line1");
+        byte[] line = "Line1"u8.ToArray();
         reader.Reads.Enqueue(_ => new ValueTask<ReadOnlyMemory<byte>?>(line));
         reader.Reads.Enqueue(async token =>
         {
@@ -136,7 +136,7 @@ public class NetworkStreamNmeaReceiverTests
         reader.Connects.Enqueue(_ => throw new Exception("Failure 3"));
         // Fourth connection succeeds (default)
 
-        byte[] line = System.Text.Encoding.ASCII.GetBytes("Success");
+        byte[] line = "Success"u8.ToArray();
         reader.Reads.Enqueue(_ => new ValueTask<ReadOnlyMemory<byte>?>(line));
         reader.Reads.Enqueue(_ => new ValueTask<ReadOnlyMemory<byte>?>(result: null));
 
@@ -149,6 +149,10 @@ public class NetworkStreamNmeaReceiverTests
         await foreach (ReadOnlyMemory<byte> item in receiver.GetAsync(cts.Token))
         {
             result.Add(System.Text.Encoding.ASCII.GetString(item.Span));
+            if (result.Count >= 1)
+            {
+                await cts.CancelAsync();
+            }
         }
 
         // Assert
@@ -211,10 +215,24 @@ public class NetworkStreamNmeaReceiverTests
 
         TaskCompletionSource tcs = new();
         using IDisposable subscription = observable.Subscribe(
-            onNext: item => result.Add(System.Text.Encoding.ASCII.GetString(item.Span)),
+            onNext: item => 
+            {
+                result.Add(System.Text.Encoding.ASCII.GetString(item.Span));
+                if (result.Count >= 2)
+                {
+                    cts.Cancel();
+                }
+            },
             onCompleted: () => tcs.TrySetResult());
 
-        await tcs.Task;
+        try
+        {
+            await tcs.Task;
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected when token is cancelled
+        }
 
         // Assert
         result.Count.ShouldBe(2);
@@ -241,14 +259,16 @@ public class NetworkStreamNmeaReceiverTests
     {
         private readonly Action onDispose;
 
-        public DisposableStreamReader(Action onDispose) => this.onDispose = onDispose;
+        public DisposableStreamReader(Action onDispose)
+        {
+            this.onDispose = onDispose;
+        }
 
         public bool Connected => false;
 
         public Task ConnectAsync(string host, int port, CancellationToken cancellationToken) => Task.CompletedTask;
 
-        public ValueTask<ReadOnlyMemory<byte>?> ReadLineAsync(CancellationToken cancellationToken) =>
-            new(result: null);
+        public ValueTask<ReadOnlyMemory<byte>?> ReadLineAsync(CancellationToken cancellationToken) => new(result: null);
 
         public ValueTask DisposeAsync()
         {

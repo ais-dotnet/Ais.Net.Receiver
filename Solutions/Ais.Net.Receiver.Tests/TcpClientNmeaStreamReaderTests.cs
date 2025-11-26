@@ -53,7 +53,7 @@ public class TcpClientNmeaStreamReaderTests
             // Accept client and send data
             TcpClient serverClient = await listener.AcceptTcpClientAsync(this.TestContext.CancellationTokenSource.Token);
             NetworkStream stream = serverClient.GetStream();
-            byte[] data = Encoding.ASCII.GetBytes("Line1\nLine2\r\n");
+            byte[] data = "Line1\nLine2\r\n"u8.ToArray();
             await stream.WriteAsync(data, this.TestContext.CancellationTokenSource.Token);
 
             // Act
@@ -90,7 +90,7 @@ public class TcpClientNmeaStreamReaderTests
             TcpClient serverClient = await listener.AcceptTcpClientAsync(this.TestContext.CancellationTokenSource.Token);
             NetworkStream stream = serverClient.GetStream();
             // Send data with CRLF line ending
-            byte[] data = Encoding.ASCII.GetBytes("Line1\r\nLine2\r\n");
+            byte[] data = "Line1\r\nLine2\r\n"u8.ToArray();
             await stream.WriteAsync(data, this.TestContext.CancellationTokenSource.Token);
 
             // Act
@@ -224,7 +224,7 @@ public class TcpClientNmeaStreamReaderTests
             NetworkStream stream = serverClient.GetStream();
 
             // Send one complete line, then disconnect
-            byte[] data = Encoding.ASCII.GetBytes("CompleteLine\n");
+            byte[] data = "CompleteLine\n"u8.ToArray();
             await stream.WriteAsync(data, this.TestContext.CancellationTokenSource.Token);
             await stream.FlushAsync(this.TestContext.CancellationTokenSource.Token);
             serverClient.Close();
@@ -330,7 +330,7 @@ public class TcpClientNmeaStreamReaderTests
             Task sendTask = Task.Run(async () =>
             {
                 await Task.Delay(30, this.TestContext.CancellationTokenSource.Token);
-                byte[] data = Encoding.ASCII.GetBytes("SlowLine\n");
+                byte[] data = "SlowLine\n"u8.ToArray();
                 await stream.WriteAsync(data, this.TestContext.CancellationTokenSource.Token);
                 await stream.FlushAsync(this.TestContext.CancellationTokenSource.Token);
             });

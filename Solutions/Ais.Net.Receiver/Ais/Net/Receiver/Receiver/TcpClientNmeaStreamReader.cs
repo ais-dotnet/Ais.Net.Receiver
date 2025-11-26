@@ -2,12 +2,9 @@
 // Copyright (c) Endjin Limited. All rights reserved.
 // </copyright>
 
-using System;
 using System.Buffers;
 using System.IO.Pipelines;
 using System.Net.Sockets;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace Ais.Net.Receiver.Receiver;
 

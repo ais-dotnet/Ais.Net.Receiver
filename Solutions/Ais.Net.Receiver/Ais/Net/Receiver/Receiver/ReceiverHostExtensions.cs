@@ -2,7 +2,6 @@
 // Copyright (c) Endjin Limited. All rights reserved.
 // </copyright>
 
-using System;
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using Ais.Net.Models.Abstractions;

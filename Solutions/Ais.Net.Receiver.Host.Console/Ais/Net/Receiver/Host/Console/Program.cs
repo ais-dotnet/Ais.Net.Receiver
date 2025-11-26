@@ -17,6 +17,7 @@ using Ais.Net.Receiver.Storage.Azure.Blob;
 using Ais.Net.Receiver.Storage.Azure.Blob.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
@@ -80,7 +81,7 @@ BatchBlock<string>? batchBlock = null;
 ActionBlock<IEnumerable<string>>? actionBlock = null;
 Timer? batchTimer = null;
 
-if (aisConfig.LoggerVerbosity == LoggerVerbosity.Minimal)
+if (aisConfig.LoggerVerbosity == LogLevel.Warning)
 {
     subscriptions.Add(
         receiverHost.GetStreamStatistics(aisConfig.StatisticsPeriodicity)
@@ -90,7 +91,7 @@ if (aisConfig.LoggerVerbosity == LoggerVerbosity.Minimal)
                 error => AnsiConsole.MarkupLine($"[red]Error in statistics stream: {Markup.Escape(error.Message)}[/]")));
 }
 
-if (aisConfig.LoggerVerbosity == LoggerVerbosity.Normal)
+if (aisConfig.LoggerVerbosity == LogLevel.Information)
 {
     subscriptions.Add(
         receiverHost.Messages.VesselNavigationWithNameStream(aisConfig.VesselInactivityTimeout).Subscribe(navigationWithName =>
@@ -102,13 +103,13 @@ if (aisConfig.LoggerVerbosity == LoggerVerbosity.Normal)
         }));
 }
 
-if (aisConfig.LoggerVerbosity == LoggerVerbosity.Detailed)
+if (aisConfig.LoggerVerbosity == LogLevel.Debug)
 {
     // Write out the messages as they are received over the wire.
     subscriptions.Add(receiverHost.Sentences.Subscribe(sentence => AnsiConsole.WriteLine(sentence)));
 }
 
-if (aisConfig.LoggerVerbosity == LoggerVerbosity.Diagnostic)
+if (aisConfig.LoggerVerbosity == LogLevel.Trace)
 {
     subscriptions.Add(receiverHost.Messages.Subscribe(message => AnsiConsole.WriteLine(message.ToString() ?? string.Empty)));
 

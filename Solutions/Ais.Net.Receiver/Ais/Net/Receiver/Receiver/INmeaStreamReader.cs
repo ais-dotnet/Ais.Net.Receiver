@@ -1,10 +1,6 @@
-﻿// <copyright file="INmeaStreamReader.cs" company="Endjin Limited">
+// <copyright file="INmeaStreamReader.cs" company="Endjin Limited">
 // Copyright (c) Endjin Limited. All rights reserved.
 // </copyright>
-
-using System;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace Ais.Net.Receiver.Receiver;
 

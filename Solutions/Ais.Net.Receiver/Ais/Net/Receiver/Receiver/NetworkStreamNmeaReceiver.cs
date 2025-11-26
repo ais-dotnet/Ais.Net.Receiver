@@ -1,13 +1,8 @@
-﻿// <copyright file="NetworkStreamNmeaReceiver.cs" company="Endjin Limited">
+// <copyright file="NetworkStreamNmeaReceiver.cs" company="Endjin Limited">
 // Copyright (c) Endjin Limited. All rights reserved.
 // </copyright>
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Reactive.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace Ais.Net.Receiver.Receiver;
 

@@ -1,5 +1,4 @@
 using System.Runtime.CompilerServices;
-using System.Text;
 
 using Ais.Net.Models.Abstractions;
 using Ais.Net.Receiver.Receiver;
@@ -17,8 +16,7 @@ public class ReceiverHostTests
     {
         // Arrange
         INmeaReceiver? receiver = Substitute.For<INmeaReceiver>();
-        string message = "!AIVDM,1,1,,A,13u?etPv2;0n:dDPwUM1U1Cb069D,0*24";
-        byte[] bytes = Encoding.ASCII.GetBytes(message);
+        byte[] bytes = "!AIVDM,1,1,,A,13u?etPv2;0n:dDPwUM1U1Cb069D,0*24"u8.ToArray();
 
         receiver.GetAsync(Arg.Any<CancellationToken>())
             .Returns(new[] { (ReadOnlyMemory<byte>)bytes }.ToAsyncEnumerable());
@@ -33,7 +31,7 @@ public class ReceiverHostTests
         // Assert
         receivedMessage.ShouldNotBeNull();
         receivedMessage.ShouldBeAssignableTo<IVesselIdentity>();
-        ((IVesselIdentity)receivedMessage).Mmsi.ShouldBe(265547250u);
+        receivedMessage.Mmsi.ShouldBe(265547250u);
     }
 
     [TestMethod]
@@ -42,7 +40,7 @@ public class ReceiverHostTests
         // Arrange
         INmeaReceiver? receiver = Substitute.For<INmeaReceiver>();
         string message = "!AIVDM,1,1,,A,13u?etPv2;0n:dDPwUM1U1Cb069D,0*24";
-        byte[] bytes = Encoding.ASCII.GetBytes(message);
+        byte[] bytes = "!AIVDM,1,1,,A,13u?etPv2;0n:dDPwUM1U1Cb069D,0*24"u8.ToArray();
 
         receiver.GetAsync(Arg.Any<CancellationToken>())
             .Returns(new[] { (ReadOnlyMemory<byte>)bytes }.ToAsyncEnumerable());
@@ -67,7 +65,7 @@ public class ReceiverHostTests
         INmeaReceiver? receiver = Substitute.For<INmeaReceiver>();
         // "GARBAGE" causes NmeaLineParser to throw ArgumentException
         string message = "GARBAGE";
-        byte[] bytes = Encoding.ASCII.GetBytes(message);
+        byte[] bytes = "GARBAGE"u8.ToArray();
 
         receiver.GetAsync(Arg.Any<CancellationToken>())
             .Returns(new[] { (ReadOnlyMemory<byte>)bytes }.ToAsyncEnumerable());
@@ -118,8 +116,7 @@ public class ReceiverHostTests
     {
         // Arrange
         INmeaReceiver? receiver = Substitute.For<INmeaReceiver>();
-        string message = "!AIVDM,1,1,,A,13u?etPv2;0n:dDPwUM1U1Cb069D,0*24";
-        byte[] bytes = Encoding.ASCII.GetBytes(message);
+        byte[] bytes = "!AIVDM,1,1,,A,13u?etPv2;0n:dDPwUM1U1Cb069D,0*24"u8.ToArray();
 
         receiver.GetAsync(Arg.Any<CancellationToken>())
             .Returns(new[] { (ReadOnlyMemory<byte>)bytes }.ToAsyncEnumerable());
@@ -136,7 +133,7 @@ public class ReceiverHostTests
         // Assert - both subscribers should receive the same message
         receivedMessage1.ShouldNotBeNull();
         receivedMessage2.ShouldNotBeNull();
-        ((IVesselIdentity)receivedMessage1).Mmsi.ShouldBe(((IVesselIdentity)receivedMessage2).Mmsi);
+        receivedMessage1.Mmsi.ShouldBe(receivedMessage2.Mmsi);
     }
 
     [TestMethod]
@@ -144,8 +141,7 @@ public class ReceiverHostTests
     {
         // Arrange
         INmeaReceiver? receiver = Substitute.For<INmeaReceiver>();
-        string message = "!AIVDM,1,1,,A,13u?etPv2;0n:dDPwUM1U1Cb069D,0*24";
-        byte[] bytes = Encoding.ASCII.GetBytes(message);
+        byte[] bytes = "!AIVDM,1,1,,A,13u?etPv2;0n:dDPwUM1U1Cb069D,0*24"u8.ToArray();
 
         receiver.GetAsync(Arg.Any<CancellationToken>())
             .Returns(new[] { (ReadOnlyMemory<byte>)bytes }.ToAsyncEnumerable());
@@ -180,8 +176,7 @@ public class ReceiverHostTests
         // Arrange
         INmeaReceiver? receiver = Substitute.For<INmeaReceiver>();
         // Message without NMEA block tags (no leading \s: or \c: prefix)
-        string message = "!AIVDM,1,1,,A,13u?etPv2;0n:dDPwUM1U1Cb069D,0*24";
-        byte[] bytes = Encoding.ASCII.GetBytes(message);
+        byte[] bytes = "!AIVDM,1,1,,A,13u?etPv2;0n:dDPwUM1U1Cb069D,0*24"u8.ToArray();
 
         receiver.GetAsync(Arg.Any<CancellationToken>())
             .Returns(new[] { (ReadOnlyMemory<byte>)bytes }.ToAsyncEnumerable());
@@ -205,8 +200,7 @@ public class ReceiverHostTests
     {
         // Arrange
         INmeaReceiver? receiver = Substitute.For<INmeaReceiver>();
-        string message = "!AIVDM,1,1,,A,13u?etPv2;0n:dDPwUM1U1Cb069D,0*24";
-        byte[] bytes = Encoding.ASCII.GetBytes(message);
+        byte[] bytes = "!AIVDM,1,1,,A,13u?etPv2;0n:dDPwUM1U1Cb069D,0*24"u8.ToArray();
 
         receiver.GetAsync(Arg.Any<CancellationToken>())
             .Returns(new[] { (ReadOnlyMemory<byte>)bytes }.ToAsyncEnumerable());
@@ -242,8 +236,7 @@ public class ReceiverHostTests
     {
         // Arrange
         INmeaReceiver? receiver = Substitute.For<INmeaReceiver>();
-        string message = "!AIVDM,1,1,,A,13u?etPv2;0n:dDPwUM1U1Cb069D,0*24";
-        byte[] bytes = Encoding.ASCII.GetBytes(message);
+        byte[] bytes = "!AIVDM,1,1,,A,13u?etPv2;0n:dDPwUM1U1Cb069D,0*24"u8.ToArray();
 
         // First call throws, second call returns messages
         receiver.GetAsync(Arg.Any<CancellationToken>())
@@ -251,7 +244,7 @@ public class ReceiverHostTests
                 _ => throw new Exception("Connection failed"),
                 _ => new[] { (ReadOnlyMemory<byte>)bytes }.ToAsyncEnumerable());
 
-        await using ReceiverHost host = new(receiver);
+        await using ReceiverHost host = new(receiver, TimeSpan.FromMilliseconds(1));
         int messageCount = 0;
         using IDisposable subscription = host.Messages.Subscribe(_ => messageCount++);
 
@@ -298,8 +291,7 @@ public class ReceiverHostTests
     private static async IAsyncEnumerable<ReadOnlyMemory<byte>> GenerateMessagesWithCancellation(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        string message = "!AIVDM,1,1,,A,13u?etPv2;0n:dDPwUM1U1Cb069D,0*24";
-        byte[] bytes = Encoding.ASCII.GetBytes(message);
+        byte[] bytes = "!AIVDM,1,1,,A,13u?etPv2;0n:dDPwUM1U1Cb069D,0*24"u8.ToArray();
 
         while (!cancellationToken.IsCancellationRequested)
         {

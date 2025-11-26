@@ -11,8 +11,7 @@ public class NmeaMessageExtensionsTests
     public void IsMissingNmeaBlockTags_WithTags_ReturnsFalse()
     {
         // Arrange
-        string message = @"\s:1000001,c:1637760000*24\!AIVDM,1,1,,B,177KQJ5000G?tO`K>RA1wUbN0TKH,0*5C";
-        byte[] bytes = Encoding.ASCII.GetBytes(message);
+        ReadOnlySpan<byte> bytes = @"\s:1000001,c:1637760000*24\!AIVDM,1,1,,B,177KQJ5000G?tO`K>RA1wUbN0TKH,0*5C"u8;
 
         // Act
         bool result = bytes.IsMissingNmeaBlockTags;
@@ -25,8 +24,7 @@ public class NmeaMessageExtensionsTests
     public void IsMissingNmeaBlockTags_WithoutTags_ReturnsTrue()
     {
         // Arrange
-        string message = "!AIVDM,1,1,,B,177KQJ5000G?tO`K>RA1wUbN0TKH,0*5C";
-        byte[] bytes = Encoding.ASCII.GetBytes(message);
+        ReadOnlySpan<byte> bytes = "!AIVDM,1,1,,B,177KQJ5000G?tO`K>RA1wUbN0TKH,0*5C"u8;
 
         // Act
         bool result = bytes.IsMissingNmeaBlockTags;
@@ -39,8 +37,7 @@ public class NmeaMessageExtensionsTests
     public void ParseNmeaBlockTags_ValidTags_ReturnsCorrectValues()
     {
         // Arrange
-        string message = @"\s:1000001,c:1637760000*24\!AIVDM,1,1,,B,177KQJ5000G?tO`K>RA1wUbN0TKH,0*5C";
-        byte[] bytes = Encoding.ASCII.GetBytes(message);
+        ReadOnlySpan<byte> bytes = @"\s:1000001,c:1637760000*24\!AIVDM,1,1,,B,177KQJ5000G?tO`K>RA1wUbN0TKH,0*5C"u8;
 
         // Act
         (int stationId, long timestamp) = bytes.ParseNmeaBlockTags();
@@ -55,8 +52,7 @@ public class NmeaMessageExtensionsTests
     {
         // Arrange
         string message = "!AIVDM,1,1,,B,177KQJ5000G?tO`K>RA1wUbN0TKH,0*5C";
-        byte[] bytes = Encoding.ASCII.GetBytes(message);
-        ReadOnlyMemory<byte> memory = bytes;
+        ReadOnlyMemory<byte> memory = "!AIVDM,1,1,,B,177KQJ5000G?tO`K>RA1wUbN0TKH,0*5C"u8.ToArray();
 
         // Act
         ReadOnlyMemory<byte> result = memory.PrependNmeaBlockTags();
@@ -85,8 +81,7 @@ public class NmeaMessageExtensionsTests
     public void ParseNmeaBlockTags_MessageWithoutTags_ReturnsZeroValues()
     {
         // Arrange
-        string message = "!AIVDM,1,1,,B,177KQJ5000G?tO`K>RA1wUbN0TKH,0*5C";
-        byte[] bytes = Encoding.ASCII.GetBytes(message);
+        ReadOnlySpan<byte> bytes = "!AIVDM,1,1,,B,177KQJ5000G?tO`K>RA1wUbN0TKH,0*5C"u8;
 
         // Act
         (int stationId, long timestamp) = bytes.ParseNmeaBlockTags();
@@ -100,8 +95,7 @@ public class NmeaMessageExtensionsTests
     public void ParseNmeaBlockTags_OnlyStationId_ReturnsStationIdAndZeroTimestamp()
     {
         // Arrange - only station ID, no timestamp
-        string message = @"\s:1234567*00\!AIVDM,1,1,,B,177KQJ5000G?tO`K>RA1wUbN0TKH,0*5C";
-        byte[] bytes = Encoding.ASCII.GetBytes(message);
+        ReadOnlySpan<byte> bytes = @"\s:1234567*00\!AIVDM,1,1,,B,177KQJ5000G?tO`K>RA1wUbN0TKH,0*5C"u8;
 
         // Act
         (int stationId, long timestamp) = bytes.ParseNmeaBlockTags();
@@ -115,8 +109,7 @@ public class NmeaMessageExtensionsTests
     public void IsMissingNmeaBlockTags_StartsWithBackslash_ReturnsFalse()
     {
         // Arrange - message starting with backslash is considered to have tags
-        string message = @"\anything here";
-        byte[] bytes = Encoding.ASCII.GetBytes(message);
+        ReadOnlySpan<byte> bytes = @"\anything here"u8;
 
         // Act
         bool result = bytes.IsMissingNmeaBlockTags;

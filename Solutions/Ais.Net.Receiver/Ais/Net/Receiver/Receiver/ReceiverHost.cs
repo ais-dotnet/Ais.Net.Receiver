@@ -1,16 +1,12 @@
-﻿// <copyright file="ReceiverHost.cs" company="Endjin Limited">
+// <copyright file="ReceiverHost.cs" company="Endjin Limited">
 // Copyright (c) Endjin Limited. All rights reserved.
 // </copyright>
 
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reactive.Disposables;
 using System.Reactive.Subjects;
 using System.Runtime.CompilerServices;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 
 using Ais.Net.Models.Abstractions;
 using Ais.Net.Receiver.Parser;
@@ -19,22 +15,22 @@ using Corvus.Retry;
 using Corvus.Retry.Policies;
 using Corvus.Retry.Strategies;
 
-using OpenTelemetry.Trace;
-
 namespace Ais.Net.Receiver.Receiver;
 
 public class ReceiverHost : IAsyncDisposable
 {
     private static readonly ActivitySource ActivitySource = new("Ais.Net.Receiver");
     private readonly INmeaReceiver receiver;
+    private readonly TimeSpan retryPeriodicity;
     private readonly Subject<string> sentences = new();
     private readonly Subject<IAisMessage> messages = new();
     private readonly Subject<Metadata> metadata = new();
     private readonly Subject<(Exception Exception, string Line)> errors = new();
 
-    public ReceiverHost(INmeaReceiver receiver)
+    public ReceiverHost(INmeaReceiver receiver, TimeSpan? retryPeriodicity = null)
     {
         this.receiver = receiver;
+        this.retryPeriodicity = retryPeriodicity ?? TimeSpan.FromSeconds(5);
     }
 
     public IObservable<string> Sentences => this.sentences;
@@ -50,7 +46,7 @@ public class ReceiverHost : IAsyncDisposable
         return Retriable.RetryAsync(() =>
                 this.StartAsyncInternal(cancellationToken),
                 cancellationToken,
-                new Linear(periodicity: TimeSpan.FromSeconds(5), maxTries: 100),
+                new Linear(periodicity: this.retryPeriodicity, maxTries: 100),
                 new AnyExceptionPolicy(),
                 continueOnCapturedContext: false);
     }

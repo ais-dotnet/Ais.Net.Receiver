@@ -92,7 +92,7 @@ public class FileStreamNmeaReceiverTests
             result.Add(line);
             if (result.Count >= 2)
             {
-                cts.Cancel();  // Synchronous cancel is sufficient since we break immediately
+                await cts.CancelAsync();  // Synchronous cancel is sufficient since we break immediately
                 break;
             }
         }

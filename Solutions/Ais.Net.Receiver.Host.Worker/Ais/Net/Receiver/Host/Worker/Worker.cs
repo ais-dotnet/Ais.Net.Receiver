@@ -159,7 +159,7 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
 
         AisConfig aisConfig = this.aisOptionsMonitor.CurrentValue;
 
-        if (aisConfig.LoggerVerbosity == LoggerVerbosity.Minimal)
+        if (aisConfig.LoggerVerbosity == LogLevel.Warning)
         {
             this.subscriptions.Add(
                 this.receiverHost.GetStreamStatistics(aisConfig.StatisticsPeriodicity)
@@ -174,7 +174,7 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
                         error => this.logger.LogError(error, "Error in statistics stream")));
         }
 
-        if (aisConfig.LoggerVerbosity == LoggerVerbosity.Normal)
+        if (aisConfig.LoggerVerbosity == LogLevel.Information)
         {
             this.subscriptions.Add(
                 this.receiverHost.Messages.VesselNavigationWithNameStream(aisConfig.VesselInactivityTimeout).Subscribe(navigationWithName =>
@@ -194,7 +194,7 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
                 }));
         }
 
-        if (aisConfig.LoggerVerbosity == LoggerVerbosity.Detailed)
+        if (aisConfig.LoggerVerbosity == LogLevel.Debug)
         {
             this.subscriptions.Add(
                 this.receiverHost.Sentences.Subscribe(s =>
@@ -206,7 +206,7 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
                 }));
         }
 
-        if (aisConfig.LoggerVerbosity == LoggerVerbosity.Diagnostic)
+        if (aisConfig.LoggerVerbosity == LogLevel.Trace)
         {
             this.subscriptions.Add(
                 this.receiverHost.Messages.Subscribe(m =>

@@ -1,8 +1,7 @@
-﻿// <copyright file="NmeaToAisMessageTypeProcessor.cs" company="Endjin Limited">
+// <copyright file="NmeaToAisMessageTypeProcessor.cs" company="Endjin Limited">
 // Copyright (c) Endjin Limited. All rights reserved.
 // </copyright>
 
-using System;
 using System.Reactive.Subjects;
 using System.Text;
 using Ais.Net.Models;

@@ -1,9 +1,6 @@
-﻿// <copyright file="NmeaMessageExtensions.cs" company="Endjin Limited">
+// <copyright file="NmeaMessageExtensions.cs" company="Endjin Limited">
 // Copyright (c) Endjin Limited. All rights reserved.
 // </copyright>
-
-using System;
-using System.Linq;
 
 namespace Ais.Net.Receiver.Parser;
 

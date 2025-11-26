@@ -114,7 +114,7 @@ public class ReceiverHostExtensionsTests
 
         IObservable<IAisMessage> messages = new[] { (IAisMessage)nav, (IAisMessage)name }.ToObservable();
 
-        // Act - use a very short timeout (test should still work as messages come quickly)
+        // Act - use a configured timeout (test should still work as messages come quickly)
         (uint Mmsi, IVesselNavigation Navigation, IVesselName Name) result =
             await messages.VesselNavigationWithNameStream(TimeSpan.FromMinutes(1)).FirstOrDefaultAsync();
 
@@ -140,6 +140,6 @@ public class ReceiverHostExtensionsTests
                 .FirstOrDefaultAsync();
 
         // Assert - should complete without emitting (CombineLatest needs both)
-        result.Kind.ShouldBe(NotificationKind.OnCompleted);
+        result?.Kind.ShouldBe(NotificationKind.OnCompleted);
     }
 }

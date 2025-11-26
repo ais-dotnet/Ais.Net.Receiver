@@ -1,9 +1,9 @@
-﻿// <copyright file="AisConfig.cs" company="Endjin Limited">
+// <copyright file="AisConfig.cs" company="Endjin Limited">
 // Copyright (c) Endjin Limited. All rights reserved.
 // </copyright>
 
-using System;
 using System.ComponentModel.DataAnnotations;
+using Microsoft.Extensions.Logging;
 
 namespace Ais.Net.Receiver.Configuration;
 
@@ -12,7 +12,7 @@ public class AisConfig
     [Required]
     public required string Host { get; set; }
 
-    public LoggerVerbosity LoggerVerbosity { get; set; }
+    public LogLevel LoggerVerbosity { get; set; } = LogLevel.None;
 
     public TimeSpan StatisticsPeriodicity { get; set; }
 

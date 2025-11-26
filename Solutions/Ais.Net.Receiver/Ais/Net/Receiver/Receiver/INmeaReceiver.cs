@@ -1,10 +1,6 @@
-﻿// <copyright file="NmeaReceiver.cs" company="Endjin Limited">
+// <copyright file="NmeaReceiver.cs" company="Endjin Limited">
 // Copyright (c) Endjin Limited. All rights reserved.
 // </copyright>
-
-using System;
-using System.Collections.Generic;
-using System.Threading;
 
 namespace Ais.Net.Receiver.Receiver;
 
