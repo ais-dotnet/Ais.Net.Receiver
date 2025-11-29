@@ -86,7 +86,7 @@ public class ReceiverHostTests
     }
 
     [TestMethod]
-    public async Task StartAsync_WithCancellation_StopsProcessing()
+    public async Task StartAsync_WhenCancellationRequestedAfterMessages_StopsProcessing()
     {
         // Arrange
         INmeaReceiver? receiver = Substitute.For<INmeaReceiver>();
@@ -137,7 +137,7 @@ public class ReceiverHostTests
     }
 
     [TestMethod]
-    public async Task StartAsync_CompletesAllObservables_WhenStreamEnds()
+    public async Task StartAsync_WhenStreamCompletes_CompletesAllObservables()
     {
         // Arrange
         INmeaReceiver? receiver = Substitute.For<INmeaReceiver>();
@@ -171,7 +171,7 @@ public class ReceiverHostTests
     }
 
     [TestMethod]
-    public async Task StartAsync_MessageWithoutBlockTags_PrependsBlockTags()
+    public async Task StartAsync_WhenMessageLacksBlockTags_PrependsTimestampTags()
     {
         // Arrange
         INmeaReceiver? receiver = Substitute.For<INmeaReceiver>();
@@ -258,7 +258,7 @@ public class ReceiverHostTests
     }
 
     [TestMethod]
-    public async Task StartAsync_StopsOnCancellation()
+    public async Task StartAsync_WhenCancelledDuringContinuousStream_ExitsGracefully()
     {
         // Arrange
         INmeaReceiver? receiver = Substitute.For<INmeaReceiver>();

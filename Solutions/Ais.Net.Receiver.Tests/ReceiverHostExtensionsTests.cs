@@ -124,7 +124,7 @@ public class ReceiverHostExtensionsTests
     }
 
     [TestMethod]
-    public async Task VesselNavigationWithNameStream_NavigationOnlyVessel_NoOutput()
+    public async Task VesselNavigationWithNameStream_WhenOnlyNavigationReceived_EmitsNothing()
     {
         // Arrange - vessel with only navigation data, no name
         uint mmsi = 123456789u;

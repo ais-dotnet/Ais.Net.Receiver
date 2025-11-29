@@ -13,7 +13,7 @@ public class ReceiverTelemetryTests
     public TestContext TestContext { get; set; } = null!;
 
     [TestMethod]
-    public async Task Bind_RecordsMetrics_WhenEventsOccur()
+    public async Task Bind_WhenMessagesReceived_RecordsSentenceAndMessageMetrics()
     {
         // Arrange
         INmeaReceiver? receiver = Substitute.For<INmeaReceiver>();
@@ -109,7 +109,7 @@ public class ReceiverTelemetryTests
     }
 
     [TestMethod]
-    public async Task Bind_RecordsErrors_WhenErrorsOccur()
+    public async Task Bind_WhenParsingFails_RecordsErrorMetric()
     {
         // Arrange
         INmeaReceiver? receiver = Substitute.For<INmeaReceiver>();

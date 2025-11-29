@@ -247,7 +247,7 @@ public class TcpClientNmeaStreamReaderTests
     }
 
     [TestMethod]
-    public async Task ReadLineAsync_ServerSendsRstPacket_HandlesAbruptClose()
+    public async Task ReadLineAsync_WhenServerSendsReset_ReturnsNullGracefully()
     {
         // Arrange
         TcpListener listener = new(IPAddress.Loopback, 0);
@@ -311,7 +311,7 @@ public class TcpClientNmeaStreamReaderTests
     }
 
     [TestMethod]
-    public async Task ReadLineAsync_SlowData_ReadsSuccessfullyBeforeTimeout()
+    public async Task ReadLineAsync_WhenDataArrivesSlowly_ReadsSuccessfullyWithinTimeout()
     {
         // Arrange
         TcpListener listener = new(IPAddress.Loopback, 0);
@@ -355,7 +355,7 @@ public class TcpClientNmeaStreamReaderTests
     }
 
     [TestMethod]
-    public async Task Connected_AfterServerDisconnect_ReadReturnsNullToIndicateDisconnection()
+    public async Task ReadLineAsync_AfterServerDisconnects_ReturnsNullToSignalEndOfStream()
     {
         // Arrange
         TcpListener listener = new(IPAddress.Loopback, 0);

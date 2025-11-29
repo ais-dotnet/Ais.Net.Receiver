@@ -31,7 +31,7 @@ public class NetworkStreamNmeaReceiverTests
     }
 
     [TestMethod]
-    public async Task GetAsync_ConnectsAndReadsLines()
+    public async Task GetAsync_WhenConnected_YieldsLinesFromStream()
     {
         // Arrange
         MockNmeaStreamReader reader = new();
@@ -161,7 +161,7 @@ public class NetworkStreamNmeaReceiverTests
     }
 
     [TestMethod]
-    public void Properties_ReturnCorrectValues()
+    public void Constructor_WithAllParameters_SetsPropertiesCorrectly()
     {
         // Arrange
         MockNmeaStreamReader reader = new();
@@ -191,7 +191,7 @@ public class NetworkStreamNmeaReceiverTests
     }
 
     [TestMethod]
-    public async Task GetObservable_ReturnsObservableThatEmitsLines()
+    public async Task GetObservable_WhenDataAvailable_EmitsLinesAsObservable()
     {
         // Arrange
         MockNmeaStreamReader reader = new();
@@ -241,7 +241,7 @@ public class NetworkStreamNmeaReceiverTests
     }
 
     [TestMethod]
-    public async Task DisposeAsync_DisposesStreamReader()
+    public async Task DisposeAsync_WhenCalled_DisposesUnderlyingReader()
     {
         // Arrange
         bool disposed = false;

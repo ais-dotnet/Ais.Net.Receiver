@@ -39,7 +39,7 @@ public class FileStreamNmeaReceiverTests
     }
 
     [TestMethod]
-    public async Task GetAsync_WithDelay_ReadsLinesWithDelay()
+    public async Task GetAsync_WhenDelayConfigured_WaitsBeforeEachLine()
     {
         // Arrange
         string[] lines = ["Line1", "Line2"];
