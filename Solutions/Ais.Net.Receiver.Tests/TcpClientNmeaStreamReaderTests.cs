@@ -17,13 +17,15 @@ public class TcpClientNmeaStreamReaderTests
     public async Task ConnectAsync_ConnectsToListener()
     {
         // Arrange
-        TcpListener listener = new(IPAddress.Loopback, 0);
-        listener.Start();
-        int port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        TcpListener? listener = null;
         TcpClientNmeaStreamReader reader = new();
 
         try
         {
+            listener = new(IPAddress.Loopback, 0);
+            listener.Start();
+            int port = ((IPEndPoint)listener.LocalEndpoint).Port;
+
             // Act
             await reader.ConnectAsync("127.0.0.1", port, this.TestContext.CancellationTokenSource.Token);
 
@@ -33,8 +35,8 @@ public class TcpClientNmeaStreamReaderTests
         finally
         {
             await reader.DisposeAsync();
-            listener.Stop();
             listener.Dispose();
+            listener?.Stop();
         }
     }
 
@@ -42,13 +44,15 @@ public class TcpClientNmeaStreamReaderTests
     public async Task ReadLineAsync_ReadsLinesFromStream()
     {
         // Arrange
-        TcpListener listener = new(IPAddress.Loopback, 0);
-        listener.Start();
-        int port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        TcpListener? listener = null;
         TcpClientNmeaStreamReader reader = new();
 
         try
         {
+            listener = new(IPAddress.Loopback, 0);
+            listener.Start();
+            int port = ((IPEndPoint)listener.LocalEndpoint).Port;
+
             await reader.ConnectAsync("127.0.0.1", port, this.TestContext.CancellationTokenSource.Token);
 
             // Accept client and send data
@@ -71,8 +75,7 @@ public class TcpClientNmeaStreamReaderTests
         finally
         {
             await reader.DisposeAsync();
-            listener.Stop();
-            listener.Dispose();
+            listener?.Stop();
         }
     }
 
@@ -80,13 +83,15 @@ public class TcpClientNmeaStreamReaderTests
     public async Task ReadLineAsync_HandlesVariousLineEndings()
     {
         // Arrange
-        TcpListener listener = new(IPAddress.Loopback, 0);
-        listener.Start();
-        int port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        TcpListener? listener = null;
         TcpClientNmeaStreamReader reader = new();
 
         try
         {
+            listener = new(IPAddress.Loopback, 0);
+            listener.Start();
+            int port = ((IPEndPoint)listener.LocalEndpoint).Port;
+
             await reader.ConnectAsync("127.0.0.1", port, this.TestContext.CancellationTokenSource.Token);
 
             TcpClient serverClient = await listener.AcceptTcpClientAsync(this.TestContext.CancellationTokenSource.Token);
@@ -108,8 +113,7 @@ public class TcpClientNmeaStreamReaderTests
         finally
         {
             await reader.DisposeAsync();
-            listener.Stop();
-            listener.Dispose();
+            listener?.Stop();
         }
     }
 
@@ -117,13 +121,15 @@ public class TcpClientNmeaStreamReaderTests
     public async Task ReadLineAsync_StreamClosed_ReturnsNull()
     {
         // Arrange
-        TcpListener listener = new(IPAddress.Loopback, 0);
-        listener.Start();
-        int port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        TcpListener? listener = null;
         TcpClientNmeaStreamReader reader = new();
 
         try
         {
+            listener = new(IPAddress.Loopback, 0);
+            listener.Start();
+            int port = ((IPEndPoint)listener.LocalEndpoint).Port;
+
             await reader.ConnectAsync("127.0.0.1", port, this.TestContext.CancellationTokenSource.Token);
 
             TcpClient serverClient = await listener.AcceptTcpClientAsync(this.TestContext.CancellationTokenSource.Token);
@@ -139,8 +145,7 @@ public class TcpClientNmeaStreamReaderTests
         finally
         {
             await reader.DisposeAsync();
-            listener.Stop();
-            listener.Dispose();
+            listener?.Stop();
         }
     }
 
@@ -187,9 +192,7 @@ public class TcpClientNmeaStreamReaderTests
     public async Task ConnectAsync_WithCancellation_ThrowsOperationCanceledException()
     {
         // Arrange
-        TcpListener listener = new(IPAddress.Loopback, 0);
-        listener.Start();
-        int port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        TcpListener? listener = null;
         TcpClientNmeaStreamReader reader = new();
 
         // Don't accept connections - let connect hang
@@ -197,6 +200,10 @@ public class TcpClientNmeaStreamReaderTests
 
         try
         {
+            listener = new(IPAddress.Loopback, 0);
+            listener.Start();
+            int port = ((IPEndPoint)listener.LocalEndpoint).Port;
+
             // Cancel immediately
             await cts.CancelAsync();
 
@@ -207,8 +214,7 @@ public class TcpClientNmeaStreamReaderTests
         finally
         {
             await reader.DisposeAsync();
-            listener.Stop();
-            listener.Dispose();
+            listener?.Stop();
         }
     }
 
@@ -216,13 +222,15 @@ public class TcpClientNmeaStreamReaderTests
     public async Task ReadLineAsync_ServerDisconnectsMidStream_ReturnsDataThenNull()
     {
         // Arrange
-        TcpListener listener = new(IPAddress.Loopback, 0);
-        listener.Start();
-        int port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        TcpListener? listener = null;
         TcpClientNmeaStreamReader reader = new();
 
         try
         {
+            listener = new(IPAddress.Loopback, 0);
+            listener.Start();
+            int port = ((IPEndPoint)listener.LocalEndpoint).Port;
+
             await reader.ConnectAsync("127.0.0.1", port, this.TestContext.CancellationTokenSource.Token);
 
             TcpClient serverClient = await listener.AcceptTcpClientAsync(this.TestContext.CancellationTokenSource.Token);
@@ -247,8 +255,7 @@ public class TcpClientNmeaStreamReaderTests
         finally
         {
             await reader.DisposeAsync();
-            listener.Stop();
-            listener.Dispose();
+            listener?.Stop();
         }
     }
 
@@ -256,13 +263,15 @@ public class TcpClientNmeaStreamReaderTests
     public async Task ReadLineAsync_WhenServerSendsReset_ReturnsNullGracefully()
     {
         // Arrange
-        TcpListener listener = new(IPAddress.Loopback, 0);
-        listener.Start();
-        int port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        TcpListener? listener = null;
         TcpClientNmeaStreamReader reader = new();
 
         try
         {
+            listener = new(IPAddress.Loopback, 0);
+            listener.Start();
+            int port = ((IPEndPoint)listener.LocalEndpoint).Port;
+
             await reader.ConnectAsync("127.0.0.1", port, this.TestContext.CancellationTokenSource.Token);
 
             TcpClient serverClient = await listener.AcceptTcpClientAsync(this.TestContext.CancellationTokenSource.Token);
@@ -281,8 +290,7 @@ public class TcpClientNmeaStreamReaderTests
         finally
         {
             await reader.DisposeAsync();
-            listener.Stop();
-            listener.Dispose();
+            listener?.Stop();
         }
     }
 
@@ -290,13 +298,15 @@ public class TcpClientNmeaStreamReaderTests
     public async Task ReadLineAsync_WithCancellation_ThrowsOperationCanceledException()
     {
         // Arrange
-        TcpListener listener = new(IPAddress.Loopback, 0);
-        listener.Start();
-        int port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        TcpListener? listener = null;
         TcpClientNmeaStreamReader reader = new();
 
         try
         {
+            listener = new(IPAddress.Loopback, 0);
+            listener.Start();
+            int port = ((IPEndPoint)listener.LocalEndpoint).Port;
+
             await reader.ConnectAsync("127.0.0.1", port, this.TestContext.CancellationTokenSource.Token);
 
             // Accept but don't send any data
@@ -313,8 +323,7 @@ public class TcpClientNmeaStreamReaderTests
         finally
         {
             await reader.DisposeAsync();
-            listener.Stop();
-            listener.Dispose();
+            listener?.Stop();
         }
     }
 
@@ -322,13 +331,15 @@ public class TcpClientNmeaStreamReaderTests
     public async Task ReadLineAsync_WhenDataArrivesSlowly_ReadsSuccessfullyWithinTimeout()
     {
         // Arrange
-        TcpListener listener = new(IPAddress.Loopback, 0);
-        listener.Start();
-        int port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        TcpListener? listener = null;
         TcpClientNmeaStreamReader reader = new();
 
         try
         {
+            listener = new(IPAddress.Loopback, 0);
+            listener.Start();
+            int port = ((IPEndPoint)listener.LocalEndpoint).Port;
+
             await reader.ConnectAsync("127.0.0.1", port, this.TestContext.CancellationTokenSource.Token);
 
             TcpClient serverClient = await listener.AcceptTcpClientAsync(this.TestContext.CancellationTokenSource.Token);
@@ -358,8 +369,7 @@ public class TcpClientNmeaStreamReaderTests
         finally
         {
             await reader.DisposeAsync();
-            listener.Stop();
-            listener.Dispose();
+            listener?.Stop();
         }
     }
 
@@ -367,13 +377,15 @@ public class TcpClientNmeaStreamReaderTests
     public async Task ReadLineAsync_AfterServerDisconnects_ReturnsNullToSignalEndOfStream()
     {
         // Arrange
-        TcpListener listener = new(IPAddress.Loopback, 0);
-        listener.Start();
-        int port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        TcpListener? listener = null;
         TcpClientNmeaStreamReader reader = new();
 
         try
         {
+            listener = new(IPAddress.Loopback, 0);
+            listener.Start();
+            int port = ((IPEndPoint)listener.LocalEndpoint).Port;
+
             await reader.ConnectAsync("127.0.0.1", port, this.TestContext.CancellationTokenSource.Token);
             reader.Connected.ShouldBeTrue();
 
@@ -394,8 +406,7 @@ public class TcpClientNmeaStreamReaderTests
         finally
         {
             await reader.DisposeAsync();
-            listener.Stop();
-            listener.Dispose();
+            listener?.Stop();
         }
     }
 
@@ -403,13 +414,15 @@ public class TcpClientNmeaStreamReaderTests
     public async Task ReadLineAsync_AfterDispose_ReturnsNull()
     {
         // Arrange
-        TcpListener listener = new(IPAddress.Loopback, 0);
-        listener.Start();
-        int port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        TcpListener? listener = null;
         TcpClientNmeaStreamReader reader = new();
 
         try
         {
+            listener = new(IPAddress.Loopback, 0);
+            listener.Start();
+            int port = ((IPEndPoint)listener.LocalEndpoint).Port;
+
             await reader.ConnectAsync("127.0.0.1", port, this.TestContext.CancellationTokenSource.Token);
             _ = await listener.AcceptTcpClientAsync(this.TestContext.CancellationTokenSource.Token);
 
