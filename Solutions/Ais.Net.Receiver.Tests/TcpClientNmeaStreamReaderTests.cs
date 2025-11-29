@@ -34,9 +34,8 @@ public class TcpClientNmeaStreamReaderTests
         }
         finally
         {
-            await reader.DisposeAsync();
-            listener?.Dispose();
             listener?.Stop();
+            await reader.DisposeAsync();
         }
     }
 
@@ -74,8 +73,8 @@ public class TcpClientNmeaStreamReaderTests
         }
         finally
         {
-            await reader.DisposeAsync();
             listener?.Stop();
+            await reader.DisposeAsync();
         }
     }
 
@@ -112,8 +111,8 @@ public class TcpClientNmeaStreamReaderTests
         }
         finally
         {
-            await reader.DisposeAsync();
             listener?.Stop();
+            await reader.DisposeAsync();
         }
     }
 
@@ -144,8 +143,8 @@ public class TcpClientNmeaStreamReaderTests
         }
         finally
         {
-            await reader.DisposeAsync();
             listener?.Stop();
+            await reader.DisposeAsync();
         }
     }
 
@@ -234,8 +233,8 @@ public class TcpClientNmeaStreamReaderTests
         }
         finally
         {
-            await reader.DisposeAsync();
             listener?.Stop();
+            await reader.DisposeAsync();
         }
     }
 
@@ -275,8 +274,8 @@ public class TcpClientNmeaStreamReaderTests
         }
         finally
         {
-            await reader.DisposeAsync();
             listener?.Stop();
+            await reader.DisposeAsync();
         }
     }
 
@@ -310,8 +309,8 @@ public class TcpClientNmeaStreamReaderTests
         }
         finally
         {
-            await reader.DisposeAsync();
             listener?.Stop();
+            await reader.DisposeAsync();
         }
     }
 
@@ -343,8 +342,8 @@ public class TcpClientNmeaStreamReaderTests
         }
         finally
         {
-            await reader.DisposeAsync();
             listener?.Stop();
+            await reader.DisposeAsync();
         }
     }
 
@@ -389,8 +388,8 @@ public class TcpClientNmeaStreamReaderTests
         }
         finally
         {
-            await reader.DisposeAsync();
             listener?.Stop();
+            await reader.DisposeAsync();
         }
     }
 
@@ -426,8 +425,8 @@ public class TcpClientNmeaStreamReaderTests
         }
         finally
         {
-            await reader.DisposeAsync();
             listener?.Stop();
+            await reader.DisposeAsync();
         }
     }
 
@@ -458,8 +457,8 @@ public class TcpClientNmeaStreamReaderTests
         }
         finally
         {
-            await reader.DisposeAsync();
             listener?.Stop();
+            await reader.DisposeAsync();
         }
     }
 }
