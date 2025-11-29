@@ -436,7 +436,8 @@ public class TcpClientNmeaStreamReaderTests
         }
         finally
         {
-            listener?.Stop();
+            await reader.DisposeAsync();
+            listener.Stop();
         }
     }
 }
