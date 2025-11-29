@@ -35,7 +35,7 @@ public class TcpClientNmeaStreamReaderTests
         finally
         {
             await reader.DisposeAsync();
-            listener.Dispose();
+            listener?.Dispose();
             listener?.Stop();
         }
     }
@@ -459,7 +459,7 @@ public class TcpClientNmeaStreamReaderTests
         finally
         {
             await reader.DisposeAsync();
-            listener.Stop();
+            listener?.Stop();
         }
     }
 }
