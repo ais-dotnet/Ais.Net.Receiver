@@ -115,6 +115,7 @@ public class NetworkStreamNmeaReceiverTests
         }
         catch (OperationCanceledException)
         {
+            // Expected when cancellation is triggered after receiving data
         }
 
         // Assert
