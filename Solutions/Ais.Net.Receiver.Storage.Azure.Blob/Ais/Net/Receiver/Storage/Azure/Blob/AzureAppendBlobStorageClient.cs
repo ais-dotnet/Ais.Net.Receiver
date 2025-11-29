@@ -1,4 +1,4 @@
-// <copyright file="StorageClient.cs" company="Endjin Limited">
+// <copyright file="AzureAppendBlobStorageClient.cs" company="Endjin Limited">
 // Copyright (c) Endjin Limited. All rights reserved.
 // </copyright>
 
@@ -28,7 +28,7 @@ public class AzureAppendBlobStorageClient : IStorageClient
 
     public async Task PersistAsync(IEnumerable<string> messages)
     {
-        await this.EnsureClientInitializedAsync().ConfigureAwait(false);
+        await this.EnsureCurrentHourBlobInitializedAsync().ConfigureAwait(false);
 
         using MemoryStream stream = new();
         await using (StreamWriter writer = new(stream, Encoding.UTF8, leaveOpen: true))
@@ -49,7 +49,7 @@ public class AzureAppendBlobStorageClient : IStorageClient
         GC.SuppressFinalize(this);
     }
 
-    private async Task EnsureClientInitializedAsync()
+    private async Task EnsureCurrentHourBlobInitializedAsync()
     {
         DateTimeOffset timestamp = this.timeProvider.GetUtcNow();
         string newBlobPath = $"raw/{timestamp:yyyy}/{timestamp:MM}/{timestamp:dd}/{timestamp:yyyyMMddTHH}.nm4";
