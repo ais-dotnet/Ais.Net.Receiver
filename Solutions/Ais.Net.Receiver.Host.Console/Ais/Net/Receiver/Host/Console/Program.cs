@@ -8,12 +8,11 @@ using Ais.Net.Receiver.Host.Console.Infrastructure;
 using Ais.Net.Receiver.Storage.Azure.Blob.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using OpenTelemetry.Metrics;
-using OpenTelemetry.Resources;
-using OpenTelemetry.Trace;
 using Spectre.Console.Cli;
 
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
+
+builder.AddServiceDefaults("Ais.Net.Receiver.Console", "Ais.Net.Receiver");
 
 builder.Services.AddOptions<AisConfig>()
     .Bind(builder.Configuration.GetSection("Ais"))
@@ -26,21 +25,6 @@ builder.Services.AddOptions<StorageConfig>()
     .ValidateOnStart();
 
 builder.Services.AddSingleton(TimeProvider.System);
-
-builder.Services.AddOpenTelemetry()
-    .ConfigureResource(resource => resource
-        .AddService(
-            serviceName: "Ais.Net.Receiver.Console",
-            serviceVersion: typeof(Program).Assembly.GetName().Version?.ToString() ?? "1.0.0",
-            serviceInstanceId: Environment.MachineName))
-    .WithMetrics(metrics => metrics
-        .AddMeter("Ais.Net.Receiver.Console")
-        .AddRuntimeInstrumentation()
-        .AddOtlpExporter())
-    .WithTracing(tracing => tracing
-        .AddSource("Ais.Net.Receiver.Console")
-        .AddSource("Ais.Net.Receiver")
-        .AddOtlpExporter());
 
 TypeRegistrar registrar = new(builder.Services);
 CommandApp<ReceiveCommand> app = new(registrar);

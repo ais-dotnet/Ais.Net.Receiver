@@ -6,12 +6,9 @@ using Ais.Net.Receiver.Configuration;
 using Ais.Net.Receiver.Host.Worker;
 using Ais.Net.Receiver.Storage.Azure.Blob.Configuration;
 
-using OpenTelemetry.Metrics;
-using OpenTelemetry.Resources;
-using OpenTelemetry.Trace;
-
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 
+builder.AddServiceDefaults("Ais.Net.Receiver");
 builder.Services.AddSystemd();
 
 // Configure options with validation
@@ -36,20 +33,6 @@ builder.Services.Configure<HostOptions>(options =>
 
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddHostedService<Worker>();
-
-builder.Services.AddOpenTelemetry()
-    .ConfigureResource(resource => resource
-        .AddService(
-            serviceName: "Ais.Net.Receiver",
-            serviceVersion: typeof(Program).Assembly.GetName().Version?.ToString() ?? "1.0.0",
-            serviceInstanceId: Environment.MachineName))
-    .WithMetrics(metrics => metrics
-        .AddMeter("Ais.Net.Receiver")
-        .AddRuntimeInstrumentation()
-        .AddOtlpExporter())
-    .WithTracing(tracing => tracing
-        .AddSource("Ais.Net.Receiver")
-        .AddOtlpExporter());
 
 IHost host = builder.Build();
 await host.RunAsync();

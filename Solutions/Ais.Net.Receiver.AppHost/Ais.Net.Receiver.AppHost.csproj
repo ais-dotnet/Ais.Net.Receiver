@@ -9,6 +9,9 @@
 
   <ItemGroup>
     <PackageReference Include="Aspire.Hosting.AppHost" Version="13.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Ais.Net.Receiver.Host.Console\Ais.Net.Receiver.Host.Console.csproj" />
     <ProjectReference Include="..\Ais.Net.Receiver.Host.Worker\Ais.Net.Receiver.Host.Worker.csproj" />
   </ItemGroup>

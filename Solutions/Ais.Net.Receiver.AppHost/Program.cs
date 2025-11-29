@@ -2,5 +2,4 @@ IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(ar
 
 // builder.AddProject<Projects.Ais_Net_Receiver_Host_Console>("console");
 builder.AddProject<Projects.Ais_Net_Receiver_Host_Worker>("worker");
-
 builder.Build().Run();
