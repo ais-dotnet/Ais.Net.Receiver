@@ -10,19 +10,15 @@
     <TreatWarningsAsErrors Condition="'$(Configuration)' == 'Release'">true</TreatWarningsAsErrors>
     <EndjinDisableCodeAnalysis>True</EndjinDisableCodeAnalysis>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <RootNamespace></RootNamespace>
+    <NoWarn>RCS1029;SA1313;SA1009;SA1600;SA1591;CS1591;</NoWarn>
+    <RootNamespace> </RootNamespace>
   </PropertyGroup>
   
   <PropertyGroup>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <PackageDescription>Recieves Network streams of NMEA sentences and can decode AIS message types 1,2,3,5,18,19,24 Part 0, and 24 Part 1 into an IObservable of IAisMessage (See Ais.Net.Models). Sponsored by endjin.</PackageDescription>
-    <PackageTags>ais;aisvdm;aivdo;nmea;marine;gis;iot;aiforearth;endjin</PackageTags>
+    <PackageTags>ais;aisvdm;aivdo;nmea;marine;gis;iot;endjin</PackageTags>
     <PackageReleaseNotes></PackageReleaseNotes>
-  </PropertyGroup>
-
-  <PropertyGroup>
-    <NoWarn>RCS1029;SA1313;SA1009;SA1600;SA1591;CS1591;</NoWarn>
-    <RootNamespace> </RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
