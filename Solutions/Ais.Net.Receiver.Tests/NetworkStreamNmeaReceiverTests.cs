@@ -50,7 +50,7 @@ public class NetworkStreamNmeaReceiverTests
             return null;
         });
 
-        NetworkStreamNmeaReceiver receiver = new(reader, host, port, TimeSpan.FromMilliseconds(10));
+        NetworkStreamNmeaReceiver receiver = new(reader: reader, host: host, port: port, timeProvider: TimeProvider.System, retryPeriodicity: TimeSpan.FromMilliseconds(10));
 
         // Act
         using CancellationTokenSource cts = new();
@@ -99,7 +99,7 @@ public class NetworkStreamNmeaReceiverTests
             return null;
         });
 
-        NetworkStreamNmeaReceiver receiver = new(reader, host, port, TimeSpan.FromMilliseconds(10));
+        NetworkStreamNmeaReceiver receiver = new(reader, host, port, TimeProvider.System, TimeSpan.FromMilliseconds(10));
 
         // Act
         using CancellationTokenSource cts = new();
@@ -140,7 +140,7 @@ public class NetworkStreamNmeaReceiverTests
         reader.Reads.Enqueue(_ => new ValueTask<ReadOnlyMemory<byte>?>(line));
         reader.Reads.Enqueue(_ => new ValueTask<ReadOnlyMemory<byte>?>(result: null));
 
-        NetworkStreamNmeaReceiver receiver = new(reader, host, port, TimeSpan.FromMilliseconds(1));
+        NetworkStreamNmeaReceiver receiver = new(reader, host, port, TimeProvider.System, TimeSpan.FromMilliseconds(1));
 
         // Act
         using CancellationTokenSource cts = new(TimeSpan.FromSeconds(5));
@@ -172,7 +172,7 @@ public class NetworkStreamNmeaReceiverTests
         TimeSpan idleTimeout = TimeSpan.FromMinutes(2);
 
         // Act
-        NetworkStreamNmeaReceiver receiver = new(reader, host, port, retryPeriodicity, retryAttemptLimit, idleTimeout);
+        NetworkStreamNmeaReceiver receiver = new(reader, host, port, TimeProvider.System, retryPeriodicity, retryAttemptLimit, idleTimeout);
 
         // Assert
         receiver.Host.ShouldBe(host);
@@ -187,7 +187,7 @@ public class NetworkStreamNmeaReceiverTests
     {
         // Arrange & Act & Assert
         Should.Throw<ArgumentNullException>(() =>
-            new NetworkStreamNmeaReceiver(null!, "host", 123, TimeSpan.FromSeconds(1)));
+            new NetworkStreamNmeaReceiver(null!, "host", 123, TimeProvider.System, TimeSpan.FromSeconds(1)));
     }
 
     [TestMethod]
@@ -205,7 +205,7 @@ public class NetworkStreamNmeaReceiverTests
         reader.Reads.Enqueue(_ => new ValueTask<ReadOnlyMemory<byte>?>(line2));
         reader.Reads.Enqueue(_ => new ValueTask<ReadOnlyMemory<byte>?>(result: null));
 
-        NetworkStreamNmeaReceiver receiver = new(reader, host, port, TimeSpan.FromMilliseconds(10));
+        NetworkStreamNmeaReceiver receiver = new(reader, host, port, TimeProvider.System, TimeSpan.FromMilliseconds(10));
 
         // Act
         using CancellationTokenSource cts = new(TimeSpan.FromSeconds(5));
@@ -246,7 +246,7 @@ public class NetworkStreamNmeaReceiverTests
         // Arrange
         bool disposed = false;
         DisposableStreamReader reader = new(() => disposed = true);
-        NetworkStreamNmeaReceiver receiver = new(reader, "host", 123, TimeSpan.FromSeconds(1));
+        NetworkStreamNmeaReceiver receiver = new(reader, "host", 123, TimeProvider.System, TimeSpan.FromSeconds(1));
 
         // Act
         await receiver.DisposeAsync();

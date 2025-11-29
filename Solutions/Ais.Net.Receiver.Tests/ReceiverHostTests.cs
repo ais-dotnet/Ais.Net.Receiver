@@ -21,7 +21,7 @@ public class ReceiverHostTests
         receiver.GetAsync(Arg.Any<CancellationToken>())
             .Returns(new[] { (ReadOnlyMemory<byte>)bytes }.ToAsyncEnumerable());
 
-        await using ReceiverHost host = new(receiver);
+        await using ReceiverHost host = new(receiver, TimeProvider.System);
         IAisMessage? receivedMessage = null;
         using IDisposable subscription = host.Messages.Subscribe(msg => receivedMessage = msg);
 
@@ -45,7 +45,7 @@ public class ReceiverHostTests
         receiver.GetAsync(Arg.Any<CancellationToken>())
             .Returns(new[] { (ReadOnlyMemory<byte>)bytes }.ToAsyncEnumerable());
 
-        await using ReceiverHost host = new(receiver);
+        await using ReceiverHost host = new(receiver, TimeProvider.System);
         string? receivedSentence = null;
         using IDisposable subscription = host.Sentences.Subscribe(s => receivedSentence = s);
 
@@ -70,7 +70,7 @@ public class ReceiverHostTests
         receiver.GetAsync(Arg.Any<CancellationToken>())
             .Returns(new[] { (ReadOnlyMemory<byte>)bytes }.ToAsyncEnumerable());
 
-        await using ReceiverHost host = new(receiver);
+        await using ReceiverHost host = new(receiver, TimeProvider.System);
         (Exception Exception, string Line)? receivedError = null;
         using IDisposable errorSubscription = host.Errors.Subscribe(e => receivedError = e);
         // Must subscribe to Messages or Metadata to trigger processing
@@ -96,7 +96,7 @@ public class ReceiverHostTests
         receiver.GetAsync(Arg.Any<CancellationToken>())
             .Returns(callInfo => GenerateMessagesWithCancellation(callInfo.Arg<CancellationToken>()));
 
-        await using ReceiverHost host = new(receiver);
+        await using ReceiverHost host = new(receiver, TimeProvider.System);
         using IDisposable subscription = host.Messages.Subscribe(_ =>
         {
             messageCount++;
@@ -121,7 +121,7 @@ public class ReceiverHostTests
         receiver.GetAsync(Arg.Any<CancellationToken>())
             .Returns(new[] { (ReadOnlyMemory<byte>)bytes }.ToAsyncEnumerable());
 
-        await using ReceiverHost host = new(receiver);
+        await using ReceiverHost host = new(receiver, TimeProvider.System);
         IAisMessage? receivedMessage1 = null;
         IAisMessage? receivedMessage2 = null;
         using IDisposable sub1 = host.Messages.Subscribe(msg => receivedMessage1 = msg);
@@ -146,7 +146,7 @@ public class ReceiverHostTests
         receiver.GetAsync(Arg.Any<CancellationToken>())
             .Returns(new[] { (ReadOnlyMemory<byte>)bytes }.ToAsyncEnumerable());
 
-        await using ReceiverHost host = new(receiver);
+        await using ReceiverHost host = new(receiver, TimeProvider.System);
         bool messagesCompleted = false;
         bool sentencesCompleted = false;
         bool errorsCompleted = false;
@@ -181,7 +181,7 @@ public class ReceiverHostTests
         receiver.GetAsync(Arg.Any<CancellationToken>())
             .Returns(new[] { (ReadOnlyMemory<byte>)bytes }.ToAsyncEnumerable());
 
-        await using ReceiverHost host = new(receiver);
+        await using ReceiverHost host = new(receiver, TimeProvider.System);
         string? receivedSentence = null;
         using IDisposable subscription = host.Sentences.Subscribe(s => receivedSentence = s);
 
@@ -205,7 +205,7 @@ public class ReceiverHostTests
         receiver.GetAsync(Arg.Any<CancellationToken>())
             .Returns(new[] { (ReadOnlyMemory<byte>)bytes }.ToAsyncEnumerable());
 
-        await using ReceiverHost host = new(receiver);
+        await using ReceiverHost host = new(receiver, TimeProvider.System);
         Metadata? receivedMetadata = null;
         using IDisposable subscription = host.Metadata.Subscribe(m => receivedMetadata = m);
 
@@ -222,7 +222,7 @@ public class ReceiverHostTests
     {
         // Arrange
         INmeaReceiver? receiver = Substitute.For<INmeaReceiver, IAsyncDisposable>();
-        ReceiverHost host = new(receiver);
+        ReceiverHost host = new(receiver, TimeProvider.System);
 
         // Act
         await host.DisposeAsync();
@@ -244,7 +244,7 @@ public class ReceiverHostTests
                 _ => throw new Exception("Connection failed"),
                 _ => new[] { (ReadOnlyMemory<byte>)bytes }.ToAsyncEnumerable());
 
-        await using ReceiverHost host = new(receiver, TimeSpan.FromMilliseconds(1));
+        await using ReceiverHost host = new(receiver, TimeProvider.System, TimeSpan.FromMilliseconds(1));
         int messageCount = 0;
         using IDisposable subscription = host.Messages.Subscribe(_ => messageCount++);
 
@@ -267,7 +267,7 @@ public class ReceiverHostTests
         receiver.GetAsync(Arg.Any<CancellationToken>())
             .Returns(x => GenerateMessagesWithCancellation(x.Arg<CancellationToken>()));
 
-        await using ReceiverHost host = new(receiver);
+        await using ReceiverHost host = new(receiver, TimeProvider.System);
         int messageCount = 0;
         using IDisposable subscription = host.Messages.Subscribe(_ => messageCount++);
 

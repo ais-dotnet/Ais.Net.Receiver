@@ -1,5 +1,6 @@
 using System.Text;
 using Ais.Net.Receiver.Parser;
+using Microsoft.Extensions.Time.Testing;
 using Shouldly;
 
 namespace Ais.Net.Receiver.Tests;
@@ -55,7 +56,7 @@ public class NmeaMessageExtensionsTests
         ReadOnlyMemory<byte> memory = "!AIVDM,1,1,,B,177KQJ5000G?tO`K>RA1wUbN0TKH,0*5C"u8.ToArray();
 
         // Act
-        ReadOnlyMemory<byte> result = memory.PrependNmeaBlockTags();
+        ReadOnlyMemory<byte> result = memory.PrependNmeaBlockTags(TimeProvider.System);
 
         // Assert
         string resultStr = Encoding.ASCII.GetString(result.Span);
@@ -116,5 +117,39 @@ public class NmeaMessageExtensionsTests
 
         // Assert
         result.ShouldBeFalse();
+    }
+
+    [TestMethod]
+    public void PrependNmeaBlockTags_String_UsesInjectedTimeProvider()
+    {
+        // Arrange
+        DateTimeOffset fixedTime = new(2024, 1, 15, 10, 30, 0, TimeSpan.Zero);
+        FakeTimeProvider timeProvider = new(fixedTime);
+        string message = "!AIVDM,1,1,,B,177KQJ5000G?tO`K>RA1wUbN0TKH,0*5C";
+
+        // Act
+        string result = message.PrependNmeaBlockTags(timeProvider);
+
+        // Assert
+        long expectedUnixTime = fixedTime.ToUnixTimeSeconds();
+        result.ShouldContain($"c:{expectedUnixTime}*");
+        result.ShouldEndWith(message);
+    }
+
+    [TestMethod]
+    public void PrependNmeaBlockTags_Memory_UsesInjectedTimeProvider()
+    {
+        // Arrange
+        DateTimeOffset fixedTime = new(2024, 1, 15, 10, 30, 0, TimeSpan.Zero);
+        FakeTimeProvider timeProvider = new(fixedTime);
+        ReadOnlyMemory<byte> message = "!AIVDM,1,1,,B,177KQJ5000G?tO`K>RA1wUbN0TKH,0*5C"u8.ToArray();
+
+        // Act
+        ReadOnlyMemory<byte> result = message.PrependNmeaBlockTags(timeProvider);
+
+        // Assert
+        string resultStr = Encoding.ASCII.GetString(result.Span);
+        long expectedUnixTime = fixedTime.ToUnixTimeSeconds();
+        resultStr.ShouldContain($"c:{expectedUnixTime}*");
     }
 }

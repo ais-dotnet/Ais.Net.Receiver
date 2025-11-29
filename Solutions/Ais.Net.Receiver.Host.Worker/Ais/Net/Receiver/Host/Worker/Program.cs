@@ -2,14 +2,9 @@
 // Copyright (c) Endjin Limited. All rights reserved.
 // </copyright>
 
-using System;
-
 using Ais.Net.Receiver.Configuration;
 using Ais.Net.Receiver.Host.Worker;
 using Ais.Net.Receiver.Storage.Azure.Blob.Configuration;
-
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
@@ -39,6 +34,7 @@ builder.Services.Configure<HostOptions>(options =>
     options.ShutdownTimeout = TimeSpan.FromSeconds(45);
 });
 
+builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddHostedService<Worker>();
 
 builder.Services.AddOpenTelemetry()

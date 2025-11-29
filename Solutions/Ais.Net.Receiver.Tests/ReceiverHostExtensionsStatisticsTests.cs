@@ -22,7 +22,7 @@ public class ReceiverHostExtensionsStatisticsTests
         receiver.GetAsync(Arg.Any<CancellationToken>())
             .Returns(messages.ToAsyncEnumerable());
 
-        ReceiverHost host = new(receiver);
+        ReceiverHost host = new(receiver, TimeProvider.System);
 
         List<(long Message, long Sentence, long Error)> stats = [];
         // Use a small period to ensure we get a buffer
@@ -64,7 +64,7 @@ public class ReceiverHostExtensionsStatisticsTests
         receiver.GetAsync(Arg.Any<CancellationToken>())
             .Returns(messages.ToAsyncEnumerable());
 
-        ReceiverHost host = new(receiver);
+        ReceiverHost host = new(receiver, TimeProvider.System);
 
         List<(long Message, long Sentence, long Error)> stats = [];
         using IDisposable sub = host.GetStreamStatistics(TimeSpan.FromSeconds(1), scheduler).Subscribe(stats.Add);
@@ -94,7 +94,7 @@ public class ReceiverHostExtensionsStatisticsTests
         receiver.GetAsync(Arg.Any<CancellationToken>())
             .Returns(AsyncEnumerable.Empty<ReadOnlyMemory<byte>>());
 
-        ReceiverHost host = new(receiver);
+        ReceiverHost host = new(receiver, TimeProvider.System);
 
         List<(long Message, long Sentence, long Error)> stats = [];
         using IDisposable sub = host.GetStreamStatistics(TimeSpan.FromSeconds(1), scheduler).Subscribe(stats.Add);

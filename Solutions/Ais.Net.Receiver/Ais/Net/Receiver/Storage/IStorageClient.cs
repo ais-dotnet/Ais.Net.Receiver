@@ -4,7 +4,7 @@
 
 namespace Ais.Net.Receiver.Storage;
 
-public interface IStorageClient
+public interface IStorageClient: IDisposable
 {
     Task PersistAsync(IEnumerable<string> messages);
 }

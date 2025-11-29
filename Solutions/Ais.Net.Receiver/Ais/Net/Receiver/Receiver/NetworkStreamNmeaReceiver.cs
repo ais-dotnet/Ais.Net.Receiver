@@ -9,16 +9,18 @@ namespace Ais.Net.Receiver.Receiver;
 public class NetworkStreamNmeaReceiver : INmeaReceiver
 {
     private readonly INmeaStreamReader nmeaStreamReader;
+    private readonly TimeProvider timeProvider;
 
-    public NetworkStreamNmeaReceiver(string host, int port, TimeSpan? retryPeriodicity, int retryAttemptLimit = 100, TimeSpan? idleTimeout = null)
-        : this(new TcpClientNmeaStreamReader(), host, port, retryPeriodicity, retryAttemptLimit, idleTimeout)
+    public NetworkStreamNmeaReceiver(string host, int port, TimeProvider timeProvider, TimeSpan? retryPeriodicity = null, int retryAttemptLimit = 100, TimeSpan? idleTimeout = null)
+        : this(new TcpClientNmeaStreamReader(), host, port, timeProvider, retryPeriodicity, retryAttemptLimit, idleTimeout)
     {
     }
 
-    public NetworkStreamNmeaReceiver(INmeaStreamReader reader, string host, int port, TimeSpan? retryPeriodicity, int retryAttemptLimit = 100, TimeSpan? idleTimeout = null)
+    public NetworkStreamNmeaReceiver(INmeaStreamReader reader, string host, int port, TimeProvider timeProvider, TimeSpan? retryPeriodicity = null, int retryAttemptLimit = 100, TimeSpan? idleTimeout = null)
     {
         this.Host = host;
         this.Port = port;
+        this.timeProvider = timeProvider;
         this.RetryPeriodicity = retryPeriodicity ?? TimeSpan.FromSeconds(1);
         this.RetryAttemptLimit = retryAttemptLimit;
         this.IdleTimeout = idleTimeout;
@@ -57,9 +59,8 @@ public class NetworkStreamNmeaReceiver : INmeaReceiver
                     try
                     {
                         TimeSpan idleTimeout = this.IdleTimeout ?? TimeSpan.FromTicks(this.RetryPeriodicity.Ticks * this.RetryAttemptLimit);
-                        long idleTimeoutMs = (long)idleTimeout.TotalMilliseconds;
-                        long minResetIntervalMs = idleTimeoutMs / 2;
-                        long lastResetMs = Environment.TickCount64;
+                        TimeSpan minResetInterval = idleTimeout / 2;
+                        long lastResetTimestamp = this.timeProvider.GetTimestamp();
 
                         using CancellationTokenSource timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(mergedToken);
                         timeoutCts.CancelAfter(idleTimeout);
@@ -72,12 +73,12 @@ public class NetworkStreamNmeaReceiver : INmeaReceiver
                                 if (line is not null)
                                 {
                                     obs.OnNext(line.Value);
-                                    
-                                    long now = Environment.TickCount64;
-                                    if (now - lastResetMs > minResetIntervalMs)
+
+                                    TimeSpan elapsed = this.timeProvider.GetElapsedTime(lastResetTimestamp);
+                                    if (elapsed > minResetInterval)
                                     {
                                         timeoutCts.CancelAfter(idleTimeout);
-                                        lastResetMs = now;
+                                        lastResetTimestamp = this.timeProvider.GetTimestamp();
                                     }
                                 }
                                 else

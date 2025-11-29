@@ -16,9 +16,9 @@ public class NmeaParserBenchmarks
 
     [Benchmark]
     [ArgumentsSource(nameof(GetMessagesWithoutTags))]
-    public ReadOnlyMemory<byte> PrependTags(NmeaTestCase testCase) => NmeaMessageExtensions.PrependNmeaBlockTags(testCase.Data);
+    public ReadOnlyMemory<byte> PrependTags(NmeaTestCase testCase) => ((ReadOnlyMemory<byte>)testCase.Data).PrependNmeaBlockTags(TimeProvider.System);
 
-    public IEnumerable<NmeaTestCase> GetMessagesWithTags() => TestDataProvider.NmeaSentencesWithTags();
+    public static IEnumerable<NmeaTestCase> GetMessagesWithTags() => TestDataProvider.NmeaSentencesWithTags();
 
-    public IEnumerable<NmeaTestCase> GetMessagesWithoutTags() => TestDataProvider.NmeaSentencesWithoutTags();
+    public static IEnumerable<NmeaTestCase> GetMessagesWithoutTags() => TestDataProvider.NmeaSentencesWithoutTags();
 }

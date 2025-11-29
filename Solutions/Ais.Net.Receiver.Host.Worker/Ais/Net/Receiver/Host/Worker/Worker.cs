@@ -2,12 +2,8 @@
 // Copyright (c) Endjin Limited. All rights reserved.
 // </copyright>
 
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reactive.Disposables;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Ais.Net.Models;
 using Ais.Net.Models.Abstractions;
@@ -16,8 +12,6 @@ using Ais.Net.Receiver.Receiver;
 using Ais.Net.Receiver.Storage;
 using Ais.Net.Receiver.Storage.Azure.Blob;
 using Ais.Net.Receiver.Storage.Azure.Blob.Configuration;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Ais.Net.Receiver.Host.Worker;
@@ -27,6 +21,7 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
     private readonly ILogger<Worker> logger;
     private readonly IOptionsMonitor<AisConfig> aisOptionsMonitor;
     private readonly IOptionsMonitor<StorageConfig> storageOptionsMonitor;
+    private readonly TimeProvider timeProvider;
 
     private ReceiverHost? receiverHost;
     private ReceiverTelemetry? telemetry;
@@ -39,11 +34,13 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
     public Worker(
         ILogger<Worker> logger,
         IOptionsMonitor<AisConfig> aisOptionsMonitor,
-        IOptionsMonitor<StorageConfig> storageOptionsMonitor)
+        IOptionsMonitor<StorageConfig> storageOptionsMonitor,
+        TimeProvider timeProvider)
     {
         this.logger = logger;
         this.aisOptionsMonitor = aisOptionsMonitor;
         this.storageOptionsMonitor = storageOptionsMonitor;
+        this.timeProvider = timeProvider;
     }
 
     public Task StartingAsync(CancellationToken cancellationToken)
@@ -55,10 +52,11 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
         INmeaReceiver receiver = new NetworkStreamNmeaReceiver(
             aisConfig.Connection.Host,
             aisConfig.Connection.Port,
+            this.timeProvider,
             aisConfig.Connection.Retry.Periodicity,
             retryAttemptLimit: aisConfig.Connection.Retry.Attempts);
 
-        this.receiverHost = new ReceiverHost(receiver, retryPeriodicity: aisConfig.Receiver.Retry.Periodicity, retryAttempts: aisConfig.Receiver.Retry.Attempts);
+        this.receiverHost = new ReceiverHost(receiver, this.timeProvider, retryPeriodicity: aisConfig.Receiver.Retry.Periodicity, retryAttempts: aisConfig.Receiver.Retry.Attempts);
         this.telemetry = new ReceiverTelemetry("Ais.Net.Receiver");
         this.telemetry.Bind(this.receiverHost);
 
@@ -117,11 +115,7 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
         this.batchTimer?.Dispose();
         this.subscriptions?.Dispose();
         this.telemetry?.Dispose();
-
-        if (this.storageClient is IDisposable disposableStorageClient)
-        {
-            disposableStorageClient.Dispose();
-        }
+        this.storageClient?.Dispose();
 
         if (this.receiverHost is not null)
         {
@@ -167,7 +161,7 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
                         statistics =>
                             this.logger.LogInformation(
                                 "{Timestamp:s}: Sentences: {Sentences} | Messages: {Messages} | Errors: {Errors}",
-                                DateTime.UtcNow.ToUniversalTime(),
+                                DateTime.UtcNow,
                                 statistics.Sentence,
                                 statistics.Message,
                                 statistics.Error),
@@ -238,7 +232,7 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
             return;
         }
 
-        this.storageClient = new AzureAppendBlobStorageClient(storageConfig);
+        this.storageClient = new AzureAppendBlobStorageClient(storageConfig, this.timeProvider);
 
         this.batchBlock = new BatchBlock<string>(
             storageConfig.WriteBatchSize,

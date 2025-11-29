@@ -26,6 +26,7 @@ public class ReceiveCommand : AsyncCommand<ReceiveCommand.Settings>
     private readonly AisConfig aisConfig;
     private readonly StorageConfig storageConfig;
     private readonly IServiceProvider serviceProvider;
+    private readonly TimeProvider timeProvider;
 
     public class Settings : CommandSettings
     {
@@ -34,11 +35,13 @@ public class ReceiveCommand : AsyncCommand<ReceiveCommand.Settings>
     public ReceiveCommand(
         IOptions<AisConfig> aisConfig,
         IOptions<StorageConfig> storageConfig,
-        IServiceProvider serviceProvider)
+        IServiceProvider serviceProvider,
+        TimeProvider timeProvider)
     {
         this.aisConfig = aisConfig.Value;
         this.storageConfig = storageConfig.Value;
         this.serviceProvider = serviceProvider;
+        this.timeProvider = timeProvider;
     }
 
     public override async Task<int> ExecuteAsync(CommandContext context, Settings settings, CancellationToken cancellationToken)
@@ -52,7 +55,7 @@ public class ReceiveCommand : AsyncCommand<ReceiveCommand.Settings>
 
         try
         {
-            return await RunReceiverAsync(cancellationToken);
+            return await this.RunReceiverAsync(cancellationToken);
         }
         finally
         {
@@ -68,10 +71,11 @@ public class ReceiveCommand : AsyncCommand<ReceiveCommand.Settings>
         INmeaReceiver receiver = new NetworkStreamNmeaReceiver(
             this.aisConfig.Connection.Host,
             this.aisConfig.Connection.Port,
+            this.timeProvider,
             this.aisConfig.Connection.Retry.Periodicity,
             this.aisConfig.Connection.Retry.Attempts);
 
-        await using ReceiverHost receiverHost = new(receiver, this.aisConfig.Receiver.Retry.Periodicity, this.aisConfig.Receiver.Retry.Attempts);
+        await using ReceiverHost receiverHost = new(receiver, this.timeProvider, this.aisConfig.Receiver.Retry.Periodicity, this.aisConfig.Receiver.Retry.Attempts);
 
         using ReceiverTelemetry telemetry = new("Ais.Net.Receiver.Console");
         telemetry.Bind(receiverHost);
@@ -87,7 +91,7 @@ public class ReceiveCommand : AsyncCommand<ReceiveCommand.Settings>
                 receiverHost.GetStreamStatistics(this.aisConfig.Telemetry.StatisticsPeriodicity)
                     .Subscribe(
                         statistics =>
-                            AnsiConsole.MarkupLine($"[grey]{DateTime.UtcNow.ToUniversalTime():s}[/]: Sentences: [cyan]{statistics.Sentence}[/] | Messages: [cyan]{statistics.Message}[/] | Errors: [red]{statistics.Error}[/]"),
+                            AnsiConsole.MarkupLine($"[grey]{DateTime.UtcNow:s}[/]: Sentences: [cyan]{statistics.Sentence}[/] | Messages: [cyan]{statistics.Message}[/] | Errors: [red]{statistics.Error}[/]"),
                         error => AnsiConsole.MarkupLine($"[red]Error in statistics stream: {Markup.Escape(error.Message)}[/]")));
         }
 
@@ -122,7 +126,7 @@ public class ReceiveCommand : AsyncCommand<ReceiveCommand.Settings>
 
         if (this.storageConfig.EnableCapture)
         {
-            IStorageClient storageClient = new AzureAppendBlobStorageClient(this.storageConfig);
+            IStorageClient storageClient = new AzureAppendBlobStorageClient(this.storageConfig, this.timeProvider);
 
             batchBlock = new BatchBlock<string>(
                 this.storageConfig.WriteBatchSize,

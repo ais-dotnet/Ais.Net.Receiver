@@ -23,7 +23,7 @@ public class ReceiverTelemetryTests
         receiver.GetAsync(Arg.Any<CancellationToken>())
             .Returns(new[] { (ReadOnlyMemory<byte>)bytes }.ToAsyncEnumerable());
 
-        ReceiverHost host = new(receiver);
+        ReceiverHost host = new(receiver, TimeProvider.System);
         ReceiverTelemetry telemetry = new("TestMeter");
         telemetry.Bind(host);
 
@@ -73,7 +73,7 @@ public class ReceiverTelemetryTests
         receiver.GetAsync(Arg.Any<CancellationToken>())
             .Returns(new[] { (ReadOnlyMemory<byte>)bytes }.ToAsyncEnumerable());
 
-        ReceiverHost host = new(receiver);
+        ReceiverHost host = new(receiver, TimeProvider.System);
         ReceiverTelemetry telemetry = new("TestMeter2");
         telemetry.Bind(host);
 
@@ -119,7 +119,7 @@ public class ReceiverTelemetryTests
         receiver.GetAsync(Arg.Any<CancellationToken>())
             .Returns(new[] { (ReadOnlyMemory<byte>)bytes }.ToAsyncEnumerable());
 
-        await using ReceiverHost host = new(receiver);
+        await using ReceiverHost host = new(receiver, TimeProvider.System);
         using ReceiverTelemetry telemetry = new("TestMeter4");
         telemetry.Bind(host);
 

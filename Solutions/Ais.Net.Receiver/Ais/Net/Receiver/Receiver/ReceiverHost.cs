@@ -23,14 +23,16 @@ public class ReceiverHost : IAsyncDisposable
     private readonly INmeaReceiver receiver;
     private readonly TimeSpan retryPeriodicity;
     private readonly int retryAttempts;
+    private readonly TimeProvider timeProvider;
     private readonly Subject<string> sentences = new();
     private readonly Subject<IAisMessage> messages = new();
     private readonly Subject<Metadata> metadata = new();
     private readonly Subject<(Exception Exception, string Line)> errors = new();
 
-    public ReceiverHost(INmeaReceiver receiver, TimeSpan? retryPeriodicity = null, int retryAttempts = 100)
+    public ReceiverHost(INmeaReceiver receiver, TimeProvider timeProvider, TimeSpan? retryPeriodicity = null, int retryAttempts = 100)
     {
         this.receiver = receiver;
+        this.timeProvider = timeProvider;
         this.retryPeriodicity = retryPeriodicity ?? TimeSpan.FromSeconds(5);
         this.retryAttempts = retryAttempts;
     }
@@ -128,7 +130,7 @@ public class ReceiverHost : IAsyncDisposable
     {
         await foreach (ReadOnlyMemory<byte> message in this.receiver.GetAsync(cancellationToken))
         {
-            yield return message.Span.IsMissingNmeaBlockTags ? message.PrependNmeaBlockTags() : message;
+            yield return message.Span.IsMissingNmeaBlockTags ? message.PrependNmeaBlockTags(this.timeProvider) : message;
         }
     }
 

@@ -25,6 +25,8 @@ builder.Services.AddOptions<StorageConfig>()
     .ValidateDataAnnotations()
     .ValidateOnStart();
 
+builder.Services.AddSingleton(TimeProvider.System);
+
 builder.Services.AddOpenTelemetry()
     .ConfigureResource(resource => resource
         .AddService(

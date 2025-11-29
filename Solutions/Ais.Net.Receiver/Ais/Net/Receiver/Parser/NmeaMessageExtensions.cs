@@ -10,9 +10,9 @@ public static class NmeaMessageExtensions
     {
         public bool IsMissingNmeaBlockTags() => message.AsSpan()[0] == '!';
 
-        public string PrependNmeaBlockTags()
+        public string PrependNmeaBlockTags(TimeProvider timeProvider)
         {
-            string timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString();
+            string timestamp = timeProvider.GetUtcNow().ToUnixTimeSeconds().ToString();
 
             // Some messages are missing NMEA Block Tags - see https://gpsd.gitlab.io/gpsd/AIVDM.html#_nmea_tag_blocks
             // s: <string> = source stations - in our case AIS.Net.Receiver = 1000001
@@ -79,9 +79,9 @@ public static class NmeaMessageExtensions
 
     extension(ReadOnlyMemory<byte> message)
     {
-        public ReadOnlyMemory<byte> PrependNmeaBlockTags()
+        public ReadOnlyMemory<byte> PrependNmeaBlockTags(TimeProvider timeProvider)
         {
-            string timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString();
+            string timestamp = timeProvider.GetUtcNow().ToUnixTimeSeconds().ToString();
             string prefix = $@"\s:1000001,c:{timestamp}*{NmeaChecksum("c:" + timestamp)}\";
             byte[] prefixBytes = System.Text.Encoding.ASCII.GetBytes(prefix);
             
