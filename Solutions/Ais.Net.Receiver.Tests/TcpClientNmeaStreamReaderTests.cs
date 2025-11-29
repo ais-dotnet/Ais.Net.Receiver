@@ -34,6 +34,7 @@ public class TcpClientNmeaStreamReaderTests
         {
             await reader.DisposeAsync();
             listener.Stop();
+            listener.Dispose();
         }
     }
 
@@ -71,6 +72,7 @@ public class TcpClientNmeaStreamReaderTests
         {
             await reader.DisposeAsync();
             listener.Stop();
+            listener.Dispose();
         }
     }
 
@@ -107,6 +109,7 @@ public class TcpClientNmeaStreamReaderTests
         {
             await reader.DisposeAsync();
             listener.Stop();
+            listener.Dispose();
         }
     }
 
@@ -137,6 +140,7 @@ public class TcpClientNmeaStreamReaderTests
         {
             await reader.DisposeAsync();
             listener.Stop();
+            listener.Dispose();
         }
     }
 
@@ -204,6 +208,7 @@ public class TcpClientNmeaStreamReaderTests
         {
             await reader.DisposeAsync();
             listener.Stop();
+            listener.Dispose();
         }
     }
 
@@ -243,6 +248,7 @@ public class TcpClientNmeaStreamReaderTests
         {
             await reader.DisposeAsync();
             listener.Stop();
+            listener.Dispose();
         }
     }
 
@@ -276,6 +282,7 @@ public class TcpClientNmeaStreamReaderTests
         {
             await reader.DisposeAsync();
             listener.Stop();
+            listener.Dispose();
         }
     }
 
@@ -307,6 +314,7 @@ public class TcpClientNmeaStreamReaderTests
         {
             await reader.DisposeAsync();
             listener.Stop();
+            listener.Dispose();
         }
     }
 
@@ -351,6 +359,7 @@ public class TcpClientNmeaStreamReaderTests
         {
             await reader.DisposeAsync();
             listener.Stop();
+            listener.Dispose();
         }
     }
 
@@ -386,6 +395,7 @@ public class TcpClientNmeaStreamReaderTests
         {
             await reader.DisposeAsync();
             listener.Stop();
+            listener.Dispose();
         }
     }
 
@@ -405,6 +415,7 @@ public class TcpClientNmeaStreamReaderTests
         await reader.DisposeAsync();
 
         listener.Stop();
+        listener.Dispose();
 
         // Act - reading after dispose should return null (reader is null)
         ReadOnlyMemory<byte>? line = await reader.ReadLineAsync(this.TestContext.CancellationTokenSource.Token);
