@@ -3,6 +3,7 @@
     <File Path="../GitVersion.yml" />
     <File Path=".editorconfig" />
   </Folder>
+  <Project Path="Ais.Net.Receiver.AppHost/Ais.Net.Receiver.AppHost.csproj" />
   <Project Path="Ais.Net.Receiver.Benchmarks/Ais.Net.Receiver.Benchmarks.csproj" />
   <Project Path="Ais.Net.Receiver.Host.Console/Ais.Net.Receiver.Host.Console.csproj" />
   <Project Path="Ais.Net.Receiver.Host.Worker/Ais.Net.Receiver.Host.Worker.csproj" />
