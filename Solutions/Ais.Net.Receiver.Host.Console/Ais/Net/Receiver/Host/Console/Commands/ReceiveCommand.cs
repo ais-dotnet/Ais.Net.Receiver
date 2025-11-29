@@ -83,7 +83,6 @@ public class ReceiveCommand : AsyncCommand<ReceiveCommand.Settings>
         using CompositeDisposable subscriptions = [];
         BatchBlock<string>? batchBlock = null;
         ActionBlock<IEnumerable<string>>? actionBlock = null;
-        Timer? batchTimer = null;
 
         if (this.aisConfig.Telemetry.Verbosity == LogLevel.Warning)
         {
@@ -150,12 +149,13 @@ public class ReceiveCommand : AsyncCommand<ReceiveCommand.Settings>
 
             batchBlock.LinkTo(actionBlock, new DataflowLinkOptions { PropagateCompletion = true });
 
-            batchTimer = new Timer(
+            Timer batchTimer = new(
                 _ => batchBlock?.TriggerBatch(),
                 null,
                 TimeSpan.FromSeconds(this.storageConfig.BatchTimeoutSeconds),
                 TimeSpan.FromSeconds(this.storageConfig.BatchTimeoutSeconds));
 
+            subscriptions.Add(batchTimer);
             subscriptions.Add(receiverHost.Sentences.Subscribe(batchBlock.AsObserver()));
         }
 
@@ -171,8 +171,6 @@ public class ReceiveCommand : AsyncCommand<ReceiveCommand.Settings>
         }
         finally
         {
-            batchTimer?.Dispose();
-
             if (batchBlock is not null && actionBlock is not null)
             {
                 batchBlock.Complete();
