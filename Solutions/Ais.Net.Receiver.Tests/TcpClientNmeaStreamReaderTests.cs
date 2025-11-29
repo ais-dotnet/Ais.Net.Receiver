@@ -408,19 +408,24 @@ public class TcpClientNmeaStreamReaderTests
         int port = ((IPEndPoint)listener.LocalEndpoint).Port;
         TcpClientNmeaStreamReader reader = new();
 
-        await reader.ConnectAsync("127.0.0.1", port, this.TestContext.CancellationTokenSource.Token);
-        _ = await listener.AcceptTcpClientAsync(this.TestContext.CancellationTokenSource.Token);
+        try
+        {
+            await reader.ConnectAsync("127.0.0.1", port, this.TestContext.CancellationTokenSource.Token);
+            _ = await listener.AcceptTcpClientAsync(this.TestContext.CancellationTokenSource.Token);
 
-        // Dispose the reader
-        await reader.DisposeAsync();
+            // Dispose the reader
+            await reader.DisposeAsync();
 
-        listener.Stop();
-        listener.Dispose();
+            // Act - reading after dispose should return null (reader is null)
+            ReadOnlyMemory<byte>? line = await reader.ReadLineAsync(this.TestContext.CancellationTokenSource.Token);
 
-        // Act - reading after dispose should return null (reader is null)
-        ReadOnlyMemory<byte>? line = await reader.ReadLineAsync(this.TestContext.CancellationTokenSource.Token);
-
-        // Assert
-        line.HasValue.ShouldBeFalse();
+            // Assert
+            line.HasValue.ShouldBeFalse();
+        }
+        finally
+        {
+            await reader.DisposeAsync();
+            listener.Stop();
+        }
     }
 }
