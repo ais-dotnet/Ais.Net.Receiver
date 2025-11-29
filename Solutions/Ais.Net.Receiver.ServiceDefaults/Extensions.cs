@@ -2,9 +2,16 @@
 // Copyright (c) Endjin Limited. All rights reserved.
 // </copyright>
 
+using Ais.Net.Receiver.Health;
+using Ais.Net.Receiver.Storage.Azure.Blob.Health;
+using Ais.Net.Receiver.Telemetry;
+
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
+
 using OpenTelemetry;
+using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -29,12 +36,48 @@ public static class Extensions
         params string[] additionalSources)
     {
         builder.ConfigureOpenTelemetry(serviceName, additionalSources);
+        builder.AddAisInstrumentation();
+        builder.AddAisHealthChecks();
         builder.Services.AddServiceDiscovery();
         builder.Services.ConfigureHttpClientDefaults(http =>
         {
             http.AddStandardResilienceHandler();
             http.AddServiceDiscovery();
         });
+
+        return builder;
+    }
+
+    /// <summary>
+    /// Adds AIS-specific instrumentation services.
+    /// </summary>
+    /// <param name="builder">The host application builder.</param>
+    /// <returns>The builder for chaining.</returns>
+    public static IHostApplicationBuilder AddAisInstrumentation(this IHostApplicationBuilder builder)
+    {
+        builder.Services.AddSingleton<ApplicationInstrumentation>();
+        builder.Services.AddSingleton<ApplicationMetrics>();
+        builder.Services.AddSingleton<IAisConnectionMonitor, AisConnectionMonitor>();
+
+        return builder;
+    }
+
+    /// <summary>
+    /// Adds AIS-specific health checks.
+    /// </summary>
+    /// <param name="builder">The host application builder.</param>
+    /// <returns>The builder for chaining.</returns>
+    public static IHostApplicationBuilder AddAisHealthChecks(this IHostApplicationBuilder builder)
+    {
+        builder.Services.AddHealthChecks()
+            .AddCheck<AisConnectionHealthCheck>(
+                "ais-connection",
+                failureStatus: HealthStatus.Unhealthy,
+                tags: ["live", "ready"])
+            .AddCheck<StorageHealthCheck>(
+                "storage",
+                failureStatus: HealthStatus.Degraded,
+                tags: ["ready"]);
 
         return builder;
     }
@@ -55,34 +98,47 @@ public static class Extensions
         {
             logging.IncludeFormattedMessage = true;
             logging.IncludeScopes = true;
+            logging.AddOtlpExporter();
         });
 
         builder.Services.AddOpenTelemetry()
             .ConfigureResource(resource => resource
                 .AddService(
                     serviceName: serviceName,
-                    serviceVersion: typeof(Extensions).Assembly.GetName().Version?.ToString() ?? "1.0.0",
-                    serviceInstanceId: Environment.MachineName))
+                    serviceVersion: ApplicationInstrumentation.ServiceVersion,
+                    serviceInstanceId: Environment.MachineName)
+                .AddAttributes(new Dictionary<string, object>
+                {
+                    ["deployment.environment.name"] = builder.Environment.EnvironmentName,
+                    ["service.namespace"] = "ais-net",
+                }))
             .WithMetrics(metrics =>
             {
                 metrics.AddMeter(serviceName);
+                metrics.AddMeter(ApplicationMetrics.MeterName);
                 foreach (string meter in additionalSources)
                 {
                     metrics.AddMeter(meter);
                 }
 
                 metrics.AddRuntimeInstrumentation()
-                    .AddOtlpExporter();
+                    .AddHttpClientInstrumentation()
+                    .AddOtlpExporter((exporterOptions, readerOptions) =>
+                    {
+                        readerOptions.PeriodicExportingMetricReaderOptions.ExportIntervalMilliseconds = 10_000;
+                    });
             })
             .WithTracing(tracing =>
             {
                 tracing.AddSource(serviceName);
+                tracing.AddSource(ApplicationInstrumentation.ServiceName);
                 foreach (string source in additionalSources)
                 {
                     tracing.AddSource(source);
                 }
 
-                tracing.AddOtlpExporter();
+                tracing.AddHttpClientInstrumentation()
+                    .AddOtlpExporter();
             });
 
         return builder;

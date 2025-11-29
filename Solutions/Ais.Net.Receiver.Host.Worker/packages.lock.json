@@ -328,6 +328,11 @@
           "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.0"
         }
       },
+      "Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions": {
+        "type": "Transitive",
+        "resolved": "10.0.0",
+        "contentHash": "jAhZbzDa117otUBMuQQ6JzSfuDbBBrfOs5jw5l7l9hKpzt+LjYKVjSauXG2yV9u7BqUSLUtKLwcerDQDeQ+0Xw=="
+      },
       "Microsoft.Extensions.Features": {
         "type": "Transitive",
         "resolved": "10.0.0",
@@ -703,6 +708,7 @@
         "dependencies": {
           "Ais.Net.Models": "[0.3.1, )",
           "Corvus.Retry": "[1.0.7, )",
+          "Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions": "[10.0.0, )",
           "Microsoft.Extensions.Logging.Abstractions": "[10.0.0, )",
           "OpenTelemetry.Api": "[1.14.0, )",
           "Spectre.IO": "[0.21.0, )",
@@ -713,6 +719,8 @@
       "ais.net.receiver.servicedefaults": {
         "type": "Project",
         "dependencies": {
+          "Ais.Net.Receiver": "[1.0.0, )",
+          "Ais.Net.Receiver.Storage.Azure.Blob": "[1.0.0, )",
           "Microsoft.Extensions.Http.Resilience": "[10.0.0, )",
           "Microsoft.Extensions.ServiceDiscovery": "[10.0.0, )",
           "OpenTelemetry.Exporter.OpenTelemetryProtocol": "[1.14.0, )",
@@ -725,7 +733,10 @@
         "type": "Project",
         "dependencies": {
           "Ais.Net.Receiver": "[1.0.0, )",
-          "Azure.Storage.Blobs": "[12.26.0, )"
+          "Azure.Storage.Blobs": "[12.26.0, )",
+          "Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions": "[10.0.0, )",
+          "Microsoft.Extensions.Logging.Abstractions": "[10.0.0, )",
+          "Microsoft.Extensions.Options": "[10.0.0, )"
         }
       }
     }

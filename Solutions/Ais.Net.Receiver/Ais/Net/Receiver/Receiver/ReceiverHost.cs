@@ -10,6 +10,7 @@ using System.Text;
 
 using Ais.Net.Models.Abstractions;
 using Ais.Net.Receiver.Parser;
+using Ais.Net.Receiver.Telemetry;
 
 using Corvus.Retry;
 using Corvus.Retry.Policies;
@@ -19,20 +20,52 @@ namespace Ais.Net.Receiver.Receiver;
 
 public class ReceiverHost : IAsyncDisposable
 {
-    private static readonly ActivitySource ActivitySource = new("Ais.Net.Receiver");
+    private static readonly ActivitySource DefaultActivitySource = new("Ais.Net.Receiver");
     private readonly INmeaReceiver receiver;
     private readonly TimeSpan retryPeriodicity;
     private readonly int retryAttempts;
     private readonly TimeProvider timeProvider;
+    private readonly ActivitySource activitySource;
+    private readonly ApplicationMetrics? metrics;
     private readonly Subject<string> sentences = new();
     private readonly Subject<IAisMessage> messages = new();
     private readonly Subject<Metadata> metadata = new();
     private readonly Subject<(Exception Exception, string Line)> errors = new();
 
-    public ReceiverHost(INmeaReceiver receiver, TimeProvider timeProvider, TimeSpan? retryPeriodicity = null, int retryAttempts = 100)
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ReceiverHost"/> class.
+    /// </summary>
+    /// <param name="receiver">The NMEA receiver.</param>
+    /// <param name="timeProvider">The time provider.</param>
+    /// <param name="retryPeriodicity">The retry periodicity.</param>
+    /// <param name="retryAttempts">The number of retry attempts.</param>
+    /// <param name="metrics">The application metrics.</param>
+    public ReceiverHost(INmeaReceiver receiver, TimeProvider timeProvider, TimeSpan? retryPeriodicity = null, int retryAttempts = 100, ApplicationMetrics? metrics = null)
+        : this(receiver, timeProvider, null, retryPeriodicity, retryAttempts, metrics)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ReceiverHost"/> class with custom instrumentation.
+    /// </summary>
+    /// <param name="receiver">The NMEA receiver.</param>
+    /// <param name="timeProvider">The time provider.</param>
+    /// <param name="instrumentation">The application instrumentation for tracing.</param>
+    /// <param name="retryPeriodicity">The retry periodicity.</param>
+    /// <param name="retryAttempts">The number of retry attempts.</param>
+    /// <param name="metrics">The application metrics.</param>
+    public ReceiverHost(
+        INmeaReceiver receiver,
+        TimeProvider timeProvider,
+        ApplicationInstrumentation? instrumentation,
+        TimeSpan? retryPeriodicity = null,
+        int retryAttempts = 100,
+        ApplicationMetrics? metrics = null)
     {
         this.receiver = receiver;
         this.timeProvider = timeProvider;
+        this.activitySource = instrumentation?.ActivitySource ?? DefaultActivitySource;
+        this.metrics = metrics;
         this.retryPeriodicity = retryPeriodicity ?? TimeSpan.FromSeconds(5);
         this.retryAttempts = retryAttempts;
     }
@@ -47,12 +80,12 @@ public class ReceiverHost : IAsyncDisposable
 
     public Task StartAsync(CancellationToken cancellationToken = default)
     {
-        return Retriable.RetryAsync(() =>
-                this.StartAsyncInternal(cancellationToken),
-                cancellationToken,
-                new Linear(periodicity: this.retryPeriodicity, maxTries: this.retryAttempts),
-                new AnyExceptionPolicy(),
-                continueOnCapturedContext: false);
+        return Retriable.RetryAsync(
+            () => this.StartAsyncInternal(cancellationToken),
+            cancellationToken,
+            new Linear(periodicity: this.retryPeriodicity, maxTries: this.retryAttempts),
+            new AnyExceptionPolicy(),
+            continueOnCapturedContext: false);
     }
 
     private async Task StartAsyncInternal(CancellationToken cancellationToken = default)
@@ -79,9 +112,12 @@ public class ReceiverHost : IAsyncDisposable
         {
             currentMetadata = message.Span.ParseNmeaBlockTags();
 
-            using Activity? activity = ActivitySource.StartActivity("ProcessMessage");
+            using Activity? activity = this.activitySource.StartActivity("ProcessMessage");
 
-            static void ProcessLineNonAsync(ReadOnlyMemory<byte> line, INmeaLineStreamProcessor lineStreamProcessor, Subject<(Exception Exception, string Line)> errorSubject)
+            // Enrich activity with station metadata
+            activity?.SetStationMetadata(currentMetadata.StationId, currentMetadata.UnixTimestamp);
+
+            void ProcessLineNonAsync(ReadOnlyMemory<byte> line, INmeaLineStreamProcessor lineStreamProcessor, Subject<(Exception Exception, string Line)> errorSubject)
             {
                 try
                 {
@@ -89,8 +125,8 @@ public class ReceiverHost : IAsyncDisposable
                 }
                 catch (ArgumentException ex)
                 {
-                    Activity.Current?.AddException(ex);
-                    Activity.Current?.SetStatus(ActivityStatusCode.Error);
+                    Activity.Current?.SetErrorType("parse_error");
+                    Activity.Current?.RecordExceptionWithStatus(ex, escaped: true);
 
                     if (errorSubject.HasObservers)
                     {
@@ -99,8 +135,8 @@ public class ReceiverHost : IAsyncDisposable
                 }
                 catch (NotImplementedException ex)
                 {
-                    Activity.Current?.AddException(ex);
-                    Activity.Current?.SetStatus(ActivityStatusCode.Error);
+                    Activity.Current?.SetErrorType("unsupported_message");
+                    Activity.Current?.RecordExceptionWithStatus(ex, escaped: true);
 
                     if (errorSubject.HasObservers)
                     {
@@ -116,7 +152,10 @@ public class ReceiverHost : IAsyncDisposable
 
             if (this.messages.HasObservers || this.metadata.HasObservers)
             {
+                long startTimestamp = Stopwatch.GetTimestamp();
                 ProcessLineNonAsync(message, adapter, this.errors);
+                TimeSpan elapsed = Stopwatch.GetElapsedTime(startTimestamp);
+                this.metrics?.MessageProcessingDuration.Record(elapsed.TotalMilliseconds);
             }
         }
 
@@ -126,7 +165,7 @@ public class ReceiverHost : IAsyncDisposable
         this.errors.OnCompleted();
     }
 
-    private async IAsyncEnumerable<ReadOnlyMemory<byte>> GetAsync([EnumeratorCancellation]CancellationToken cancellationToken = default)
+    private async IAsyncEnumerable<ReadOnlyMemory<byte>> GetAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         await foreach (ReadOnlyMemory<byte> message in this.receiver.GetAsync(cancellationToken))
         {
@@ -141,7 +180,7 @@ public class ReceiverHost : IAsyncDisposable
         this.metadata.Dispose();
         this.errors.Dispose();
 
-        await receiver.DisposeAsync();
+        await this.receiver.DisposeAsync();
 
         GC.SuppressFinalize(this);
     }

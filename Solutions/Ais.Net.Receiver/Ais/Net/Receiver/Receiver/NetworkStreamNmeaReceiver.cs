@@ -4,19 +4,22 @@
 
 using System.Reactive.Linq;
 
+using Ais.Net.Receiver.Telemetry;
+
 namespace Ais.Net.Receiver.Receiver;
 
 public class NetworkStreamNmeaReceiver : INmeaReceiver
 {
     private readonly INmeaStreamReader nmeaStreamReader;
     private readonly TimeProvider timeProvider;
+    private readonly ApplicationMetrics? metrics;
 
-    public NetworkStreamNmeaReceiver(string host, int port, TimeProvider timeProvider, TimeSpan? retryPeriodicity = null, int retryAttemptLimit = 100, TimeSpan? idleTimeout = null)
-        : this(new TcpClientNmeaStreamReader(), host, port, timeProvider, retryPeriodicity, retryAttemptLimit, idleTimeout)
+    public NetworkStreamNmeaReceiver(string host, int port, TimeProvider timeProvider, TimeSpan? retryPeriodicity = null, int retryAttemptLimit = 100, TimeSpan? idleTimeout = null, ApplicationMetrics? metrics = null)
+        : this(new TcpClientNmeaStreamReader(), host, port, timeProvider, retryPeriodicity, retryAttemptLimit, idleTimeout, metrics)
     {
     }
 
-    public NetworkStreamNmeaReceiver(INmeaStreamReader reader, string host, int port, TimeProvider timeProvider, TimeSpan? retryPeriodicity = null, int retryAttemptLimit = 100, TimeSpan? idleTimeout = null)
+    public NetworkStreamNmeaReceiver(INmeaStreamReader reader, string host, int port, TimeProvider timeProvider, TimeSpan? retryPeriodicity = null, int retryAttemptLimit = 100, TimeSpan? idleTimeout = null, ApplicationMetrics? metrics = null)
     {
         this.Host = host;
         this.Port = port;
@@ -25,6 +28,7 @@ public class NetworkStreamNmeaReceiver : INmeaReceiver
         this.RetryAttemptLimit = retryAttemptLimit;
         this.IdleTimeout = idleTimeout;
         this.nmeaStreamReader = reader ?? throw new ArgumentNullException(nameof(reader));
+        this.metrics = metrics;
     }
 
     public string Host { get; }
@@ -53,6 +57,7 @@ public class NetworkStreamNmeaReceiver : INmeaReceiver
             {
                 try
                 {
+                    this.metrics?.ConnectionAttempts.Add(1);
                     await this.nmeaStreamReader.ConnectAsync(this.Host, this.Port, mergedToken).ConfigureAwait(false);
                     retryAttempt = 0; // Reset retry count on successful connection
 
@@ -106,6 +111,7 @@ public class NetworkStreamNmeaReceiver : INmeaReceiver
                 catch (Exception)
                 {
                     // Connection failed, fall through to retry logic
+                    this.metrics?.ConnectionFailures.Add(1);
                 }
 
                 if (mergedToken.IsCancellationRequested)

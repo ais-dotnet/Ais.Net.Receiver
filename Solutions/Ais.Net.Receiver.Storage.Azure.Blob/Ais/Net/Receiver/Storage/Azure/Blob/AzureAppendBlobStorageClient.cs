@@ -2,12 +2,16 @@
 // Copyright (c) Endjin Limited. All rights reserved.
 // </copyright>
 
+using System.Diagnostics;
 using System.Text;
 
 using Ais.Net.Receiver.Storage.Azure.Blob.Configuration;
+using Ais.Net.Receiver.Telemetry;
 
 using global::Azure.Storage.Blobs;
 using global::Azure.Storage.Blobs.Specialized;
+
+using Microsoft.Extensions.Logging;
 
 namespace Ais.Net.Receiver.Storage.Azure.Blob;
 
@@ -15,32 +19,93 @@ public class AzureAppendBlobStorageClient : IStorageClient
 {
     private readonly StorageConfig configuration;
     private readonly TimeProvider timeProvider;
+    private readonly ApplicationMetrics? metrics;
+    private readonly ApplicationInstrumentation? instrumentation;
+    private readonly ILogger? logger;
     private readonly SemaphoreSlim initializationLock = new(1, 1);
     private AppendBlobClient? appendBlobClient;
     private BlobContainerClient? blobContainerClient;
     private string? currentBlobPath;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="AzureAppendBlobStorageClient"/> class.
+    /// </summary>
+    /// <param name="configuration">The storage configuration.</param>
+    /// <param name="timeProvider">The time provider.</param>
     public AzureAppendBlobStorageClient(StorageConfig configuration, TimeProvider timeProvider)
+        : this(configuration, timeProvider, null, null, null)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="AzureAppendBlobStorageClient"/> class with full instrumentation.
+    /// </summary>
+    /// <param name="configuration">The storage configuration.</param>
+    /// <param name="timeProvider">The time provider.</param>
+    /// <param name="metrics">The application metrics.</param>
+    /// <param name="instrumentation">The application instrumentation.</param>
+    /// <param name="logger">The logger.</param>
+    public AzureAppendBlobStorageClient(
+        StorageConfig configuration,
+        TimeProvider timeProvider,
+        ApplicationMetrics? metrics,
+        ApplicationInstrumentation? instrumentation,
+        ILogger? logger)
     {
         this.configuration = configuration;
         this.timeProvider = timeProvider;
+        this.metrics = metrics;
+        this.instrumentation = instrumentation;
+        this.logger = logger;
     }
 
     public async Task PersistAsync(IEnumerable<string> messages)
     {
-        await this.EnsureCurrentHourBlobInitializedAsync().ConfigureAwait(false);
+        using Activity? activity = this.instrumentation?.ActivitySource.StartActivity("StorageWrite");
+        Stopwatch stopwatch = Stopwatch.StartNew();
 
-        using MemoryStream stream = new();
-        await using (StreamWriter writer = new(stream, Encoding.UTF8, leaveOpen: true))
+        try
         {
-            foreach (string message in messages)
-            {
-                await writer.WriteLineAsync(message).ConfigureAwait(false);
-            }
-        }
+            await this.EnsureCurrentHourBlobInitializedAsync().ConfigureAwait(false);
 
-        stream.Position = 0;
-        await this.appendBlobClient!.AppendBlockAsync(stream).ConfigureAwait(false);
+            List<string> messageList = messages.ToList();
+            int messageCount = messageList.Count;
+
+            activity?.SetTag("ais.storage.message_count", messageCount);
+
+            using MemoryStream stream = new();
+            await using (StreamWriter writer = new(stream, Encoding.UTF8, leaveOpen: true))
+            {
+                foreach (string message in messageList)
+                {
+                    await writer.WriteLineAsync(message).ConfigureAwait(false);
+                }
+            }
+
+            long byteCount = stream.Length;
+            activity?.SetTag("ais.storage.bytes", byteCount);
+            activity?.SetTag("ais.storage.blob_path", this.currentBlobPath);
+
+            this.logger?.WritingBatch(messageCount, byteCount, this.currentBlobPath ?? "unknown");
+
+            stream.Position = 0;
+            await this.appendBlobClient!.AppendBlockAsync(stream).ConfigureAwait(false);
+
+            // Record metrics
+            this.metrics?.StorageWriteOperations.Add(1);
+            this.metrics?.StorageBytesWritten.Add(byteCount);
+            this.metrics?.BatchSize.Record(messageCount);
+
+            stopwatch.Stop();
+            this.metrics?.StorageWriteDuration.Record(stopwatch.Elapsed.TotalMilliseconds);
+            this.logger?.StorageWriteCompleted(stopwatch.Elapsed.TotalMilliseconds);
+        }
+        catch (Exception ex)
+        {
+            activity?.RecordExceptionWithStatus(ex, escaped: true);
+            this.logger?.BlobWriteFailed(ex);
+            throw;
+        }
     }
 
     public void Dispose()
@@ -59,6 +124,9 @@ public class AzureAppendBlobStorageClient : IStorageClient
             return;
         }
 
+        using Activity? activity = this.instrumentation?.ActivitySource.StartActivity("BlobInitialization");
+        Stopwatch stopwatch = Stopwatch.StartNew();
+
         await this.initializationLock.WaitAsync().ConfigureAwait(false);
 
         try
@@ -69,6 +137,9 @@ public class AzureAppendBlobStorageClient : IStorageClient
             }
 
             this.currentBlobPath = newBlobPath;
+            activity?.SetTag("ais.storage.blob_path", newBlobPath);
+
+            this.logger?.InitializingBlob(newBlobPath);
 
             this.blobContainerClient ??= new BlobContainerClient(
                 this.configuration.ConnectionString,
@@ -78,6 +149,16 @@ public class AzureAppendBlobStorageClient : IStorageClient
 
             await this.blobContainerClient.CreateIfNotExistsAsync().ConfigureAwait(false);
             await this.appendBlobClient.CreateIfNotExistsAsync().ConfigureAwait(false);
+
+            this.logger?.BlobCreated(newBlobPath);
+
+            stopwatch.Stop();
+            this.logger?.BlobInitializationCompleted(stopwatch.Elapsed.TotalMilliseconds);
+        }
+        catch (Exception ex)
+        {
+            activity?.RecordExceptionWithStatus(ex, escaped: true);
+            throw;
         }
         finally
         {

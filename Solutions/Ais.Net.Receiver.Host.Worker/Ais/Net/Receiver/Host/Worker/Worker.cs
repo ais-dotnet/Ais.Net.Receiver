@@ -5,13 +5,17 @@
 using System.Diagnostics;
 using System.Reactive.Disposables;
 using System.Threading.Tasks.Dataflow;
+
 using Ais.Net.Models;
 using Ais.Net.Models.Abstractions;
 using Ais.Net.Receiver.Configuration;
+using Ais.Net.Receiver.Health;
 using Ais.Net.Receiver.Receiver;
 using Ais.Net.Receiver.Storage;
 using Ais.Net.Receiver.Storage.Azure.Blob;
 using Ais.Net.Receiver.Storage.Azure.Blob.Configuration;
+using Ais.Net.Receiver.Telemetry;
+
 using Microsoft.Extensions.Options;
 
 namespace Ais.Net.Receiver.Host.Worker;
@@ -22,9 +26,11 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
     private readonly IOptionsMonitor<AisConfig> aisOptionsMonitor;
     private readonly IOptionsMonitor<StorageConfig> storageOptionsMonitor;
     private readonly TimeProvider timeProvider;
+    private readonly ApplicationMetrics metrics;
+    private readonly ApplicationInstrumentation instrumentation;
+    private readonly IAisConnectionMonitor connectionMonitor;
 
     private ReceiverHost? receiverHost;
-    private ReceiverTelemetry? telemetry;
     private CompositeDisposable? subscriptions;
     private BatchBlock<string>? batchBlock;
     private ActionBlock<IEnumerable<string>>? actionBlock;
@@ -35,17 +41,23 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
         ILogger<Worker> logger,
         IOptionsMonitor<AisConfig> aisOptionsMonitor,
         IOptionsMonitor<StorageConfig> storageOptionsMonitor,
-        TimeProvider timeProvider)
+        TimeProvider timeProvider,
+        ApplicationMetrics metrics,
+        ApplicationInstrumentation instrumentation,
+        IAisConnectionMonitor connectionMonitor)
     {
         this.logger = logger;
         this.aisOptionsMonitor = aisOptionsMonitor;
         this.storageOptionsMonitor = storageOptionsMonitor;
         this.timeProvider = timeProvider;
+        this.metrics = metrics;
+        this.instrumentation = instrumentation;
+        this.connectionMonitor = connectionMonitor;
     }
 
     public Task StartingAsync(CancellationToken cancellationToken)
     {
-        this.logger.LogInformation("Worker starting - initializing components");
+        this.logger.WorkerStarting();
 
         AisConfig aisConfig = this.aisOptionsMonitor.CurrentValue;
 
@@ -54,37 +66,47 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
             aisConfig.Connection.Port,
             this.timeProvider,
             aisConfig.Connection.Retry.Periodicity,
-            retryAttemptLimit: aisConfig.Connection.Retry.Attempts);
+            retryAttemptLimit: aisConfig.Connection.Retry.Attempts,
+            metrics: this.metrics);
 
-        this.receiverHost = new ReceiverHost(receiver, this.timeProvider, retryPeriodicity: aisConfig.Receiver.Retry.Periodicity, retryAttempts: aisConfig.Receiver.Retry.Attempts);
-        this.telemetry = new ReceiverTelemetry("Ais.Net.Receiver");
-        this.telemetry.Bind(this.receiverHost);
+        this.receiverHost = new ReceiverHost(
+            receiver,
+            this.timeProvider,
+            this.instrumentation,
+            retryPeriodicity: aisConfig.Receiver.Retry.Periodicity,
+            retryAttempts: aisConfig.Receiver.Retry.Attempts,
+            metrics: this.metrics);
 
         this.subscriptions = [];
 
-        this.SetupSubscriptions();
+        this.SetupMetricsSubscriptions();
+        this.SetupLoggingSubscriptions();
         this.SetupStorageIfEnabled();
 
-        this.logger.LogInformation("Worker initialization complete");
+        // Mark as connected since we're starting
+        this.connectionMonitor.RecordConnectionStateChanged(true);
+
+        this.logger.WorkerInitializationComplete();
 
         return Task.CompletedTask;
     }
 
     public Task StartedAsync(CancellationToken cancellationToken)
     {
-        this.logger.LogInformation("Worker started");
+        this.logger.WorkerStarted();
         return Task.CompletedTask;
     }
 
     public Task StoppingAsync(CancellationToken cancellationToken)
     {
-        this.logger.LogInformation("Worker stopping");
+        this.logger.WorkerStopping();
+        this.connectionMonitor.RecordConnectionStateChanged(false);
         return Task.CompletedTask;
     }
 
     public async Task StoppedAsync(CancellationToken cancellationToken)
     {
-        this.logger.LogInformation("Worker stopped - completing dataflow pipeline");
+        this.logger.WorkerStopped();
 
         this.batchTimer?.Dispose();
         this.subscriptions?.Dispose();
@@ -97,15 +119,15 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
             {
                 using CancellationTokenSource cts = new(TimeSpan.FromSeconds(30));
                 await this.actionBlock.Completion.WaitAsync(cts.Token);
-                this.logger.LogInformation("Storage flush completed");
+                this.logger.StorageFlushCompleted();
             }
             catch (OperationCanceledException)
             {
-                this.logger.LogWarning("Storage flush timed out during shutdown");
+                this.logger.StorageFlushTimedOut();
             }
             catch (Exception ex)
             {
-                this.logger.LogError(ex, "Storage flush failed with an error");
+                this.logger.StorageFlushError(ex);
             }
         }
     }
@@ -114,7 +136,6 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
     {
         this.batchTimer?.Dispose();
         this.subscriptions?.Dispose();
-        this.telemetry?.Dispose();
         this.storageClient?.Dispose();
 
         if (this.receiverHost is not null)
@@ -129,7 +150,7 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
     {
         if (this.receiverHost is null)
         {
-            this.logger.LogCritical("ReceiverHost not initialized - cannot execute");
+            this.logger.ReceiverHostNotInitialized();
             return;
         }
 
@@ -140,11 +161,51 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
         catch (OperationCanceledException)
         {
             // Expected on cancellation - graceful shutdown
-            this.logger.LogInformation("Worker execution cancelled");
+            this.logger.WorkerCancelled();
         }
     }
 
-    private void SetupSubscriptions()
+    private void SetupMetricsSubscriptions()
+    {
+        if (this.receiverHost is null || this.subscriptions is null)
+        {
+            return;
+        }
+
+        // Subscribe to messages for metrics with message type dimension
+        this.subscriptions.Add(
+            this.receiverHost.Messages.Subscribe(msg =>
+            {
+                this.metrics.MessagesReceived.Add(
+                    1,
+                    new KeyValuePair<string, object?>("ais.message_type", msg.MessageType));
+                this.connectionMonitor.RecordMessageReceived();
+            }));
+
+        // Subscribe to sentences for metrics
+        this.subscriptions.Add(
+            this.receiverHost.Sentences.Subscribe(_ =>
+            {
+                this.metrics.SentencesReceived.Add(1);
+            }));
+
+        // Subscribe to errors for metrics with error type dimension
+        this.subscriptions.Add(
+            this.receiverHost.Errors.Subscribe(error =>
+            {
+                string errorType = error.Exception switch
+                {
+                    ArgumentException => "parse_error",
+                    NotImplementedException => "unsupported_message",
+                    _ => "unknown"
+                };
+                this.metrics.ErrorsReceived.Add(
+                    1,
+                    new KeyValuePair<string, object?>("error.type", errorType));
+            }));
+    }
+
+    private void SetupLoggingSubscriptions()
     {
         if (this.receiverHost is null || this.subscriptions is null)
         {
@@ -159,13 +220,12 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
                 this.receiverHost.GetStreamStatistics(aisConfig.Telemetry.StatisticsPeriodicity)
                     .Subscribe(
                         statistics =>
-                            this.logger.LogInformation(
-                                "{Timestamp:s}: Sentences: {Sentences} | Messages: {Messages} | Errors: {Errors}",
+                            this.logger.StreamStatistics(
                                 DateTime.UtcNow,
                                 statistics.Sentence,
                                 statistics.Message,
                                 statistics.Error),
-                        error => this.logger.LogError(error, "Error in statistics stream")));
+                        error => this.logger.StatisticsStreamError(error)));
         }
 
         if (aisConfig.Telemetry.Verbosity == LogLevel.Information)
@@ -178,8 +238,7 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
 
                     if (this.logger.IsEnabled(LogLevel.Information))
                     {
-                        this.logger.LogInformation(
-                            "[{Mmsi}: '{VesselName}'] - [{Position}] - [{CourseOverGround}]",
+                        this.logger.VesselNavigation(
                             mmsi,
                             name.VesselName.CleanVesselName(),
                             positionText,
@@ -195,7 +254,7 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
                 {
                     if (this.logger.IsEnabled(LogLevel.Information))
                     {
-                        this.logger.LogInformation("{Sentence}", s);
+                        this.logger.SentenceReceived(s);
                     }
                 }));
         }
@@ -207,7 +266,7 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
                 {
                     if (this.logger.IsEnabled(LogLevel.Information))
                     {
-                        this.logger.LogInformation("{Message}", m.ToString());
+                        this.logger.MessageReceived(m.ToString() ?? string.Empty);
                     }
                 }));
 
@@ -216,8 +275,8 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
                 {
                     if (this.logger.IsEnabled(LogLevel.Error))
                     {
-                        this.logger.LogError("Error received: {Message}", error.Exception.Message);
-                        this.logger.LogError("Bad line: {Line}", error.Line);
+                        this.logger.ErrorReceived(error.Exception.Message);
+                        this.logger.BadLine(error.Line);
                     }
                 }));
         }
@@ -232,7 +291,12 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
             return;
         }
 
-        this.storageClient = new AzureAppendBlobStorageClient(storageConfig, this.timeProvider);
+        this.storageClient = new AzureAppendBlobStorageClient(
+            storageConfig,
+            this.timeProvider,
+            this.metrics,
+            this.instrumentation,
+            this.logger);
 
         this.batchBlock = new BatchBlock<string>(
             storageConfig.WriteBatchSize,
@@ -241,15 +305,17 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
         this.actionBlock = new ActionBlock<IEnumerable<string>>(
             async batch =>
             {
+                // Update batches pending metric before processing
+                this.metrics.SetBatchesPending(this.batchBlock?.OutputCount ?? 0);
+
                 try
                 {
                     await this.storageClient.PersistAsync(batch);
                 }
                 catch (Exception ex)
                 {
-                    Activity.Current?.AddException(ex);
-                    Activity.Current?.SetStatus(ActivityStatusCode.Error);
-                    this.logger.LogError(ex, "Storage persistence failed");
+                    Activity.Current?.RecordExceptionWithStatus(ex);
+                    this.logger.StoragePersistenceFailed(ex);
                 }
             },
             new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = storageConfig.MaxDegreeOfParallelism });

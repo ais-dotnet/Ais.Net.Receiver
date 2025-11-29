@@ -12,6 +12,7 @@ using Ais.Net.Receiver.Receiver;
 using Ais.Net.Receiver.Storage;
 using Ais.Net.Receiver.Storage.Azure.Blob;
 using Ais.Net.Receiver.Storage.Azure.Blob.Configuration;
+using Ais.Net.Receiver.Telemetry;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -68,19 +69,44 @@ public class ReceiveCommand : AsyncCommand<ReceiveCommand.Settings>
 
     private async Task<int> RunReceiverAsync(CancellationToken cancellationToken)
     {
+        ApplicationMetrics? metrics = this.serviceProvider.GetService<ApplicationMetrics>();
+
         INmeaReceiver receiver = new NetworkStreamNmeaReceiver(
             this.aisConfig.Connection.Host,
             this.aisConfig.Connection.Port,
             this.timeProvider,
             this.aisConfig.Connection.Retry.Periodicity,
-            this.aisConfig.Connection.Retry.Attempts);
+            this.aisConfig.Connection.Retry.Attempts,
+            metrics: metrics);
 
-        await using ReceiverHost receiverHost = new(receiver, this.timeProvider, this.aisConfig.Receiver.Retry.Periodicity, this.aisConfig.Receiver.Retry.Attempts);
-
-        using ReceiverTelemetry telemetry = new("Ais.Net.Receiver.Console");
-        telemetry.Bind(receiverHost);
+        ApplicationInstrumentation? instrumentation = this.serviceProvider.GetService<ApplicationInstrumentation>();
+        await using ReceiverHost receiverHost = new(
+            receiver,
+            this.timeProvider,
+            instrumentation,
+            this.aisConfig.Receiver.Retry.Periodicity,
+            this.aisConfig.Receiver.Retry.Attempts,
+            metrics: metrics);
 
         using CompositeDisposable subscriptions = [];
+
+        if (metrics is not null)
+        {
+            subscriptions.Add(receiverHost.Messages.Subscribe(msg =>
+                metrics.MessagesReceived.Add(1, new KeyValuePair<string, object?>("ais.message_type", msg.MessageType))));
+            subscriptions.Add(receiverHost.Sentences.Subscribe(_ => metrics.SentencesReceived.Add(1)));
+            subscriptions.Add(receiverHost.Errors.Subscribe(error =>
+            {
+                string errorType = error.Exception switch
+                {
+                    ArgumentException => "parse_error",
+                    NotImplementedException => "unsupported_message",
+                    _ => "unknown"
+                };
+                metrics.ErrorsReceived.Add(1, new KeyValuePair<string, object?>("error.type", errorType));
+            }));
+        }
+
         BatchBlock<string>? batchBlock = null;
         ActionBlock<IEnumerable<string>>? actionBlock = null;
 
@@ -125,7 +151,13 @@ public class ReceiveCommand : AsyncCommand<ReceiveCommand.Settings>
 
         if (this.storageConfig.EnableCapture)
         {
-            IStorageClient storageClient = new AzureAppendBlobStorageClient(this.storageConfig, this.timeProvider);
+            ILogger<AzureAppendBlobStorageClient>? storageLogger = this.serviceProvider.GetService<ILogger<AzureAppendBlobStorageClient>>();
+            IStorageClient storageClient = new AzureAppendBlobStorageClient(
+                this.storageConfig,
+                this.timeProvider,
+                metrics,
+                instrumentation,
+                storageLogger);
 
             batchBlock = new BatchBlock<string>(
                 this.storageConfig.WriteBatchSize,
