@@ -2,27 +2,13 @@
 // Copyright (c) Endjin Limited. All rights reserved.
 // </copyright>
 
-using System.ComponentModel.DataAnnotations;
-using Microsoft.Extensions.Logging;
-
 namespace Ais.Net.Receiver.Configuration;
 
-public class AisConfig
+public record AisConfig
 {
-    [Required]
-    public required string Host { get; set; }
+    public AisConnectionConfig Connection { get; set; } = new();
 
-    public LogLevel LoggerVerbosity { get; set; } = LogLevel.None;
+    public AisReceiverConfig Receiver { get; set; } = new();
 
-    public TimeSpan StatisticsPeriodicity { get; set; }
-
-    [Range(1, 65535)]
-    public int Port { get; set; }
-
-    [Range(1, int.MaxValue)]
-    public int RetryAttempts { get; set; }
-
-    public TimeSpan RetryPeriodicity { get; set; }
-
-    public TimeSpan? VesselInactivityTimeout { get; set; }
+    public AisTelemetryConfig Telemetry { get; set; } = new();
 }

@@ -6,7 +6,7 @@ using System.Reactive.Linq;
 
 namespace Ais.Net.Receiver.Receiver;
 
-public class NetworkStreamNmeaReceiver : INmeaReceiver, IAsyncDisposable
+public class NetworkStreamNmeaReceiver : INmeaReceiver
 {
     private readonly INmeaStreamReader nmeaStreamReader;
 
@@ -133,9 +133,7 @@ public class NetworkStreamNmeaReceiver : INmeaReceiver, IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        if (this.nmeaStreamReader is not null)
-        {
-            await this.nmeaStreamReader.DisposeAsync().ConfigureAwait(false);
-        }
+        await this.nmeaStreamReader.DisposeAsync().ConfigureAwait(false);
+        GC.SuppressFinalize(this);
     }
 }

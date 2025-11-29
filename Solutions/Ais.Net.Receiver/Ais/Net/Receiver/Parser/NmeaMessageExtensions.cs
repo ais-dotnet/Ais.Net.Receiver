@@ -29,13 +29,13 @@ public static class NmeaMessageExtensions
         {
             if (message.Length == 0 || message[0] != '\\')
             {
-                return (0, 0);
+                return (StationId: 0, UnixTimestamp: 0);
             }
 
-            int endOfTags = message.Slice(1).IndexOf((byte)'\\');
+            int endOfTags = message[1..].IndexOf((byte)'\\');
             if (endOfTags == -1)
             {
-                return (0, 0);
+                return (StationId: 0, UnixTimestamp: 0);
             }
 
             ReadOnlySpan<byte> tags = message.Slice(1, endOfTags);
@@ -48,7 +48,7 @@ public static class NmeaMessageExtensions
             {
                 if (part.StartsWith("s:"))
                 {
-                    string val = part.Substring(2);
+                    string val = part[2..];
                     int len = 0;
                     while (len < val.Length && char.IsDigit(val[len]))
                     {
@@ -62,18 +62,18 @@ public static class NmeaMessageExtensions
                 }
                 else if (part.StartsWith("c:"))
                 {
-                    string val = part.Substring(2);
+                    string val = part[2..];
                     int checksumIndex = val.IndexOf('*');
                     if (checksumIndex != -1)
                     {
-                        val = val.Substring(0, checksumIndex);
+                        val = val[..checksumIndex];
                     }
 
                     long.TryParse(val, out timestamp);
                 }
             }
 
-            return (stationId, timestamp);
+            return (StationId: stationId, UnixTimestamp: timestamp);
         }
     }
 

@@ -53,12 +53,12 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
         AisConfig aisConfig = this.aisOptionsMonitor.CurrentValue;
 
         INmeaReceiver receiver = new NetworkStreamNmeaReceiver(
-            aisConfig.Host,
-            aisConfig.Port,
-            aisConfig.RetryPeriodicity,
-            retryAttemptLimit: aisConfig.RetryAttempts);
+            aisConfig.Connection.Host,
+            aisConfig.Connection.Port,
+            aisConfig.Connection.Retry.Periodicity,
+            retryAttemptLimit: aisConfig.Connection.Retry.Attempts);
 
-        this.receiverHost = new ReceiverHost(receiver);
+        this.receiverHost = new ReceiverHost(receiver, retryPeriodicity: aisConfig.Receiver.Retry.Periodicity, retryAttempts: aisConfig.Receiver.Retry.Attempts);
         this.telemetry = new ReceiverTelemetry("Ais.Net.Receiver");
         this.telemetry.Bind(this.receiverHost);
 
@@ -68,7 +68,7 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
         this.SetupStorageIfEnabled();
 
         this.logger.LogInformation("Worker initialization complete");
-        
+
         return Task.CompletedTask;
     }
 
@@ -159,10 +159,10 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
 
         AisConfig aisConfig = this.aisOptionsMonitor.CurrentValue;
 
-        if (aisConfig.LoggerVerbosity == LogLevel.Warning)
+        if (aisConfig.Telemetry.Verbosity == LogLevel.Warning)
         {
             this.subscriptions.Add(
-                this.receiverHost.GetStreamStatistics(aisConfig.StatisticsPeriodicity)
+                this.receiverHost.GetStreamStatistics(aisConfig.Telemetry.StatisticsPeriodicity)
                     .Subscribe(
                         statistics =>
                             this.logger.LogInformation(
@@ -174,10 +174,10 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
                         error => this.logger.LogError(error, "Error in statistics stream")));
         }
 
-        if (aisConfig.LoggerVerbosity == LogLevel.Information)
+        if (aisConfig.Telemetry.Verbosity == LogLevel.Information)
         {
             this.subscriptions.Add(
-                this.receiverHost.Messages.VesselNavigationWithNameStream(aisConfig.VesselInactivityTimeout).Subscribe(navigationWithName =>
+                this.receiverHost.Messages.VesselNavigationWithNameStream(aisConfig.Telemetry.VesselInactivityTimeout).Subscribe(navigationWithName =>
                 {
                     (uint mmsi, IVesselNavigation navigation, IVesselName name) = navigationWithName;
                     string positionText = navigation.Position is null ? "unknown position" : $"{navigation.Position.Latitude},{navigation.Position.Longitude}";
@@ -194,7 +194,7 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
                 }));
         }
 
-        if (aisConfig.LoggerVerbosity == LogLevel.Debug)
+        if (aisConfig.Telemetry.Verbosity == LogLevel.Debug)
         {
             this.subscriptions.Add(
                 this.receiverHost.Sentences.Subscribe(s =>
@@ -206,7 +206,7 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
                 }));
         }
 
-        if (aisConfig.LoggerVerbosity == LogLevel.Trace)
+        if (aisConfig.Telemetry.Verbosity == LogLevel.Trace)
         {
             this.subscriptions.Add(
                 this.receiverHost.Messages.Subscribe(m =>

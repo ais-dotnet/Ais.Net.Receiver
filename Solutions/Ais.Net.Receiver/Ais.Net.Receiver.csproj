@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <Import Project="$(EndjinProjectPropsPath)" Condition="$(EndjinProjectPropsPath) != ''" />
   
@@ -10,6 +10,7 @@
     <TreatWarningsAsErrors Condition="'$(Configuration)' == 'Release'">true</TreatWarningsAsErrors>
     <EndjinDisableCodeAnalysis>True</EndjinDisableCodeAnalysis>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <RootNamespace></RootNamespace>
   </PropertyGroup>
   
   <PropertyGroup>
@@ -21,6 +22,7 @@
 
   <PropertyGroup>
     <NoWarn>RCS1029;SA1313;SA1009;SA1600;SA1591;CS1591;</NoWarn>
+    <RootNamespace> </RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>

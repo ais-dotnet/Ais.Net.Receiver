@@ -66,12 +66,13 @@ public class ReceiveCommand : AsyncCommand<ReceiveCommand.Settings>
     private async Task<int> RunReceiverAsync(CancellationToken cancellationToken)
     {
         INmeaReceiver receiver = new NetworkStreamNmeaReceiver(
-            this.aisConfig.Host,
-            this.aisConfig.Port,
-            this.aisConfig.RetryPeriodicity,
-            retryAttemptLimit: this.aisConfig.RetryAttempts);
+            this.aisConfig.Connection.Host,
+            this.aisConfig.Connection.Port,
+            this.aisConfig.Connection.Retry.Periodicity,
+            this.aisConfig.Connection.Retry.Attempts);
 
-        await using ReceiverHost receiverHost = new(receiver);
+        await using ReceiverHost receiverHost = new(receiver, this.aisConfig.Receiver.Retry.Periodicity, this.aisConfig.Receiver.Retry.Attempts);
+
         using ReceiverTelemetry telemetry = new("Ais.Net.Receiver.Console");
         telemetry.Bind(receiverHost);
 
@@ -80,20 +81,20 @@ public class ReceiveCommand : AsyncCommand<ReceiveCommand.Settings>
         ActionBlock<IEnumerable<string>>? actionBlock = null;
         Timer? batchTimer = null;
 
-        if (this.aisConfig.LoggerVerbosity == LogLevel.Warning)
+        if (this.aisConfig.Telemetry.Verbosity == LogLevel.Warning)
         {
             subscriptions.Add(
-                receiverHost.GetStreamStatistics(this.aisConfig.StatisticsPeriodicity)
+                receiverHost.GetStreamStatistics(this.aisConfig.Telemetry.StatisticsPeriodicity)
                     .Subscribe(
                         statistics =>
                             AnsiConsole.MarkupLine($"[grey]{DateTime.UtcNow.ToUniversalTime():s}[/]: Sentences: [cyan]{statistics.Sentence}[/] | Messages: [cyan]{statistics.Message}[/] | Errors: [red]{statistics.Error}[/]"),
                         error => AnsiConsole.MarkupLine($"[red]Error in statistics stream: {Markup.Escape(error.Message)}[/]")));
         }
 
-        if (this.aisConfig.LoggerVerbosity == LogLevel.Information)
+        if (this.aisConfig.Telemetry.Verbosity == LogLevel.Information)
         {
             subscriptions.Add(
-                receiverHost.Messages.VesselNavigationWithNameStream(this.aisConfig.VesselInactivityTimeout).Subscribe(navigationWithName =>
+                receiverHost.Messages.VesselNavigationWithNameStream(this.aisConfig.Telemetry.VesselInactivityTimeout).Subscribe(navigationWithName =>
                 {
                     (uint mmsi, IVesselNavigation navigation, IVesselName name) = navigationWithName;
                     string positionText = navigation.Position is null ? "unknown position" : $"{navigation.Position.Latitude},{navigation.Position.Longitude}";
@@ -102,12 +103,12 @@ public class ReceiveCommand : AsyncCommand<ReceiveCommand.Settings>
                 }));
         }
 
-        if (this.aisConfig.LoggerVerbosity == LogLevel.Debug)
+        if (this.aisConfig.Telemetry.Verbosity == LogLevel.Debug)
         {
-            subscriptions.Add(receiverHost.Sentences.Subscribe(sentence => AnsiConsole.WriteLine(sentence)));
+            subscriptions.Add(receiverHost.Sentences.Subscribe(AnsiConsole.WriteLine));
         }
 
-        if (this.aisConfig.LoggerVerbosity == LogLevel.Trace)
+        if (this.aisConfig.Telemetry.Verbosity == LogLevel.Trace)
         {
             subscriptions.Add(receiverHost.Messages.Subscribe(message => AnsiConsole.WriteLine(message.ToString() ?? string.Empty)));
 
@@ -123,11 +124,11 @@ public class ReceiveCommand : AsyncCommand<ReceiveCommand.Settings>
         {
             IStorageClient storageClient = new AzureAppendBlobStorageClient(this.storageConfig);
 
-            batchBlock = new(
+            batchBlock = new BatchBlock<string>(
                 this.storageConfig.WriteBatchSize,
-                new() { BoundedCapacity = this.storageConfig.BoundedCapacity });
+                new GroupingDataflowBlockOptions { BoundedCapacity = this.storageConfig.BoundedCapacity });
 
-            actionBlock = new(
+            actionBlock = new ActionBlock<IEnumerable<string>>(
                 async batch =>
                 {
                     try
@@ -141,11 +142,11 @@ public class ReceiveCommand : AsyncCommand<ReceiveCommand.Settings>
                         AnsiConsole.MarkupLine($"[red]Storage error: {Markup.Escape(ex.Message)}[/]");
                     }
                 },
-                new() { MaxDegreeOfParallelism = this.storageConfig.MaxDegreeOfParallelism });
+                new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = this.storageConfig.MaxDegreeOfParallelism });
 
-            batchBlock.LinkTo(actionBlock, new() { PropagateCompletion = true });
+            batchBlock.LinkTo(actionBlock, new DataflowLinkOptions { PropagateCompletion = true });
 
-            batchTimer = new(
+            batchTimer = new Timer(
                 _ => batchBlock?.TriggerBatch(),
                 null,
                 TimeSpan.FromSeconds(this.storageConfig.BatchTimeoutSeconds),

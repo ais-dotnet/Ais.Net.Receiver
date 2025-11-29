@@ -44,8 +44,8 @@ public static class ReceiverHostExtensions
                     }
 
                     // Normal case with at least two elements
-                    var (firstMessages, firstSentences, firstErrors) = window[0];
-                    var (lastMessages, lastSentences, lastErrors) = window[^1];
+                    (long firstMessages, long firstSentences, long firstErrors) = window[0];
+                    (long lastMessages, long lastSentences, long lastErrors) = window[^1];
 
                     return (
                         Message: lastMessages - firstMessages,

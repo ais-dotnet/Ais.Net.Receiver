@@ -4,7 +4,7 @@
 
 namespace Ais.Net.Receiver.Receiver;
 
-public interface INmeaReceiver
+public interface INmeaReceiver: IAsyncDisposable
 {
     IAsyncEnumerable<ReadOnlyMemory<byte>> GetAsync(CancellationToken cancellationToken = default);
 }

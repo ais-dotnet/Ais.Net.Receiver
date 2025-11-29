@@ -3,12 +3,11 @@
 // </copyright>
 
 using System.Runtime.CompilerServices;
-
 using Spectre.IO;
 
 namespace Ais.Net.Receiver.Receiver;
 
-public class FileStreamNmeaReceiver : INmeaReceiver, IAsyncDisposable
+public class FileStreamNmeaReceiver : INmeaReceiver
 {
     private readonly IFileSystem fileSystem;
     private readonly FilePath path;
@@ -63,13 +62,13 @@ public class FileStreamNmeaReceiver : INmeaReceiver, IAsyncDisposable
         finally
         {
             // Cleanup when enumeration completes normally or is cancelled
-            await this.CleanupAsync();
+            await this.CleanupAsync().ConfigureAwait(false);
         }
     }
 
     public async ValueTask DisposeAsync()
     {
-        await this.CleanupAsync();
+        await this.CleanupAsync().ConfigureAwait(false);
         GC.SuppressFinalize(this);
     }
 

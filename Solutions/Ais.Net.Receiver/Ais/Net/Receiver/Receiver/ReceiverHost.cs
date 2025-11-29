@@ -22,15 +22,17 @@ public class ReceiverHost : IAsyncDisposable
     private static readonly ActivitySource ActivitySource = new("Ais.Net.Receiver");
     private readonly INmeaReceiver receiver;
     private readonly TimeSpan retryPeriodicity;
+    private readonly int retryAttempts;
     private readonly Subject<string> sentences = new();
     private readonly Subject<IAisMessage> messages = new();
     private readonly Subject<Metadata> metadata = new();
     private readonly Subject<(Exception Exception, string Line)> errors = new();
 
-    public ReceiverHost(INmeaReceiver receiver, TimeSpan? retryPeriodicity = null)
+    public ReceiverHost(INmeaReceiver receiver, TimeSpan? retryPeriodicity = null, int retryAttempts = 100)
     {
         this.receiver = receiver;
         this.retryPeriodicity = retryPeriodicity ?? TimeSpan.FromSeconds(5);
+        this.retryAttempts = retryAttempts;
     }
 
     public IObservable<string> Sentences => this.sentences;
@@ -46,7 +48,7 @@ public class ReceiverHost : IAsyncDisposable
         return Retriable.RetryAsync(() =>
                 this.StartAsyncInternal(cancellationToken),
                 cancellationToken,
-                new Linear(periodicity: this.retryPeriodicity, maxTries: 100),
+                new Linear(periodicity: this.retryPeriodicity, maxTries: this.retryAttempts),
                 new AnyExceptionPolicy(),
                 continueOnCapturedContext: false);
     }
@@ -137,14 +139,7 @@ public class ReceiverHost : IAsyncDisposable
         this.metadata.Dispose();
         this.errors.Dispose();
 
-        if (this.receiver is IAsyncDisposable asyncDisposable)
-        {
-            await asyncDisposable.DisposeAsync();
-        }
-        else if (this.receiver is IDisposable disposable)
-        {
-            disposable.Dispose();
-        }
+        await receiver.DisposeAsync();
 
         GC.SuppressFinalize(this);
     }
