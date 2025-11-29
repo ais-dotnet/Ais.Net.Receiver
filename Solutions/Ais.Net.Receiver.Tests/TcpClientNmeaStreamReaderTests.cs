@@ -189,6 +189,27 @@ public class TcpClientNmeaStreamReaderTests
     }
 
     [TestMethod]
+    public async Task ConnectAsync_WhenConnectionFails_CleansUpResourcesAndRemainsDisconnected()
+    {
+        // Arrange - use a port with no listener to trigger connection failure
+        TcpClientNmeaStreamReader reader = new();
+
+        // Act - attempting to connect to a closed port should fail and clean up
+        await Should.ThrowAsync<SocketException>(
+            reader.ConnectAsync("127.0.0.1", 59999, CancellationToken.None));
+
+        // Assert - after failed connection, reader should be in clean state
+        reader.Connected.ShouldBeFalse();
+
+        // Should be able to dispose without issues (resources were cleaned up in catch block)
+        await reader.DisposeAsync();
+
+        // Should still be able to read (returns null since not connected)
+        ReadOnlyMemory<byte>? line = await reader.ReadLineAsync(CancellationToken.None);
+        line.HasValue.ShouldBeFalse();
+    }
+
+    [TestMethod]
     public async Task ConnectAsync_WithCancellation_ThrowsOperationCanceledException()
     {
         // Arrange

@@ -86,6 +86,29 @@ public class ReceiverHostTests
     }
 
     [TestMethod]
+    public async Task StartAsync_MalformedMessage_WithNoErrorSubscriber_DoesNotThrow()
+    {
+        // Arrange
+        INmeaReceiver? receiver = Substitute.For<INmeaReceiver>();
+        // "GARBAGE" causes NmeaLineParser to throw ArgumentException
+        byte[] bytes = "GARBAGE"u8.ToArray();
+
+        receiver.GetAsync(Arg.Any<CancellationToken>())
+            .Returns(new[] { (ReadOnlyMemory<byte>)bytes }.ToAsyncEnumerable());
+
+        await using ReceiverHost host = new(receiver, TimeProvider.System);
+        // Only subscribe to Messages - NOT to Errors
+        // This tests the branch where errorSubject.HasObservers is false
+        using IDisposable messageSubscription = host.Messages.Subscribe(_ => { });
+
+        // Act - should complete without throwing even though there's no error subscriber
+        await host.StartAsync(CancellationToken.None);
+
+        // Assert - reaching this point means error was handled gracefully
+        // without throwing when there's no error observer
+    }
+
+    [TestMethod]
     public async Task StartAsync_WhenCancellationRequestedAfterMessages_StopsProcessing()
     {
         // Arrange

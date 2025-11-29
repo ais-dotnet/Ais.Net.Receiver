@@ -112,4 +112,48 @@ public class FileStreamNmeaReceiverTests
         await receiver.DisposeAsync();
         await receiver.DisposeAsync();
     }
+
+    [TestMethod]
+    public async Task GetAsync_WhenFileNotFound_ThrowsFileNotFoundException()
+    {
+        // Arrange - don't create the file, it should not exist
+        FilePath nonExistentPath = new("/test/nonexistent.txt");
+        FileStreamNmeaReceiver receiver = new(this.fileSystem, nonExistentPath);
+
+        // Act & Assert
+        await Should.ThrowAsync<FileNotFoundException>(
+            receiver.GetAsync(CancellationToken.None).ToListAsync(CancellationToken.None).AsTask());
+    }
+
+    [TestMethod]
+    public async Task GetAsync_WithOnlyWhitespaceLines_ReturnsWhitespaceLines()
+    {
+        // Arrange - file with whitespace-only lines
+        string[] lines = ["  ", "\t", "   \t   "];
+        this.fileSystem.CreateFile(this.testFilePath).SetTextContent(string.Join(System.Environment.NewLine, lines));
+
+        FileStreamNmeaReceiver receiver = new(this.fileSystem, this.testFilePath);
+
+        // Act
+        List<ReadOnlyMemory<byte>> result = await receiver.GetAsync(CancellationToken.None).ToListAsync(CancellationToken.None);
+
+        // Assert - whitespace lines should be returned as-is
+        result.Count.ShouldBe(3);
+    }
+
+    [TestMethod]
+    public async Task GetAsync_SingleLineNoNewline_ReturnsLine()
+    {
+        // Arrange - file with single line and no trailing newline
+        this.fileSystem.CreateFile(this.testFilePath).SetTextContent("SingleLine");
+
+        FileStreamNmeaReceiver receiver = new(this.fileSystem, this.testFilePath);
+
+        // Act
+        List<ReadOnlyMemory<byte>> result = await receiver.GetAsync(CancellationToken.None).ToListAsync(CancellationToken.None);
+
+        // Assert
+        result.Count.ShouldBe(1);
+        System.Text.Encoding.ASCII.GetString(result[0].Span).ShouldBe("SingleLine");
+    }
 }

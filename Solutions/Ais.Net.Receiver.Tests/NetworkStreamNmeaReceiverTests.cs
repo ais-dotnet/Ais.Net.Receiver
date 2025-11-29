@@ -192,6 +192,44 @@ public class NetworkStreamNmeaReceiverTests
     }
 
     [TestMethod]
+    public void Constructor_WithHostAndPort_CreatesInternalStreamReader()
+    {
+        // Arrange & Act - use the constructor that doesn't take an INmeaStreamReader
+        // This constructor creates a TcpClientNmeaStreamReader internally
+        NetworkStreamNmeaReceiver receiver = new(
+            host: "test.example.com",
+            port: 9876,
+            timeProvider: TimeProvider.System,
+            retryPeriodicity: TimeSpan.FromSeconds(5),
+            retryAttemptLimit: 50,
+            idleTimeout: TimeSpan.FromMinutes(2));
+
+        // Assert - verify properties are set correctly
+        receiver.Host.ShouldBe("test.example.com");
+        receiver.Port.ShouldBe(9876);
+        receiver.RetryPeriodicity.ShouldBe(TimeSpan.FromSeconds(5));
+        receiver.RetryAttemptLimit.ShouldBe(50);
+        receiver.IdleTimeout.ShouldBe(TimeSpan.FromMinutes(2));
+    }
+
+    [TestMethod]
+    public void Constructor_WithMinimalParameters_UsesDefaultValues()
+    {
+        // Arrange & Act - use the constructor with minimal parameters
+        NetworkStreamNmeaReceiver receiver = new(
+            host: "minimal.example.com",
+            port: 1234,
+            timeProvider: TimeProvider.System);
+
+        // Assert - verify default values
+        receiver.Host.ShouldBe("minimal.example.com");
+        receiver.Port.ShouldBe(1234);
+        receiver.RetryPeriodicity.ShouldBe(TimeSpan.FromSeconds(1)); // Default
+        receiver.RetryAttemptLimit.ShouldBe(100); // Default
+        receiver.IdleTimeout.ShouldBeNull(); // Default is null
+    }
+
+    [TestMethod]
     public async Task GetObservable_WhenDataAvailable_EmitsLinesAsObservable()
     {
         // Arrange
