@@ -59,4 +59,29 @@ internal static partial class Log
         Level = LogLevel.Debug,
         Message = "Blob initialization completed in {DurationMs}ms")]
     public static partial void BlobInitializationCompleted(this ILogger logger, double durationMs);
+
+    // Storage health check events (2010-2019)
+    [LoggerMessage(
+        EventId = 2010,
+        Level = LogLevel.Debug,
+        Message = "Storage health check completed: {Status}")]
+    public static partial void StorageHealthCheckCompleted(this ILogger logger, string status);
+
+    [LoggerMessage(
+        EventId = 2011,
+        Level = LogLevel.Warning,
+        Message = "Storage health check degraded: {Reason}")]
+    public static partial void StorageHealthCheckDegraded(this ILogger logger, string reason);
+
+    [LoggerMessage(
+        EventId = 2012,
+        Level = LogLevel.Error,
+        Message = "Storage health check failed")]
+    public static partial void StorageHealthCheckFailed(this ILogger logger, Exception exception);
+
+    [LoggerMessage(
+        EventId = 2013,
+        Level = LogLevel.Debug,
+        Message = "Storage capture is disabled, skipping health check")]
+    public static partial void StorageCaptureDisabled(this ILogger logger);
 }

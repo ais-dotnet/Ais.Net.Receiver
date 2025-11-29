@@ -7,6 +7,8 @@ using Ais.Net.Receiver.Storage.Azure.Blob.Configuration;
 using Azure.Storage.Blobs;
 
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 namespace Ais.Net.Receiver.Storage.Azure.Blob.Health;
@@ -17,14 +19,17 @@ namespace Ais.Net.Receiver.Storage.Azure.Blob.Health;
 public class StorageHealthCheck : IHealthCheck
 {
     private readonly StorageConfig config;
+    private readonly ILogger logger;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="StorageHealthCheck"/> class.
     /// </summary>
     /// <param name="config">The storage configuration.</param>
-    public StorageHealthCheck(IOptions<StorageConfig> config)
+    /// <param name="logger">The logger.</param>
+    public StorageHealthCheck(IOptions<StorageConfig> config, ILogger<StorageHealthCheck>? logger = null)
     {
         this.config = config.Value;
+        this.logger = logger ?? NullLogger<StorageHealthCheck>.Instance;
     }
 
     /// <inheritdoc/>
@@ -34,6 +39,7 @@ public class StorageHealthCheck : IHealthCheck
     {
         if (!this.config.EnableCapture)
         {
+            this.logger.StorageCaptureDisabled();
             return HealthCheckResult.Healthy(
                 description: "Storage capture is disabled",
                 data: new Dictionary<string, object> { { "enabled", false } });
@@ -56,12 +62,15 @@ public class StorageHealthCheck : IHealthCheck
             if (!exists)
             {
                 data["containerExists"] = false;
+                string reason = "Container does not exist, will be created on first write";
+                this.logger.StorageHealthCheckDegraded(reason);
                 return HealthCheckResult.Degraded(
-                    description: "Container does not exist, will be created on first write",
+                    description: reason,
                     data: data);
             }
 
             data["containerExists"] = true;
+            this.logger.StorageHealthCheckCompleted("Healthy");
             return HealthCheckResult.Healthy(
                 description: "Storage is accessible",
                 data: data);
@@ -69,6 +78,7 @@ public class StorageHealthCheck : IHealthCheck
         catch (Exception ex)
         {
             data["error"] = ex.Message;
+            this.logger.StorageHealthCheckFailed(ex);
             return HealthCheckResult.Unhealthy(
                 description: "Cannot access storage",
                 exception: ex,

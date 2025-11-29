@@ -6,6 +6,9 @@ using System.Reactive.Linq;
 
 using Ais.Net.Receiver.Telemetry;
 
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+
 namespace Ais.Net.Receiver.Receiver;
 
 public class NetworkStreamNmeaReceiver : INmeaReceiver
@@ -13,13 +16,14 @@ public class NetworkStreamNmeaReceiver : INmeaReceiver
     private readonly INmeaStreamReader nmeaStreamReader;
     private readonly TimeProvider timeProvider;
     private readonly ApplicationMetrics? metrics;
+    private readonly ILogger logger;
 
-    public NetworkStreamNmeaReceiver(string host, int port, TimeProvider timeProvider, TimeSpan? retryPeriodicity = null, int retryAttemptLimit = 100, TimeSpan? idleTimeout = null, ApplicationMetrics? metrics = null)
-        : this(new TcpClientNmeaStreamReader(), host, port, timeProvider, retryPeriodicity, retryAttemptLimit, idleTimeout, metrics)
+    public NetworkStreamNmeaReceiver(string host, int port, TimeProvider timeProvider, TimeSpan? retryPeriodicity = null, int retryAttemptLimit = 100, TimeSpan? idleTimeout = null, ApplicationMetrics? metrics = null, ILogger<NetworkStreamNmeaReceiver>? logger = null)
+        : this(new TcpClientNmeaStreamReader(), host, port, timeProvider, retryPeriodicity, retryAttemptLimit, idleTimeout, metrics, logger)
     {
     }
 
-    public NetworkStreamNmeaReceiver(INmeaStreamReader reader, string host, int port, TimeProvider timeProvider, TimeSpan? retryPeriodicity = null, int retryAttemptLimit = 100, TimeSpan? idleTimeout = null, ApplicationMetrics? metrics = null)
+    public NetworkStreamNmeaReceiver(INmeaStreamReader reader, string host, int port, TimeProvider timeProvider, TimeSpan? retryPeriodicity = null, int retryAttemptLimit = 100, TimeSpan? idleTimeout = null, ApplicationMetrics? metrics = null, ILogger<NetworkStreamNmeaReceiver>? logger = null)
     {
         this.Host = host;
         this.Port = port;
@@ -29,6 +33,7 @@ public class NetworkStreamNmeaReceiver : INmeaReceiver
         this.IdleTimeout = idleTimeout;
         this.nmeaStreamReader = reader ?? throw new ArgumentNullException(nameof(reader));
         this.metrics = metrics;
+        this.logger = logger ?? NullLogger<NetworkStreamNmeaReceiver>.Instance;
     }
 
     public string Host { get; }
@@ -58,7 +63,9 @@ public class NetworkStreamNmeaReceiver : INmeaReceiver
                 try
                 {
                     this.metrics?.ConnectionAttempts.Add(1);
+                    this.logger.StreamConnecting(this.Host, this.Port);
                     await this.nmeaStreamReader.ConnectAsync(this.Host, this.Port, mergedToken).ConfigureAwait(false);
+                    this.logger.StreamConnected(this.Host, this.Port);
                     retryAttempt = 0; // Reset retry count on successful connection
 
                     try
@@ -95,6 +102,7 @@ public class NetworkStreamNmeaReceiver : INmeaReceiver
                             catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested && !mergedToken.IsCancellationRequested)
                             {
                                 // Idle timeout, break to reconnect
+                                this.logger.StreamIdleTimeout(idleTimeout.TotalSeconds, this.Host, this.Port);
                                 break;
                             }
                         }
@@ -108,10 +116,11 @@ public class NetworkStreamNmeaReceiver : INmeaReceiver
                 {
                     break;
                 }
-                catch (Exception)
+                catch (Exception ex) when (ex is not OperationCanceledException)
                 {
                     // Connection failed, fall through to retry logic
                     this.metrics?.ConnectionFailures.Add(1);
+                    this.logger.StreamConnectionError(ex, this.Host, this.Port);
                 }
 
                 if (mergedToken.IsCancellationRequested)
@@ -123,7 +132,9 @@ public class NetworkStreamNmeaReceiver : INmeaReceiver
                 retryAttempt++;
                 int cappedRetryAttempt = Math.Min(retryAttempt, this.RetryAttemptLimit);
                 TimeSpan delay = TimeSpan.FromTicks(this.RetryPeriodicity.Ticks * cappedRetryAttempt);
-                
+
+                this.logger.StreamConnectionRetry(retryAttempt, this.Host, this.Port, (long)delay.TotalMilliseconds);
+
                 try
                 {
                     await Task.Delay(delay, mergedToken).ConfigureAwait(false);

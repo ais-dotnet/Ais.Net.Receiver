@@ -6,19 +6,35 @@ using System.Buffers;
 using System.IO.Pipelines;
 using System.Net.Sockets;
 
+using Ais.Net.Receiver.Telemetry;
+
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+
 namespace Ais.Net.Receiver.Receiver;
 
 public class TcpClientNmeaStreamReader : INmeaStreamReader
 {
+    private readonly ILogger logger;
     private TcpClient? tcpClient;
     private NetworkStream? stream;
     private PipeReader? reader;
+    private string? currentHost;
+    private int currentPort;
+
+    public TcpClientNmeaStreamReader(ILogger<TcpClientNmeaStreamReader>? logger = null)
+    {
+        this.logger = logger ?? NullLogger<TcpClientNmeaStreamReader>.Instance;
+    }
 
     public bool Connected => this.tcpClient?.Connected == true && this.stream is not null;
 
     public async Task ConnectAsync(string host, int port, CancellationToken cancellationToken)
     {
         await this.DisposeAsync().ConfigureAwait(false);
+
+        this.currentHost = host;
+        this.currentPort = port;
 
         this.tcpClient = new TcpClient
         {
@@ -28,13 +44,16 @@ public class TcpClientNmeaStreamReader : INmeaStreamReader
 
         try
         {
+            this.logger.TcpConnecting(host, port);
             await this.tcpClient.ConnectAsync(host, port, cancellationToken).ConfigureAwait(false);
             this.stream = this.tcpClient.GetStream();
             this.reader = PipeReader.Create(this.stream);
+            this.logger.TcpConnected(host, port);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
             // If connection fails, clean up resources
+            this.logger.TcpConnectionFailed(ex, host, port);
             await this.DisposeAsync().ConfigureAwait(false);
             throw;
         }
@@ -90,6 +109,8 @@ public class TcpClientNmeaStreamReader : INmeaStreamReader
 
     public async ValueTask DisposeAsync()
     {
+        bool wasConnected = this.tcpClient?.Connected == true;
+
         if (this.reader is not null)
         {
             try { await this.reader.CompleteAsync().ConfigureAwait(false); } catch { /* Ignore any errors during cleanup */ }
@@ -106,6 +127,11 @@ public class TcpClientNmeaStreamReader : INmeaStreamReader
         {
             try { this.tcpClient.Dispose(); } catch { /* Ignore any errors during cleanup */ }
             this.tcpClient = null;
+        }
+
+        if (wasConnected && this.currentHost is not null)
+        {
+            this.logger.TcpDisconnected(this.currentHost, this.currentPort);
         }
 
         GC.SuppressFinalize(this);
