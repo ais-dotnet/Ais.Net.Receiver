@@ -1,0 +1,169 @@
+// <copyright file="StorageBatchPipeline.cs" company="Endjin Limited">
+// Copyright (c) Endjin Limited. All rights reserved.
+// </copyright>
+
+using System.Diagnostics;
+using System.Threading.Tasks.Dataflow;
+
+using Ais.Net.Receiver.Receiver;
+using Ais.Net.Receiver.Storage;
+using Ais.Net.Receiver.Telemetry;
+
+namespace Ais.Net.Receiver.Hosting;
+
+/// <summary>
+/// Batches raw NMEA sentence bytes from a stream and persists each batch through an
+/// <see cref="IStorageClient"/>. A bounded dataflow buffer provides backpressure; a timer flushes
+/// partial batches so latency stays bounded even at low message rates. Both the console and worker
+/// hosts share this pipeline so the batching, backpressure, and shutdown-flush logic lives in one
+/// place; the hosts supply only the sink-specific logging via the callbacks.
+/// </summary>
+public sealed class StorageBatchPipeline : IAsyncDisposable
+{
+    private readonly IStorageClient storageClient;
+    private readonly ApplicationMetrics? metrics;
+    private readonly BatchBlock<ReadOnlyMemory<byte>> batchBlock;
+    private readonly ActionBlock<IEnumerable<ReadOnlyMemory<byte>>> actionBlock;
+    private readonly Timer batchTimer;
+    private readonly IDisposable subscription;
+    private readonly Action<Exception> onPersistError;
+    private readonly Action<long> onSentencesDropped;
+    private long droppedSentences;
+    private int stopped;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="StorageBatchPipeline"/> class and immediately
+    /// begins consuming <paramref name="rawSentences"/>.
+    /// </summary>
+    /// <param name="rawSentences">The stream of raw NMEA sentence bytes to persist.</param>
+    /// <param name="storageClient">The storage client that persists each batch. Owned by this pipeline and disposed with it.</param>
+    /// <param name="options">The batching options (batch size, buffer capacity, flush interval, parallelism).</param>
+    /// <param name="metrics">Optional application metrics.</param>
+    /// <param name="onPersistError">Invoked when a batch cannot be persisted (after the pipeline records the exception on the current activity).</param>
+    /// <param name="onSentencesDropped">Invoked with the running dropped-sentence total when the bounded buffer sheds load (throttled: first drop, then every ten-thousandth).</param>
+    public StorageBatchPipeline(
+        IObservable<ReadOnlyMemory<byte>> rawSentences,
+        IStorageClient storageClient,
+        StorageBatchOptions options,
+        ApplicationMetrics? metrics,
+        Action<Exception> onPersistError,
+        Action<long> onSentencesDropped)
+    {
+        ArgumentNullException.ThrowIfNull(rawSentences);
+        ArgumentNullException.ThrowIfNull(storageClient);
+        ArgumentNullException.ThrowIfNull(onPersistError);
+        ArgumentNullException.ThrowIfNull(onSentencesDropped);
+
+        this.storageClient = storageClient;
+        this.metrics = metrics;
+        this.onPersistError = onPersistError;
+        this.onSentencesDropped = onSentencesDropped;
+
+        this.batchBlock = new BatchBlock<ReadOnlyMemory<byte>>(
+            options.WriteBatchSize,
+            new GroupingDataflowBlockOptions { BoundedCapacity = options.BoundedCapacity });
+
+        this.actionBlock = new ActionBlock<IEnumerable<ReadOnlyMemory<byte>>>(
+            this.PersistBatchAsync,
+            new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = options.MaxDegreeOfParallelism });
+
+        this.batchBlock.LinkTo(this.actionBlock, new DataflowLinkOptions { PropagateCompletion = true });
+
+        this.batchTimer = new Timer(
+            static state => ((BatchBlock<ReadOnlyMemory<byte>>)state!).TriggerBatch(),
+            this.batchBlock,
+            options.BatchTimeout,
+            options.BatchTimeout);
+
+        // Feed sentences into the batch, surfacing backpressure drops instead of losing them
+        // silently: a full bounded block declines Post, which SubscribeWithBackpressure reports.
+        BatchBlock<ReadOnlyMemory<byte>> block = this.batchBlock;
+        this.subscription = rawSentences.SubscribeWithBackpressure(block.Post, this.OnDropped);
+    }
+
+    /// <summary>
+    /// Stops accepting new sentences, flushes the buffered batch, and waits up to
+    /// <paramref name="timeout"/> for in-flight persistence to drain. The outcome is reported via
+    /// the callbacks so each host can log it in its own sink.
+    /// </summary>
+    /// <param name="timeout">The maximum time to wait for the pipeline to drain.</param>
+    /// <param name="onCompleted">Invoked when the pipeline drained within the timeout.</param>
+    /// <param name="onTimedOut">Invoked when the pipeline did not drain within the timeout.</param>
+    /// <param name="onError">Invoked when draining faulted.</param>
+    /// <returns>A task that completes once the flush has resolved (successfully or otherwise).</returns>
+    public async Task FlushAsync(TimeSpan timeout, Action onCompleted, Action onTimedOut, Action<Exception> onError)
+    {
+        await this.StopFeedingAsync().ConfigureAwait(false);
+        this.batchBlock.Complete();
+
+        try
+        {
+            using CancellationTokenSource cts = new(timeout);
+            await this.actionBlock.Completion.WaitAsync(cts.Token).ConfigureAwait(false);
+            onCompleted();
+        }
+        catch (OperationCanceledException)
+        {
+            onTimedOut();
+        }
+        catch (Exception ex)
+        {
+            onError(ex);
+        }
+    }
+
+    /// <inheritdoc/>
+    public async ValueTask DisposeAsync()
+    {
+        await this.StopFeedingAsync().ConfigureAwait(false);
+        this.storageClient.Dispose();
+    }
+
+    private async Task PersistBatchAsync(IEnumerable<ReadOnlyMemory<byte>> batch)
+    {
+        this.metrics?.SetBatchesPending(this.batchBlock.OutputCount);
+
+        try
+        {
+            await this.storageClient.PersistAsync(batch).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            Activity.Current?.RecordExceptionWithStatus(ex);
+            this.onPersistError(ex);
+        }
+    }
+
+    private void OnDropped()
+    {
+        this.metrics?.SentencesDropped.Add(1);
+        long total = Interlocked.Increment(ref this.droppedSentences);
+        if (total == 1 || total % 10_000 == 0)
+        {
+            this.onSentencesDropped(total);
+        }
+    }
+
+    private async ValueTask StopFeedingAsync()
+    {
+        // Idempotent: FlushAsync and DisposeAsync may both run, in either order.
+        if (Interlocked.Exchange(ref this.stopped, 1) == 0)
+        {
+            this.subscription.Dispose();
+            await this.batchTimer.DisposeAsync().ConfigureAwait(false);
+        }
+    }
+}
+
+/// <summary>
+/// The tuning knobs for a <see cref="StorageBatchPipeline"/>.
+/// </summary>
+/// <param name="WriteBatchSize">The number of sentences per persisted batch.</param>
+/// <param name="BoundedCapacity">The maximum number of pending sentences buffered before backpressure sheds load.</param>
+/// <param name="BatchTimeout">The interval at which a partial batch is force-flushed.</param>
+/// <param name="MaxDegreeOfParallelism">The maximum number of batches persisted concurrently.</param>
+public readonly record struct StorageBatchOptions(
+    int WriteBatchSize,
+    int BoundedCapacity,
+    TimeSpan BatchTimeout,
+    int MaxDegreeOfParallelism);

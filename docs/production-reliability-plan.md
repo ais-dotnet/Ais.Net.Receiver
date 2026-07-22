@@ -12,8 +12,8 @@ hot path is already lean (~232 B/line), so this plan is about *reliability*, not
 - **Tests-first** for the correctness and resilience items.
 - New operational signals are exposed as **metrics** (OpenTelemetry meter) so failures are visible.
 
-**Progress:** C1, R1 (milestone 1) and R2 (milestone 2) are implemented and tested, and T3 (Azurite
-integration tests via Testcontainers) is done. Remaining: M1 (shared host wiring), T1, T2, T4.
+**Progress:** C1, R1, R2, T1, T2, T3, and M1 are implemented and tested (125 tests green). The
+Corvus.Retry → Polly migration is also done. Remaining: T4 (optional CI soak).
 
 ---
 
@@ -88,6 +88,19 @@ injected as a small strategy. Single source for the pipeline, subscriptions, and
 **Acceptance.** Both hosts delegate to the shared component; all existing tests pass; the error-type
 switch and batch setup exist exactly once. **Sequence last** so the extracted code already contains the
 C1/R1/R2 fixes rather than migrating them twice.
+
+**Done.** Added `ReceiverPipeline` (host + storage-client + batch-pipeline factory) and
+`StorageBatchPipeline` (the `BatchBlock → ActionBlock → timer → backpressure → flush` component) to
+`ServiceDefaults` — chosen because it already references both the core library and the Azure blob
+storage project, and its `Microsoft.AspNetCore.App` framework reference supplies TPL Dataflow without
+a new package. Both hosts now shed ~220 duplicated lines and supply only their sink callbacks
+(`ILogger` vs `AnsiConsole`). The pipeline is unit-tested for the first time (batching, shutdown
+flush, persist-error reporting). The verbosity/metrics *subscriptions* stay in each host because they
+diverge by output sink; only the batch pipeline, storage-client stack, host construction, and
+error-type switch were unified. *Observation while extracting:* the `ActionBlock` is unbounded, so the
+`BatchBlock`'s bounded capacity rarely sheds load — backpressure drops are effectively unreachable
+today and memory would instead grow in the action block's queue under a sustained storage outage.
+Left as-is (behaviour-preserving) — bounding the action block is a separate resilience change.
 
 ---
 

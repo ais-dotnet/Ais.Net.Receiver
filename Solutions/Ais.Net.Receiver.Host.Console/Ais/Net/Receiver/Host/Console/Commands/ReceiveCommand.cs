@@ -4,12 +4,11 @@
 
 using System.Diagnostics;
 using System.Reactive.Disposables;
-using System.Threading.Tasks.Dataflow;
 using Ais.Net.Models;
 using Ais.Net.Models.Abstractions;
 using Ais.Net.Receiver.Configuration;
+using Ais.Net.Receiver.Hosting;
 using Ais.Net.Receiver.Receiver;
-using Ais.Net.Receiver.Storage;
 using Ais.Net.Receiver.Storage.Azure.Blob;
 using Ais.Net.Receiver.Storage.Azure.Blob.Configuration;
 using Ais.Net.Receiver.Telemetry;
@@ -70,23 +69,10 @@ public class ReceiveCommand : AsyncCommand<ReceiveCommand.Settings>
     private async Task<int> RunReceiverAsync(CancellationToken cancellationToken)
     {
         ApplicationMetrics? metrics = this.serviceProvider.GetService<ApplicationMetrics>();
-
-        INmeaReceiver receiver = new NetworkStreamNmeaReceiver(
-            this.aisConfig.Connection.Host,
-            this.aisConfig.Connection.Port,
-            this.timeProvider,
-            this.aisConfig.Connection.Retry.Periodicity,
-            this.aisConfig.Connection.Retry.Attempts,
-            metrics: metrics);
-
         ApplicationInstrumentation? instrumentation = this.serviceProvider.GetService<ApplicationInstrumentation>();
-        await using ReceiverHost receiverHost = new(
-            receiver,
-            this.timeProvider,
-            instrumentation,
-            this.aisConfig.Receiver.Retry.Periodicity,
-            this.aisConfig.Receiver.Retry.Attempts,
-            metrics: metrics);
+
+        await using ReceiverHost receiverHost = ReceiverPipeline.CreateHost(
+            this.aisConfig, this.timeProvider, instrumentation, metrics);
 
         using CompositeDisposable subscriptions = [];
 
@@ -96,18 +82,8 @@ public class ReceiveCommand : AsyncCommand<ReceiveCommand.Settings>
                 metrics.MessagesReceived.Add(1, new KeyValuePair<string, object?>("ais.message_type", msg.MessageType))));
             subscriptions.Add(receiverHost.RawSentences.Subscribe(_ => metrics.SentencesReceived.Add(1)));
             subscriptions.Add(receiverHost.Errors.Subscribe(error =>
-            {
-                string errorType = error.Exception switch
-                {
-                    NotImplementedException => "unsupported_message",
-                    _ => "parse_error"
-                };
-                metrics.ErrorsReceived.Add(1, new KeyValuePair<string, object?>("error.type", errorType));
-            }));
+                metrics.ErrorsReceived.Add(1, new KeyValuePair<string, object?>("error.type", ReceiverPipeline.ClassifyError(error.Exception)))));
         }
-
-        BatchBlock<ReadOnlyMemory<byte>>? batchBlock = null;
-        ActionBlock<IEnumerable<ReadOnlyMemory<byte>>>? actionBlock = null;
 
         if (this.aisConfig.Telemetry.Verbosity == LogLevel.Warning)
         {
@@ -148,104 +124,49 @@ public class ReceiveCommand : AsyncCommand<ReceiveCommand.Settings>
                 }));
         }
 
+        StorageBatchPipeline? storagePipeline = null;
         if (this.storageConfig.EnableCapture)
         {
             ILogger<AzureAppendBlobStorageClient>? storageLogger = this.serviceProvider.GetService<ILogger<AzureAppendBlobStorageClient>>();
-            IStorageClient blobStorageClient = new AzureAppendBlobStorageClient(
+
+            // The batching, backpressure, and shutdown-flush logic is shared with the worker host via
+            // ReceiverPipeline; this host supplies only its console-rendering callbacks.
+            storagePipeline = ReceiverPipeline.CreateStorage(
                 this.storageConfig,
+                receiverHost.RawSentences,
                 this.timeProvider,
                 metrics,
                 instrumentation,
-                storageLogger);
-
-            IStorageClient storageClient = new ResilientStorageClient(
-                blobStorageClient,
-                this.timeProvider,
-                this.storageConfig.WriteRetryAttempts,
-                TimeSpan.FromSeconds(2),
-                this.storageConfig.DeadLetterPath,
-                metrics,
-                storageLogger);
-            subscriptions.Add(storageClient);
-
-            batchBlock = new BatchBlock<ReadOnlyMemory<byte>>(
-                this.storageConfig.WriteBatchSize,
-                new GroupingDataflowBlockOptions { BoundedCapacity = this.storageConfig.BoundedCapacity });
-
-            actionBlock = new ActionBlock<IEnumerable<ReadOnlyMemory<byte>>>(
-                async batch =>
-                {
-                    try
-                    {
-                        await storageClient.PersistAsync(batch);
-                    }
-                    catch (Exception ex)
-                    {
-                        Activity.Current?.AddException(ex);
-                        Activity.Current?.SetStatus(ActivityStatusCode.Error);
-                        AnsiConsole.MarkupLine($"[red]Storage error: {Markup.Escape(ex.Message)}[/]");
-                    }
-                },
-                new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = this.storageConfig.MaxDegreeOfParallelism });
-
-            batchBlock.LinkTo(actionBlock, new DataflowLinkOptions { PropagateCompletion = true });
-
-            Timer batchTimer = new(
-                _ => batchBlock?.TriggerBatch(),
-                null,
-                TimeSpan.FromSeconds(this.storageConfig.BatchTimeoutSeconds),
-                TimeSpan.FromSeconds(this.storageConfig.BatchTimeoutSeconds));
-
-            subscriptions.Add(batchTimer);
-
-            // Surface backpressure drops rather than losing them silently (AsObserver would
-            // post-and-ignore, so a full bounded block would drop unseen).
-            BatchBlock<ReadOnlyMemory<byte>> block = batchBlock;
-            long droppedSentences = 0;
-            subscriptions.Add(
-                receiverHost.RawSentences.SubscribeWithBackpressure(
-                    message => block.Post(message),
-                    () =>
-                    {
-                        metrics?.SentencesDropped.Add(1);
-                        long total = Interlocked.Increment(ref droppedSentences);
-                        if (total == 1 || total % 10_000 == 0)
-                        {
-                            AnsiConsole.MarkupLine($"[yellow]Storage backpressure: {total:N0} sentences dropped (batch buffer full)[/]");
-                        }
-                    }));
+                storageLogger,
+                onPersistError: ex => AnsiConsole.MarkupLine($"[red]Storage error: {Markup.Escape(ex.Message)}[/]"),
+                onSentencesDropped: total => AnsiConsole.MarkupLine($"[yellow]Storage backpressure: {total:N0} sentences dropped (batch buffer full)[/]"));
         }
 
-        // Handle Ctrl+C gracefully
-        try
+        await using (storagePipeline)
         {
-            await receiverHost.StartAsync(cancellationToken);
-        }
-        catch (OperationCanceledException)
-        {
-            // Expected on cancellation
-            AnsiConsole.MarkupLine("[yellow]Stopping...[/]");
-        }
-        finally
-        {
-            if (batchBlock is not null && actionBlock is not null)
+            // Handle Ctrl+C gracefully
+            try
             {
-                batchBlock.Complete();
-                try
+                await receiverHost.StartAsync(cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected on cancellation
+                AnsiConsole.MarkupLine("[yellow]Stopping...[/]");
+            }
+            finally
+            {
+                if (storagePipeline is not null)
                 {
-                    using CancellationTokenSource flushCts = new(TimeSpan.FromSeconds(30));
-                    await actionBlock.Completion.WaitAsync(flushCts.Token);
-                    AnsiConsole.MarkupLine("[green]Storage flush completed.[/]");
-                }
-                catch (OperationCanceledException)
-                {
-                    AnsiConsole.MarkupLine("[yellow]Storage flush timeout.[/]");
-                }
-                catch (Exception ex)
-                {
-                    Activity.Current?.AddException(ex);
-                    Activity.Current?.SetStatus(ActivityStatusCode.Error);
-                    AnsiConsole.MarkupLine($"[red]Storage flush error: {Markup.Escape(ex.Message)}[/]");
+                    await storagePipeline.FlushAsync(
+                        TimeSpan.FromSeconds(30),
+                        onCompleted: () => AnsiConsole.MarkupLine("[green]Storage flush completed.[/]"),
+                        onTimedOut: () => AnsiConsole.MarkupLine("[yellow]Storage flush timeout.[/]"),
+                        onError: ex =>
+                        {
+                            Activity.Current?.RecordExceptionWithStatus(ex);
+                            AnsiConsole.MarkupLine($"[red]Storage flush error: {Markup.Escape(ex.Message)}[/]");
+                        });
                 }
             }
         }

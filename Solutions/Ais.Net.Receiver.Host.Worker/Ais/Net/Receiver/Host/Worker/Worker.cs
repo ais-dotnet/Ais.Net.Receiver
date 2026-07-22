@@ -2,17 +2,14 @@
 // Copyright (c) Endjin Limited. All rights reserved.
 // </copyright>
 
-using System.Diagnostics;
 using System.Reactive.Disposables;
-using System.Threading.Tasks.Dataflow;
 
 using Ais.Net.Models;
 using Ais.Net.Models.Abstractions;
 using Ais.Net.Receiver.Configuration;
 using Ais.Net.Receiver.Health;
+using Ais.Net.Receiver.Hosting;
 using Ais.Net.Receiver.Receiver;
-using Ais.Net.Receiver.Storage;
-using Ais.Net.Receiver.Storage.Azure.Blob;
 using Ais.Net.Receiver.Storage.Azure.Blob.Configuration;
 using Ais.Net.Receiver.Telemetry;
 
@@ -32,10 +29,7 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
 
     private ReceiverHost? receiverHost;
     private CompositeDisposable? subscriptions;
-    private BatchBlock<ReadOnlyMemory<byte>>? batchBlock;
-    private ActionBlock<IEnumerable<ReadOnlyMemory<byte>>>? actionBlock;
-    private IStorageClient? storageClient;
-    private Timer? batchTimer;
+    private StorageBatchPipeline? storagePipeline;
 
     public Worker(
         ILogger<Worker> logger,
@@ -59,23 +53,11 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
     {
         this.logger.WorkerStarting();
 
-        AisConfig aisConfig = this.aisOptionsMonitor.CurrentValue;
-
-        INmeaReceiver receiver = new NetworkStreamNmeaReceiver(
-            aisConfig.Connection.Host,
-            aisConfig.Connection.Port,
-            this.timeProvider,
-            aisConfig.Connection.Retry.Periodicity,
-            retryAttemptLimit: aisConfig.Connection.Retry.Attempts,
-            metrics: this.metrics);
-
-        this.receiverHost = new ReceiverHost(
-            receiver,
+        this.receiverHost = ReceiverPipeline.CreateHost(
+            this.aisOptionsMonitor.CurrentValue,
             this.timeProvider,
             this.instrumentation,
-            retryPeriodicity: aisConfig.Receiver.Retry.Periodicity,
-            retryAttempts: aisConfig.Receiver.Retry.Attempts,
-            metrics: this.metrics);
+            this.metrics);
 
         this.subscriptions = [];
 
@@ -108,35 +90,26 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
     {
         this.logger.WorkerStopped();
 
-        this.batchTimer?.Dispose();
         this.subscriptions?.Dispose();
 
-        // Complete the dataflow pipeline and wait for it to finish
-        if (this.batchBlock is not null && this.actionBlock is not null)
+        if (this.storagePipeline is not null)
         {
-            this.batchBlock.Complete();
-            try
-            {
-                using CancellationTokenSource cts = new(TimeSpan.FromSeconds(30));
-                await this.actionBlock.Completion.WaitAsync(cts.Token);
-                this.logger.StorageFlushCompleted();
-            }
-            catch (OperationCanceledException)
-            {
-                this.logger.StorageFlushTimedOut();
-            }
-            catch (Exception ex)
-            {
-                this.logger.StorageFlushError(ex);
-            }
+            await this.storagePipeline.FlushAsync(
+                TimeSpan.FromSeconds(30),
+                onCompleted: this.logger.StorageFlushCompleted,
+                onTimedOut: this.logger.StorageFlushTimedOut,
+                onError: this.logger.StorageFlushError);
         }
     }
 
     public async ValueTask DisposeAsync()
     {
-        this.batchTimer?.Dispose();
         this.subscriptions?.Dispose();
-        this.storageClient?.Dispose();
+
+        if (this.storagePipeline is not null)
+        {
+            await this.storagePipeline.DisposeAsync();
+        }
 
         if (this.receiverHost is not null)
         {
@@ -283,74 +256,21 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
 
     private void SetupStorageIfEnabled()
     {
-        StorageConfig storageConfig = this.storageOptionsMonitor.CurrentValue;
-
-        if (!storageConfig.EnableCapture || this.receiverHost is null || this.subscriptions is null)
+        if (this.receiverHost is null)
         {
             return;
         }
 
-        IStorageClient blobStorageClient = new AzureAppendBlobStorageClient(
-            storageConfig,
+        // The batching, backpressure, and shutdown-flush logic is shared with the console host via
+        // ReceiverPipeline; this host supplies only its structured-logging callbacks.
+        this.storagePipeline = ReceiverPipeline.CreateStorage(
+            this.storageOptionsMonitor.CurrentValue,
+            this.receiverHost.RawSentences,
             this.timeProvider,
             this.metrics,
             this.instrumentation,
-            this.logger);
-
-        this.storageClient = new ResilientStorageClient(
-            blobStorageClient,
-            this.timeProvider,
-            storageConfig.WriteRetryAttempts,
-            TimeSpan.FromSeconds(2),
-            storageConfig.DeadLetterPath,
-            this.metrics,
-            this.logger);
-
-        this.batchBlock = new BatchBlock<ReadOnlyMemory<byte>>(
-            storageConfig.WriteBatchSize,
-            new GroupingDataflowBlockOptions { BoundedCapacity = storageConfig.BoundedCapacity });
-
-        this.actionBlock = new ActionBlock<IEnumerable<ReadOnlyMemory<byte>>>(
-            async batch =>
-            {
-                // Update batches pending metric before processing
-                this.metrics.SetBatchesPending(this.batchBlock?.OutputCount ?? 0);
-
-                try
-                {
-                    await this.storageClient.PersistAsync(batch);
-                }
-                catch (Exception ex)
-                {
-                    Activity.Current?.RecordExceptionWithStatus(ex);
-                    this.logger.StoragePersistenceFailed(ex);
-                }
-            },
-            new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = storageConfig.MaxDegreeOfParallelism });
-
-        this.batchBlock.LinkTo(this.actionBlock, new DataflowLinkOptions { PropagateCompletion = true });
-
-        this.batchTimer = new Timer(
-            _ => this.batchBlock?.TriggerBatch(),
-            null,
-            TimeSpan.FromSeconds(storageConfig.BatchTimeoutSeconds),
-            TimeSpan.FromSeconds(storageConfig.BatchTimeoutSeconds));
-
-        // Feed sentences into the batch, but surface backpressure drops instead of losing them
-        // silently: AsObserver would post-and-ignore, so a full bounded block would drop unseen.
-        BatchBlock<ReadOnlyMemory<byte>> block = this.batchBlock;
-        long droppedSentences = 0;
-        this.subscriptions.Add(
-            this.receiverHost.RawSentences.SubscribeWithBackpressure(
-                message => block.Post(message),
-                () =>
-                {
-                    this.metrics.SentencesDropped.Add(1);
-                    long total = Interlocked.Increment(ref droppedSentences);
-                    if (total == 1 || total % 10_000 == 0)
-                    {
-                        this.logger.SentencesDropped(total);
-                    }
-                }));
+            this.logger,
+            onPersistError: this.logger.StoragePersistenceFailed,
+            onSentencesDropped: this.logger.SentencesDropped);
     }
 }
