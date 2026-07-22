@@ -32,4 +32,17 @@ public class StorageConfig
     /// </summary>
     [Range(1, 8)]
     public int MaxDegreeOfParallelism { get; set; } = 1;
+
+    /// <summary>
+    /// Number of attempts to persist a batch before it is abandoned or dead-lettered (this is on top
+    /// of the Azure SDK's own transient-fault retries, to survive longer outages).
+    /// </summary>
+    [Range(1, 20)]
+    public int WriteRetryAttempts { get; set; } = 3;
+
+    /// <summary>
+    /// Optional local directory. When set, a batch that still fails after <see cref="WriteRetryAttempts"/>
+    /// is written here (newline-separated NMEA) for later replay instead of being dropped.
+    /// </summary>
+    public string? DeadLetterPath { get; set; }
 }

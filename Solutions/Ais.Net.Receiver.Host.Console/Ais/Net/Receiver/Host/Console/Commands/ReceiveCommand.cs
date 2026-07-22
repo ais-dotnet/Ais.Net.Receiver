@@ -151,12 +151,22 @@ public class ReceiveCommand : AsyncCommand<ReceiveCommand.Settings>
         if (this.storageConfig.EnableCapture)
         {
             ILogger<AzureAppendBlobStorageClient>? storageLogger = this.serviceProvider.GetService<ILogger<AzureAppendBlobStorageClient>>();
-            IStorageClient storageClient = new AzureAppendBlobStorageClient(
+            IStorageClient blobStorageClient = new AzureAppendBlobStorageClient(
                 this.storageConfig,
                 this.timeProvider,
                 metrics,
                 instrumentation,
                 storageLogger);
+
+            IStorageClient storageClient = new ResilientStorageClient(
+                blobStorageClient,
+                this.timeProvider,
+                this.storageConfig.WriteRetryAttempts,
+                TimeSpan.FromSeconds(2),
+                this.storageConfig.DeadLetterPath,
+                metrics,
+                storageLogger);
+            subscriptions.Add(storageClient);
 
             batchBlock = new BatchBlock<ReadOnlyMemory<byte>>(
                 this.storageConfig.WriteBatchSize,

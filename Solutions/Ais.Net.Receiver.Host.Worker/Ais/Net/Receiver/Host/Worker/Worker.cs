@@ -290,11 +290,20 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
             return;
         }
 
-        this.storageClient = new AzureAppendBlobStorageClient(
+        IStorageClient blobStorageClient = new AzureAppendBlobStorageClient(
             storageConfig,
             this.timeProvider,
             this.metrics,
             this.instrumentation,
+            this.logger);
+
+        this.storageClient = new ResilientStorageClient(
+            blobStorageClient,
+            this.timeProvider,
+            storageConfig.WriteRetryAttempts,
+            TimeSpan.FromSeconds(2),
+            storageConfig.DeadLetterPath,
+            this.metrics,
             this.logger);
 
         this.batchBlock = new BatchBlock<ReadOnlyMemory<byte>>(

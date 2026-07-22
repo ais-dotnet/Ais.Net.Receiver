@@ -232,26 +232,4 @@ public class ApplicationMetricsTests
         measurements.ShouldContain(250);
     }
 
-    /// <summary>
-    /// Simple IMeterFactory implementation for testing.
-    /// </summary>
-    private sealed class TestMeterFactory : IMeterFactory
-    {
-        private readonly List<Meter> meters = [];
-
-        public Meter Create(MeterOptions options)
-        {
-            Meter meter = new(options);
-            this.meters.Add(meter);
-            return meter;
-        }
-
-        public void Dispose()
-        {
-            foreach (Meter meter in this.meters)
-            {
-                meter.Dispose();
-            }
-        }
-    }
 }

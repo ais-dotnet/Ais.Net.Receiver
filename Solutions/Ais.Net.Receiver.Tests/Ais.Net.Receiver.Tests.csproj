@@ -19,6 +19,7 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Spectre.IO.Testing" Version="0.23.0" />
+    <PackageReference Include="Testcontainers.Azurite" Version="4.*" />
     <PackageReference Update="Microsoft.Testing.Extensions.CodeCoverage" Version="18.9.0" />
   </ItemGroup>
 

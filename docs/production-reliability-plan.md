@@ -12,6 +12,9 @@ hot path is already lean (~232 B/line), so this plan is about *reliability*, not
 - **Tests-first** for the correctness and resilience items.
 - New operational signals are exposed as **metrics** (OpenTelemetry meter) so failures are visible.
 
+**Progress:** C1, R1 (milestone 1) and R2 (milestone 2) are implemented and tested, and T3 (Azurite
+integration tests via Testcontainers) is done. Remaining: M1 (shared host wiring), T1, T2, T4.
+
 ---
 
 ## Workstream 1 — Correctness

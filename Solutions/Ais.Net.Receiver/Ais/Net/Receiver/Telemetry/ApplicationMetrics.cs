@@ -60,6 +60,11 @@ public sealed class ApplicationMetrics : IDisposable
             unit: "By",
             description: "Total bytes written to storage");
 
+        this.StorageBatchesFailed = this.meter.CreateCounter<long>(
+            "ais.storage.batches.failed",
+            unit: "{batch}",
+            description: "Number of batches abandoned or dead-lettered after storage write retries were exhausted");
+
         this.ConnectionAttempts = this.meter.CreateCounter<long>(
             "ais.receiver.connection.attempts",
             unit: "{attempt}",
@@ -123,6 +128,11 @@ public sealed class ApplicationMetrics : IDisposable
     /// Gets the counter for bytes written to storage.
     /// </summary>
     public Counter<long> StorageBytesWritten { get; }
+
+    /// <summary>
+    /// Gets the counter for batches abandoned or dead-lettered after storage write retries were exhausted.
+    /// </summary>
+    public Counter<long> StorageBatchesFailed { get; }
 
     /// <summary>
     /// Gets the counter for connection attempts.
