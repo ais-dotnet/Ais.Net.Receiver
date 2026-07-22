@@ -2,13 +2,12 @@
 // Copyright (c) Endjin Limited. All rights reserved.
 // </copyright>
 
+using Ais.Net.Receiver.Resilience;
 using Ais.Net.Receiver.Telemetry;
 
-using Corvus.Retry;
-using Corvus.Retry.Policies;
-using Corvus.Retry.Strategies;
-
 using Microsoft.Extensions.Logging;
+
+using Polly;
 
 namespace Ais.Net.Receiver.Storage;
 
@@ -22,8 +21,7 @@ public sealed class ResilientStorageClient : IStorageClient
 {
     private readonly IStorageClient inner;
     private readonly TimeProvider timeProvider;
-    private readonly int maxAttempts;
-    private readonly TimeSpan retryPeriodicity;
+    private readonly ResiliencePipeline retryPipeline;
     private readonly string? deadLetterPath;
     private readonly ApplicationMetrics? metrics;
     private readonly ILogger? logger;
@@ -49,8 +47,7 @@ public sealed class ResilientStorageClient : IStorageClient
     {
         this.inner = inner ?? throw new ArgumentNullException(nameof(inner));
         this.timeProvider = timeProvider;
-        this.maxAttempts = maxAttempts;
-        this.retryPeriodicity = retryPeriodicity;
+        this.retryPipeline = RetryPipelines.ConstantDelay(retryPeriodicity, maxAttempts);
         this.deadLetterPath = deadLetterPath;
         this.metrics = metrics;
         this.logger = logger;
@@ -64,12 +61,9 @@ public sealed class ResilientStorageClient : IStorageClient
 
         try
         {
-            await Retriable.RetryAsync(
-                () => this.inner.PersistAsync(batch),
-                CancellationToken.None,
-                new Linear(periodicity: this.retryPeriodicity, maxTries: this.maxAttempts),
-                new AnyExceptionPolicy(),
-                continueOnCapturedContext: false).ConfigureAwait(false);
+            await this.retryPipeline.ExecuteAsync(
+                async _ => await this.inner.PersistAsync(batch).ConfigureAwait(false),
+                CancellationToken.None).ConfigureAwait(false);
         }
         catch (Exception)
         {

@@ -10,11 +10,10 @@ using System.Text;
 
 using Ais.Net.Models.Abstractions;
 using Ais.Net.Receiver.Parser;
+using Ais.Net.Receiver.Resilience;
 using Ais.Net.Receiver.Telemetry;
 
-using Corvus.Retry;
-using Corvus.Retry.Policies;
-using Corvus.Retry.Strategies;
+using Polly;
 
 namespace Ais.Net.Receiver.Receiver;
 
@@ -22,8 +21,7 @@ public class ReceiverHost : IAsyncDisposable
 {
     private static readonly ActivitySource DefaultActivitySource = new("Ais.Net.Receiver");
     private readonly INmeaReceiver receiver;
-    private readonly TimeSpan retryPeriodicity;
-    private readonly int retryAttempts;
+    private readonly ResiliencePipeline retryPipeline;
     private readonly TimeProvider timeProvider;
     private readonly ActivitySource activitySource;
     private readonly ApplicationMetrics? metrics;
@@ -72,8 +70,7 @@ public class ReceiverHost : IAsyncDisposable
         this.timeProvider = timeProvider;
         this.activitySource = instrumentation?.ActivitySource ?? DefaultActivitySource;
         this.metrics = metrics;
-        this.retryPeriodicity = retryPeriodicity ?? TimeSpan.FromSeconds(5);
-        this.retryAttempts = retryAttempts;
+        this.retryPipeline = RetryPipelines.ConstantDelay(retryPeriodicity ?? TimeSpan.FromSeconds(5), retryAttempts);
     }
 
     public IObservable<string> Sentences => this.sentences;
@@ -91,14 +88,11 @@ public class ReceiverHost : IAsyncDisposable
 
     public IObservable<(Exception Exception, string Line)> Errors => this.errors;
 
-    public Task StartAsync(CancellationToken cancellationToken = default)
+    public async Task StartAsync(CancellationToken cancellationToken = default)
     {
-        return Retriable.RetryAsync(
-            () => this.StartAsyncInternal(cancellationToken),
-            cancellationToken,
-            new Linear(periodicity: this.retryPeriodicity, maxTries: this.retryAttempts),
-            new AnyExceptionPolicy(),
-            continueOnCapturedContext: false);
+        await this.retryPipeline.ExecuteAsync(
+            async token => await this.StartAsyncInternal(token).ConfigureAwait(false),
+            cancellationToken).ConfigureAwait(false);
     }
 
     private async Task StartAsyncInternal(CancellationToken cancellationToken = default)
