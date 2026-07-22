@@ -65,18 +65,21 @@ public static class ReceiverHostExtensions
         /// Optional timeout for inactive vessel groups. When a vessel hasn't sent any messages for this duration,
         /// its group is disposed to prevent memory accumulation. Defaults to 30 minutes if not specified.
         /// </param>
+        /// <param name="scheduler">Optional scheduler for the inactivity timeout (defaults to <see cref="Scheduler.Default"/>).</param>
         /// <returns>An observable sequence of tuple containing vessel information.</returns>
         public IObservable<(uint Mmsi, IVesselNavigation Navigation, IVesselName Name)> VesselNavigationWithNameStream(
-            TimeSpan? inactivityTimeout = null)
+            TimeSpan? inactivityTimeout = null,
+            IScheduler? scheduler = null)
         {
             TimeSpan timeout = inactivityTimeout ?? TimeSpan.FromMinutes(30);
+            IScheduler timeoutScheduler = scheduler ?? Scheduler.Default;
 
             // Decode the sentences into messages, and group by the vessel by Id
             // Use GroupByUntil to automatically dispose groups after inactivity timeout
             IObservable<IGroupedObservable<uint, IAisMessage>> byVessel = messages
                 .GroupByUntil(
                     m => m.Mmsi,
-                    group => group.Throttle(timeout));
+                    group => group.Throttle(timeout, timeoutScheduler));
 
             // Combine the various message types required to create a stream containing name and navigation
             return
