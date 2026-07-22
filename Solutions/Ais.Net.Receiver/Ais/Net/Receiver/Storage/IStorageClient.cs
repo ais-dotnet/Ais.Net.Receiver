@@ -6,5 +6,5 @@ namespace Ais.Net.Receiver.Storage;
 
 public interface IStorageClient: IDisposable
 {
-    Task PersistAsync(IEnumerable<string> messages);
+    Task PersistAsync(IEnumerable<ReadOnlyMemory<byte>> messages);
 }

@@ -45,7 +45,7 @@ public class ReceiveCommand : AsyncCommand<ReceiveCommand.Settings>
         this.timeProvider = timeProvider;
     }
 
-    public override async Task<int> ExecuteAsync(CommandContext context, Settings settings, CancellationToken cancellationToken)
+    protected override async Task<int> ExecuteAsync(CommandContext context, Settings settings, CancellationToken cancellationToken)
     {
         // Start hosted services (like OpenTelemetry)
         IEnumerable<IHostedService> hostedServices = this.serviceProvider.GetServices<IHostedService>();
@@ -94,21 +94,20 @@ public class ReceiveCommand : AsyncCommand<ReceiveCommand.Settings>
         {
             subscriptions.Add(receiverHost.Messages.Subscribe(msg =>
                 metrics.MessagesReceived.Add(1, new KeyValuePair<string, object?>("ais.message_type", msg.MessageType))));
-            subscriptions.Add(receiverHost.Sentences.Subscribe(_ => metrics.SentencesReceived.Add(1)));
+            subscriptions.Add(receiverHost.RawSentences.Subscribe(_ => metrics.SentencesReceived.Add(1)));
             subscriptions.Add(receiverHost.Errors.Subscribe(error =>
             {
                 string errorType = error.Exception switch
                 {
-                    ArgumentException => "parse_error",
                     NotImplementedException => "unsupported_message",
-                    _ => "unknown"
+                    _ => "parse_error"
                 };
                 metrics.ErrorsReceived.Add(1, new KeyValuePair<string, object?>("error.type", errorType));
             }));
         }
 
-        BatchBlock<string>? batchBlock = null;
-        ActionBlock<IEnumerable<string>>? actionBlock = null;
+        BatchBlock<ReadOnlyMemory<byte>>? batchBlock = null;
+        ActionBlock<IEnumerable<ReadOnlyMemory<byte>>>? actionBlock = null;
 
         if (this.aisConfig.Telemetry.Verbosity == LogLevel.Warning)
         {
@@ -116,7 +115,7 @@ public class ReceiveCommand : AsyncCommand<ReceiveCommand.Settings>
                 receiverHost.GetStreamStatistics(this.aisConfig.Telemetry.StatisticsPeriodicity)
                     .Subscribe(
                         statistics =>
-                            AnsiConsole.MarkupLine($"[grey]{DateTime.UtcNow:s}[/]: Sentences: [cyan]{statistics.Sentence}[/] | Messages: [cyan]{statistics.Message}[/] | Errors: [red]{statistics.Error}[/]"),
+                            AnsiConsole.MarkupLine($"[grey]{this.timeProvider.GetUtcNow():s}[/]: Sentences: [cyan]{statistics.Sentence}[/] | Messages: [cyan]{statistics.Message}[/] | Errors: [red]{statistics.Error}[/]"),
                         error => AnsiConsole.MarkupLine($"[red]Error in statistics stream: {Markup.Escape(error.Message)}[/]")));
         }
 
@@ -159,11 +158,11 @@ public class ReceiveCommand : AsyncCommand<ReceiveCommand.Settings>
                 instrumentation,
                 storageLogger);
 
-            batchBlock = new BatchBlock<string>(
+            batchBlock = new BatchBlock<ReadOnlyMemory<byte>>(
                 this.storageConfig.WriteBatchSize,
                 new GroupingDataflowBlockOptions { BoundedCapacity = this.storageConfig.BoundedCapacity });
 
-            actionBlock = new ActionBlock<IEnumerable<string>>(
+            actionBlock = new ActionBlock<IEnumerable<ReadOnlyMemory<byte>>>(
                 async batch =>
                 {
                     try
@@ -188,7 +187,7 @@ public class ReceiveCommand : AsyncCommand<ReceiveCommand.Settings>
                 TimeSpan.FromSeconds(this.storageConfig.BatchTimeoutSeconds));
 
             subscriptions.Add(batchTimer);
-            subscriptions.Add(receiverHost.Sentences.Subscribe(batchBlock.AsObserver()));
+            subscriptions.Add(receiverHost.RawSentences.Subscribe(batchBlock.AsObserver()));
         }
 
         // Handle Ctrl+C gracefully

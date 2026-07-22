@@ -1,6 +1,8 @@
 using System.Runtime.CompilerServices;
+using System.Text;
 
 using Ais.Net.Models.Abstractions;
+using Ais.Net.Receiver.Parser;
 using Ais.Net.Receiver.Receiver;
 
 using NSubstitute;
@@ -57,6 +59,28 @@ public class ReceiverHostTests
         receivedSentence.ShouldContain(message);
     }
 
+    [TestMethod]
+    public async Task StartAsync_ValidMessage_PublishesRawSentenceBytes()
+    {
+        // Arrange
+        INmeaReceiver? receiver = Substitute.For<INmeaReceiver>();
+        string message = "!AIVDM,1,1,,A,13u?etPv2;0n:dDPwUM1U1Cb069D,0*24";
+        byte[] bytes = "!AIVDM,1,1,,A,13u?etPv2;0n:dDPwUM1U1Cb069D,0*24"u8.ToArray();
+
+        receiver.GetAsync(Arg.Any<CancellationToken>())
+            .Returns(new[] { (ReadOnlyMemory<byte>)bytes }.ToAsyncEnumerable());
+
+        await using ReceiverHost host = new(receiver, TimeProvider.System);
+        byte[]? receivedRaw = null;
+        using IDisposable subscription = host.RawSentences.Subscribe(m => receivedRaw = m.ToArray());
+
+        // Act
+        await host.StartAsync(CancellationToken.None);
+
+        // Assert - raw bytes carry the sentence (block tags are prepended as it has none).
+        receivedRaw.ShouldNotBeNull();
+        Encoding.ASCII.GetString(receivedRaw).ShouldContain(message);
+    }
 
     [TestMethod]
     public async Task StartAsync_MalformedMessage_PublishesError()
@@ -237,7 +261,7 @@ public class ReceiverHostTests
 
         // Assert
         receivedMetadata.ShouldNotBeNull();
-        receivedMetadata.Message.ShouldNotBeNull();
+        receivedMetadata.Value.Message.ShouldNotBeNull();
     }
 
     [TestMethod]
@@ -309,6 +333,85 @@ public class ReceiverHostTests
 
         // Assert
         messageCount.ShouldBeGreaterThan(0);
+    }
+
+    [TestMethod]
+    public async Task StartAsync_UntaggedMultiPartMessage_ReuseBufferDoesNotCorruptReassembly()
+    {
+        // A Type 5 static/voyage report split across two NMEA fragments. The Ais.Net adapter must
+        // hold fragment 1 until fragment 2 arrives. Untagged messages are prepended into
+        // ReceiverHost's *reusable* buffer, so fragment 1's buffer is overwritten by fragment 2
+        // before reassembly. This proves reuse does not corrupt the result by comparing it against
+        // the same message fed pre-tagged (which passes through untouched, using no reuse buffer).
+        // A Type 5 report (VesselName "EVER DIADEM") split across two AIVDM fragments. Ais.Net does
+        // not validate the NMEA checksum, so *00 is fine; concatenating the fragment payloads
+        // reproduces the original single-line payload.
+        string part1 = "!AIVDM,2,1,5,A,55?MbV02;H;s<HtKR20EHE:0@T4@Dn222222,0*00";
+        string part2 = "!AIVDM,2,2,5,A,2216L961O5Gf0NSQEp6ClRp8888888888880,2*00";
+
+        byte[] rawPart1 = Encoding.ASCII.GetBytes(part1);
+        byte[] rawPart2 = Encoding.ASCII.GetBytes(part2);
+
+        // Ground truth: pre-tag with the allocating overload so ReceiverHost passes them through
+        // unchanged (IsMissingNmeaBlockTags is false), never touching the reusable buffer.
+        string groundTruth = await DecodeVesselNameAsync(
+            ((ReadOnlyMemory<byte>)rawPart1).PrependNmeaBlockTags(TimeProvider.System),
+            ((ReadOnlyMemory<byte>)rawPart2).PrependNmeaBlockTags(TimeProvider.System));
+
+        // Under test: raw untagged fragments -> prepended into the shared reusable buffer, so
+        // fragment 1's bytes are overwritten by fragment 2 before the adapter reassembles them.
+        string reused = await DecodeVesselNameAsync(rawPart1, rawPart2);
+
+        groundTruth.ShouldBe("EVER DIADEM         ");
+        reused.ShouldBe(groundTruth);
+    }
+
+    [TestMethod]
+    public async Task StartAsync_MessageTrippingUncaughtParserException_SurfacesErrorWithoutTearingDownConnection()
+    {
+        // This 2-fragment message makes the Ais.Net parser throw IndexOutOfRangeException while
+        // reassembling. Such an exception used to escape ProcessLineNonAsync (which only caught
+        // ArgumentException/NotImplementedException), faulting the receive loop and triggering a
+        // full reconnect + retry backoff. It must instead surface as a per-message error.
+        INmeaReceiver? receiver = Substitute.For<INmeaReceiver>();
+        ReadOnlyMemory<byte>[] messages =
+        [
+            (ReadOnlyMemory<byte>)Encoding.ASCII.GetBytes("!AIVDM,2,1,,A,55P5TL01VIaAL@7WKO4806<D18E8222222222216C8888888888888888800,0*33"),
+            (ReadOnlyMemory<byte>)Encoding.ASCII.GetBytes("!AIVDM,2,2,,A,00000000000,2*25"),
+        ];
+        receiver.GetAsync(Arg.Any<CancellationToken>()).Returns(messages.ToAsyncEnumerable());
+
+        // retryAttempts: 1 so a regression fails fast instead of retrying for minutes.
+        await using ReceiverHost host = new(receiver, TimeProvider.System, TimeSpan.FromMilliseconds(1), retryAttempts: 1);
+        Exception? surfacedError = null;
+        using IDisposable errorSubscription = host.Errors.Subscribe(e => surfacedError = e.Exception);
+        using IDisposable messageSubscription = host.Messages.Subscribe(_ => { });
+
+        // Act - must complete without throwing (previously this stormed on retries).
+        await host.StartAsync(CancellationToken.None);
+
+        // Assert - the parser failure was surfaced as a per-message error, not propagated.
+        surfacedError.ShouldNotBeNull();
+        surfacedError.ShouldBeOfType<IndexOutOfRangeException>();
+    }
+
+    private static async Task<string> DecodeVesselNameAsync(params ReadOnlyMemory<byte>[] messages)
+    {
+        INmeaReceiver? receiver = Substitute.For<INmeaReceiver>();
+        receiver.GetAsync(Arg.Any<CancellationToken>()).Returns(messages.ToAsyncEnumerable());
+
+        await using ReceiverHost host = new(receiver, TimeProvider.System);
+        string? vesselName = null;
+        using IDisposable subscription = host.Messages.Subscribe(m =>
+        {
+            if (m is IVesselName named)
+            {
+                vesselName = named.VesselName;
+            }
+        });
+
+        await host.StartAsync(CancellationToken.None);
+        return vesselName ?? string.Empty;
     }
 
     private static async IAsyncEnumerable<ReadOnlyMemory<byte>> GenerateMessagesWithCancellation(

@@ -16,6 +16,7 @@ namespace Ais.Net.Receiver.Receiver;
 public class TcpClientNmeaStreamReader : INmeaStreamReader
 {
     private readonly ILogger logger;
+    private byte[] lineBuffer = new byte[512];
     private TcpClient? tcpClient;
     private NetworkStream? stream;
     private PipeReader? reader;
@@ -74,26 +75,29 @@ public class TcpClientNmeaStreamReader : INmeaStreamReader
 
             if (position != null)
             {
-                // Found a line
+                // Found a line. Copy it into a reusable buffer (grown as needed) rather than
+                // allocating a fresh array per line. The returned memory is only valid until the
+                // next ReadLineAsync/DisposeAsync call, as documented on INmeaStreamReader.
                 ReadOnlySequence<byte> line = buffer.Slice(0, position.Value);
-                
-                // Copy to array to return (simplest for now to avoid lifetime issues)
-                byte[] lineBytes = line.ToArray();
+                int length = (int)line.Length;
 
-                // Trim \r if present
-                int length = lineBytes.Length;
-                if (length > 0 && lineBytes[length - 1] == '\r')
+                if (length > this.lineBuffer.Length)
                 {
-                    // Advance reader past the newline
-                    this.reader.AdvanceTo(buffer.GetPosition(1, position.Value));
-                    
-                    return new ReadOnlyMemory<byte>(lineBytes, 0, length - 1);
+                    this.lineBuffer = new byte[Math.Max(length, this.lineBuffer.Length * 2)];
                 }
+
+                line.CopyTo(this.lineBuffer);
 
                 // Advance reader past the newline
                 this.reader.AdvanceTo(buffer.GetPosition(1, position.Value));
 
-                return lineBytes;
+                // Trim \r if present
+                if (length > 0 && this.lineBuffer[length - 1] == (byte)'\r')
+                {
+                    length--;
+                }
+
+                return this.lineBuffer.AsMemory(0, length);
             }
 
             this.reader.AdvanceTo(buffer.Start, buffer.End);

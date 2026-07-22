@@ -10,7 +10,7 @@ namespace Ais.Net.Receiver.Health;
 public class AisConnectionMonitor : IAisConnectionMonitor
 {
     private readonly TimeProvider timeProvider;
-    private readonly object lockObject = new();
+    private readonly Lock lockObject = new();
     private volatile bool isConnected;
     private DateTimeOffset lastMessageTime;
     private long totalMessagesReceived;

@@ -94,11 +94,18 @@ public static class Extensions
         string serviceName,
         params string[] additionalSources)
     {
+        // Only wire up the OTLP exporters when an endpoint is configured; otherwise they default to
+        // localhost:4317 and log periodic connection failures when no collector is present.
+        bool useOtlpExporter = !string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]);
+
         builder.Logging.AddOpenTelemetry(logging =>
         {
             logging.IncludeFormattedMessage = true;
             logging.IncludeScopes = true;
-            logging.AddOtlpExporter();
+            if (useOtlpExporter)
+            {
+                logging.AddOtlpExporter();
+            }
         });
 
         builder.Services.AddOpenTelemetry()
@@ -122,11 +129,15 @@ public static class Extensions
                 }
 
                 metrics.AddRuntimeInstrumentation()
-                    .AddHttpClientInstrumentation()
-                    .AddOtlpExporter((exporterOptions, readerOptions) =>
+                    .AddHttpClientInstrumentation();
+
+                if (useOtlpExporter)
+                {
+                    metrics.AddOtlpExporter((exporterOptions, readerOptions) =>
                     {
                         readerOptions.PeriodicExportingMetricReaderOptions.ExportIntervalMilliseconds = 10_000;
                     });
+                }
             })
             .WithTracing(tracing =>
             {
@@ -137,8 +148,12 @@ public static class Extensions
                     tracing.AddSource(source);
                 }
 
-                tracing.AddHttpClientInstrumentation()
-                    .AddOtlpExporter();
+                tracing.AddHttpClientInstrumentation();
+
+                if (useOtlpExporter)
+                {
+                    tracing.AddOtlpExporter();
+                }
             });
 
         return builder;

@@ -6,4 +6,4 @@ using Ais.Net.Models.Abstractions;
 
 namespace Ais.Net.Receiver.Receiver;
 
-public record Metadata(int StationId, long UnixTimestamp, IAisMessage Message);
+public readonly record struct Metadata(int StationId, long UnixTimestamp, IAisMessage Message);

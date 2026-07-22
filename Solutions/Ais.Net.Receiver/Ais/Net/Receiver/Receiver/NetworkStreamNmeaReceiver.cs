@@ -3,6 +3,7 @@
 // </copyright>
 
 using System.Reactive.Linq;
+using System.Runtime.CompilerServices;
 
 using Ais.Net.Receiver.Telemetry;
 
@@ -37,117 +38,155 @@ public class NetworkStreamNmeaReceiver : INmeaReceiver
     }
 
     public string Host { get; }
-    
+
     public int Port { get; }
-    
+
     public int RetryAttemptLimit { get; }
-    
+
     public TimeSpan RetryPeriodicity { get; }
 
     public TimeSpan? IdleTimeout { get; }
 
-    // We still provide the IAsyncEnumerable API for backwards compatibility.
-    public IAsyncEnumerable<ReadOnlyMemory<byte>> GetAsync(CancellationToken cancellationToken = default) => this.GetObservable(cancellationToken).ToAsyncEnumerable();
-
-    public IObservable<ReadOnlyMemory<byte>> GetObservable(CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Streams NMEA lines from the network, reconnecting with linear backoff on failure or idle
+    /// timeout. This is a native pull-based sequence: a yielded buffer is only guaranteed valid
+    /// until the next <c>MoveNextAsync</c> (the underlying reader reuses its read buffer), which is
+    /// safe here because each line is consumed synchronously before the next is requested.
+    /// </summary>
+    public async IAsyncEnumerable<ReadOnlyMemory<byte>> GetAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        IObservable<ReadOnlyMemory<byte>> withoutRetry = Observable.Create<ReadOnlyMemory<byte>>(async (obs, innerCancel) =>
+        int retryAttempt = 0;
+
+        while (!cancellationToken.IsCancellationRequested)
         {
-            using CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, innerCancel);
-            CancellationToken mergedToken = cts.Token;
+            bool connected = false;
 
-            int retryAttempt = 0;
-
-            while (!mergedToken.IsCancellationRequested)
+            try
             {
+                this.metrics?.ConnectionAttempts.Add(1);
+                this.logger.StreamConnecting(this.Host, this.Port);
+                await this.nmeaStreamReader.ConnectAsync(this.Host, this.Port, cancellationToken).ConfigureAwait(false);
+                this.logger.StreamConnected(this.Host, this.Port);
+                retryAttempt = 0; // Reset retry count on successful connection
+                connected = true;
+            }
+            catch (OperationCanceledException)
+            {
+                yield break;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                this.metrics?.ConnectionFailures.Add(1);
+                this.logger.StreamConnectionError(ex, this.Host, this.Port);
+            }
+
+            if (connected)
+            {
+                TimeSpan idleTimeout = this.IdleTimeout ?? TimeSpan.FromTicks(this.RetryPeriodicity.Ticks * this.RetryAttemptLimit);
+                TimeSpan minResetInterval = idleTimeout / 2;
+                long lastResetTimestamp = this.timeProvider.GetTimestamp();
+
+                using CancellationTokenSource timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                timeoutCts.CancelAfter(idleTimeout);
+
                 try
                 {
-                    this.metrics?.ConnectionAttempts.Add(1);
-                    this.logger.StreamConnecting(this.Host, this.Port);
-                    await this.nmeaStreamReader.ConnectAsync(this.Host, this.Port, mergedToken).ConfigureAwait(false);
-                    this.logger.StreamConnected(this.Host, this.Port);
-                    retryAttempt = 0; // Reset retry count on successful connection
-
-                    try
+                    while (this.nmeaStreamReader.Connected && !cancellationToken.IsCancellationRequested)
                     {
-                        TimeSpan idleTimeout = this.IdleTimeout ?? TimeSpan.FromTicks(this.RetryPeriodicity.Ticks * this.RetryAttemptLimit);
-                        TimeSpan minResetInterval = idleTimeout / 2;
-                        long lastResetTimestamp = this.timeProvider.GetTimestamp();
-
-                        using CancellationTokenSource timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(mergedToken);
-                        timeoutCts.CancelAfter(idleTimeout);
-
-                        while (this.nmeaStreamReader.Connected && !mergedToken.IsCancellationRequested)
+                        ReadOnlyMemory<byte>? line;
+                        try
                         {
-                            try
-                            {
-                                ReadOnlyMemory<byte>? line = await this.nmeaStreamReader.ReadLineAsync(timeoutCts.Token).ConfigureAwait(false);
-                                if (line is not null)
-                                {
-                                    obs.OnNext(line.Value);
+                            line = await this.nmeaStreamReader.ReadLineAsync(timeoutCts.Token).ConfigureAwait(false);
+                        }
+                        catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+                        {
+                            // Idle timeout - break to reconnect.
+                            this.logger.StreamIdleTimeout(idleTimeout.TotalSeconds, this.Host, this.Port);
+                            break;
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            // External cancellation - stop (the outer check ends the loop after disposal).
+                            break;
+                        }
+                        catch (Exception ex) when (ex is not OperationCanceledException)
+                        {
+                            // Read/connection error - break to reconnect.
+                            this.metrics?.ConnectionFailures.Add(1);
+                            this.logger.StreamConnectionError(ex, this.Host, this.Port);
+                            break;
+                        }
 
-                                    TimeSpan elapsed = this.timeProvider.GetElapsedTime(lastResetTimestamp);
-                                    if (elapsed > minResetInterval)
-                                    {
-                                        timeoutCts.CancelAfter(idleTimeout);
-                                        lastResetTimestamp = this.timeProvider.GetTimestamp();
-                                    }
-                                }
-                                else
-                                {
-                                    // End of stream, break to reconnect
-                                    break;
-                                }
-                            }
-                            catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested && !mergedToken.IsCancellationRequested)
-                            {
-                                // Idle timeout, break to reconnect
-                                this.logger.StreamIdleTimeout(idleTimeout.TotalSeconds, this.Host, this.Port);
-                                break;
-                            }
+                        if (line is null)
+                        {
+                            // End of stream - break to reconnect.
+                            break;
+                        }
+
+                        yield return line.Value;
+
+                        TimeSpan elapsed = this.timeProvider.GetElapsedTime(lastResetTimestamp);
+                        if (elapsed > minResetInterval)
+                        {
+                            timeoutCts.CancelAfter(idleTimeout);
+                            lastResetTimestamp = this.timeProvider.GetTimestamp();
                         }
                     }
-                    finally
-                    {
-                        await this.nmeaStreamReader.DisposeAsync().ConfigureAwait(false);
-                    }
                 }
-                catch (OperationCanceledException)
+                finally
                 {
-                    break;
-                }
-                catch (Exception ex) when (ex is not OperationCanceledException)
-                {
-                    // Connection failed, fall through to retry logic
-                    this.metrics?.ConnectionFailures.Add(1);
-                    this.logger.StreamConnectionError(ex, this.Host, this.Port);
-                }
-
-                if (mergedToken.IsCancellationRequested)
-                {
-                    break;
-                }
-
-                // Calculate backoff (Linear backoff based on RetryPeriodicity)
-                retryAttempt++;
-                int cappedRetryAttempt = Math.Min(retryAttempt, this.RetryAttemptLimit);
-                TimeSpan delay = TimeSpan.FromTicks(this.RetryPeriodicity.Ticks * cappedRetryAttempt);
-
-                this.logger.StreamConnectionRetry(retryAttempt, this.Host, this.Port, (long)delay.TotalMilliseconds);
-
-                try
-                {
-                    await Task.Delay(delay, mergedToken).ConfigureAwait(false);
-                }
-                catch (OperationCanceledException)
-                {
-                    break;
+                    await this.nmeaStreamReader.DisposeAsync().ConfigureAwait(false);
                 }
             }
-        });
 
-        return withoutRetry.Retry();
+            if (cancellationToken.IsCancellationRequested)
+            {
+                break;
+            }
+
+            // Linear backoff based on RetryPeriodicity.
+            retryAttempt++;
+            int cappedRetryAttempt = Math.Min(retryAttempt, this.RetryAttemptLimit);
+            TimeSpan delay = TimeSpan.FromTicks(this.RetryPeriodicity.Ticks * cappedRetryAttempt);
+            this.logger.StreamConnectionRetry(retryAttempt, this.Host, this.Port, (long)delay.TotalMilliseconds);
+
+            try
+            {
+                await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                yield break;
+            }
+        }
     }
+
+    /// <summary>
+    /// Backwards-compatible observable projection over <see cref="GetAsync"/>. Each line is copied
+    /// so that observers - whose lifetimes this method does not control - receive an owned buffer.
+    /// </summary>
+    public IObservable<ReadOnlyMemory<byte>> GetObservable(CancellationToken cancellationToken = default) =>
+        Observable.Create<ReadOnlyMemory<byte>>(async (observer, innerCancellation) =>
+        {
+            using CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, innerCancellation);
+            try
+            {
+                await foreach (ReadOnlyMemory<byte> line in this.GetAsync(cts.Token).ConfigureAwait(false))
+                {
+                    observer.OnNext(line.ToArray());
+                }
+
+                observer.OnCompleted();
+            }
+            catch (OperationCanceledException)
+            {
+                observer.OnCompleted();
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                observer.OnError(ex);
+            }
+        });
 
     public async ValueTask DisposeAsync()
     {

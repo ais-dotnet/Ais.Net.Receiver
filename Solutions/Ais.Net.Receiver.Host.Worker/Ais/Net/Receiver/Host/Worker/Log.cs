@@ -92,13 +92,13 @@ internal static partial class Log
 
     [LoggerMessage(
         EventId = 1201,
-        Level = LogLevel.Information,
+        Level = LogLevel.Debug,
         Message = "{Sentence}")]
     public static partial void SentenceReceived(this ILogger logger, string sentence);
 
     [LoggerMessage(
         EventId = 1202,
-        Level = LogLevel.Information,
+        Level = LogLevel.Trace,
         Message = "{Message}")]
     public static partial void MessageReceived(this ILogger logger, string message);
 

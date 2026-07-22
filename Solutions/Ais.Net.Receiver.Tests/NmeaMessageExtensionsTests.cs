@@ -152,4 +152,85 @@ public class NmeaMessageExtensionsTests
         long expectedUnixTime = fixedTime.ToUnixTimeSeconds();
         resultStr.ShouldContain($"c:{expectedUnixTime}*");
     }
+
+    [TestMethod]
+    public void IsMissingNmeaBlockTags_String_WithoutTags_ReturnsTrue()
+    {
+        // Arrange
+        string message = "!AIVDM,1,1,,B,177KQJ5000G?tO`K>RA1wUbN0TKH,0*5C";
+
+        // Act
+        bool result = message.IsMissingNmeaBlockTags();
+
+        // Assert
+        result.ShouldBeTrue();
+    }
+
+    [TestMethod]
+    public void IsMissingNmeaBlockTags_String_WithTags_ReturnsFalse()
+    {
+        // Arrange
+        string message = @"\s:1000001,c:1637760000*24\!AIVDM,1,1,,B,177KQJ5000G?tO`K>RA1wUbN0TKH,0*5C";
+
+        // Act
+        bool result = message.IsMissingNmeaBlockTags();
+
+        // Assert
+        result.ShouldBeFalse();
+    }
+
+    [TestMethod]
+    public void IsMissingNmeaBlockTags_String_EmptyString_ReturnsFalse()
+    {
+        // Arrange - an empty string previously threw IndexOutOfRangeException
+        string message = string.Empty;
+
+        // Act
+        bool result = message.IsMissingNmeaBlockTags();
+
+        // Assert
+        result.ShouldBeFalse();
+    }
+
+    [TestMethod]
+    public void ParseNmeaBlockTags_OnlyTimestamp_ReturnsTimestampAndZeroStation()
+    {
+        // Arrange - only a c: timestamp field, no s: station id
+        ReadOnlySpan<byte> bytes = @"\c:1637760000*00\!AIVDM,1,1,,B,177KQJ5000G?tO`K>RA1wUbN0TKH,0*5C"u8;
+
+        // Act
+        (int stationId, long timestamp) = bytes.ParseNmeaBlockTags();
+
+        // Assert
+        stationId.ShouldBe(0);
+        timestamp.ShouldBe(1637760000);
+    }
+
+    [TestMethod]
+    public void ParseNmeaBlockTags_EmptyMessage_ReturnsZeroValues()
+    {
+        // Arrange
+        ReadOnlySpan<byte> bytes = [];
+
+        // Act
+        (int stationId, long timestamp) = bytes.ParseNmeaBlockTags();
+
+        // Assert
+        stationId.ShouldBe(0);
+        timestamp.ShouldBe(0);
+    }
+
+    [TestMethod]
+    public void ParseNmeaBlockTags_UnterminatedTagBlock_ReturnsZeroValues()
+    {
+        // Arrange - opening backslash but no closing backslash
+        ReadOnlySpan<byte> bytes = @"\s:1000001,c:1637760000*24"u8;
+
+        // Act
+        (int stationId, long timestamp) = bytes.ParseNmeaBlockTags();
+
+        // Assert
+        stationId.ShouldBe(0);
+        timestamp.ShouldBe(0);
+    }
 }

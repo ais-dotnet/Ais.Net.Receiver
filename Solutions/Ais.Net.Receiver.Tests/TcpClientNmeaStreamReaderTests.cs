@@ -60,14 +60,13 @@ public class TcpClientNmeaStreamReaderTests
             byte[] data = "Line1\nLine2\r\n"u8.ToArray();
             await stream.WriteAsync(data, this.TestContext.CancellationTokenSource.Token);
 
-            // Act
+            // Act & Assert - the returned buffer is only valid until the next read, so read and
+            // verify each line before requesting the next.
             ReadOnlyMemory<byte>? line1 = await reader.ReadLineAsync(this.TestContext.CancellationTokenSource.Token);
-            ReadOnlyMemory<byte>? line2 = await reader.ReadLineAsync(this.TestContext.CancellationTokenSource.Token);
-
-            // Assert
             line1.HasValue.ShouldBeTrue();
             Encoding.ASCII.GetString(line1.Value.Span).ShouldBe("Line1");
 
+            ReadOnlyMemory<byte>? line2 = await reader.ReadLineAsync(this.TestContext.CancellationTokenSource.Token);
             line2.HasValue.ShouldBeTrue();
             Encoding.ASCII.GetString(line2.Value.Span).ShouldBe("Line2");
         }
@@ -99,13 +98,13 @@ public class TcpClientNmeaStreamReaderTests
             byte[] data = "Line1\r\nLine2\r\n"u8.ToArray();
             await stream.WriteAsync(data, this.TestContext.CancellationTokenSource.Token);
 
-            // Act
+            // Act & Assert - the returned buffer is only valid until the next read, so read and
+            // verify each line before requesting the next.
             ReadOnlyMemory<byte>? line1 = await reader.ReadLineAsync(this.TestContext.CancellationTokenSource.Token);
-            ReadOnlyMemory<byte>? line2 = await reader.ReadLineAsync(this.TestContext.CancellationTokenSource.Token);
-
-            // Assert
             line1.HasValue.ShouldBeTrue();
             Encoding.ASCII.GetString(line1.Value.Span).ShouldBe("Line1");
+
+            ReadOnlyMemory<byte>? line2 = await reader.ReadLineAsync(this.TestContext.CancellationTokenSource.Token);
             line2.HasValue.ShouldBeTrue();
             Encoding.ASCII.GetString(line2.Value.Span).ShouldBe("Line2");
         }

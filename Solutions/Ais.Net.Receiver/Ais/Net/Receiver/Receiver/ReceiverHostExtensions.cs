@@ -26,7 +26,7 @@ public static class ReceiverHostExtensions
         {
             IObservable<(long Messages, long Sentences, long Errors)> runningCounts =
                 receiverHost.Messages.RunningCount().CombineLatest(
-                    receiverHost.Sentences.RunningCount(),
+                    receiverHost.RawSentences.RunningCount(),
                     receiverHost.Errors.RunningCount(),
                     (messages, sentences, errors) => (messages, sentences, errors));
 

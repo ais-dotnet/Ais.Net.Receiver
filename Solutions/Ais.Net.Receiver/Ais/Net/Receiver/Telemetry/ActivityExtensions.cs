@@ -30,7 +30,6 @@ public static class ActivityExtensions
     // Error semantic conventions
     private const string ExceptionType = "exception.type";
     private const string ExceptionMessage = "exception.message";
-    private const string ExceptionStacktrace = "exception.stacktrace";
     private const string ExceptionEscaped = "exception.escaped";
     private const string ErrorType = "error.type";
 
@@ -175,16 +174,10 @@ public static class ActivityExtensions
         // Set error status
         activity.SetStatus(ActivityStatusCode.Error, exception.Message);
 
-        // Record exception as event with semantic convention attributes
-        var tags = new ActivityTagsCollection
-        {
-            { ExceptionType, exception.GetType().FullName },
-            { ExceptionMessage, exception.Message },
-            { ExceptionStacktrace, exception.StackTrace ?? string.Empty },
-            { ExceptionEscaped, escaped },
-        };
-
-        activity.AddEvent(new ActivityEvent("exception", tags: tags));
+        // Record the exception using the built-in helper, which emits the standard
+        // "exception" event with the OpenTelemetry exception.* attributes (type, message,
+        // stacktrace). We add exception.escaped on top of those.
+        activity.AddException(exception, new TagList { { ExceptionEscaped, escaped } });
 
         return activity;
     }

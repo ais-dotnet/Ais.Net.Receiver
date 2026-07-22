@@ -3,7 +3,6 @@
 // </copyright>
 
 using System.Diagnostics;
-using System.Text;
 
 using Ais.Net.Receiver.Storage.Azure.Blob.Configuration;
 using Ais.Net.Receiver.Telemetry;
@@ -59,7 +58,7 @@ public class AzureAppendBlobStorageClient : IStorageClient
         this.logger = logger;
     }
 
-    public async Task PersistAsync(IEnumerable<string> messages)
+    public async Task PersistAsync(IEnumerable<ReadOnlyMemory<byte>> messages)
     {
         using Activity? activity = this.instrumentation?.ActivitySource.StartActivity("StorageWrite");
         Stopwatch stopwatch = Stopwatch.StartNew();
@@ -68,21 +67,20 @@ public class AzureAppendBlobStorageClient : IStorageClient
         {
             await this.EnsureCurrentHourBlobInitializedAsync().ConfigureAwait(false);
 
-            List<string> messageList = messages.ToList();
-            int messageCount = messageList.Count;
-
-            activity?.SetTag("ais.storage.message_count", messageCount);
-
+            // Write the raw sentence bytes straight into the block, newline-separated. This avoids
+            // the bytes -> string -> UTF-8 round trip the previous StreamWriter path incurred (and,
+            // as a bonus, the BOM it used to emit).
             using MemoryStream stream = new();
-            await using (StreamWriter writer = new(stream, Encoding.UTF8, leaveOpen: true))
+            int messageCount = 0;
+            foreach (ReadOnlyMemory<byte> message in messages)
             {
-                foreach (string message in messageList)
-                {
-                    await writer.WriteLineAsync(message).ConfigureAwait(false);
-                }
+                stream.Write(message.Span);
+                stream.WriteByte((byte)'\n');
+                messageCount++;
             }
 
             long byteCount = stream.Length;
+            activity?.SetTag("ais.storage.message_count", messageCount);
             activity?.SetTag("ais.storage.bytes", byteCount);
             activity?.SetTag("ais.storage.blob_path", this.currentBlobPath);
 

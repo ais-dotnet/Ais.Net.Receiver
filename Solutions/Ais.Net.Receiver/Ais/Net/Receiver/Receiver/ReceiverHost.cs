@@ -28,9 +28,15 @@ public class ReceiverHost : IAsyncDisposable
     private readonly ActivitySource activitySource;
     private readonly ApplicationMetrics? metrics;
     private readonly Subject<string> sentences = new();
+    private readonly Subject<ReadOnlyMemory<byte>> rawSentences = new();
     private readonly Subject<IAisMessage> messages = new();
     private readonly Subject<Metadata> metadata = new();
     private readonly Subject<(Exception Exception, string Line)> errors = new();
+
+    // Reusable scratch buffer for prepending NMEA tag blocks. The receive loop pulls and fully
+    // processes one message before the next is produced, so a single buffer avoids a per-message
+    // allocation without any aliasing hazard (see GetAsync).
+    private byte[] prependBuffer = new byte[256];
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ReceiverHost"/> class.
@@ -71,6 +77,13 @@ public class ReceiverHost : IAsyncDisposable
     }
 
     public IObservable<string> Sentences => this.sentences;
+
+    /// <summary>
+    /// Gets the raw (undecoded) NMEA sentence bytes. Prefer this over <see cref="Sentences"/> for
+    /// byte-oriented consumers such as storage capture and counting, to avoid materialising a
+    /// string per line.
+    /// </summary>
+    public IObservable<ReadOnlyMemory<byte>> RawSentences => this.rawSentences;
 
     public IObservable<IAisMessage> Messages => this.messages;
 
@@ -117,32 +130,9 @@ public class ReceiverHost : IAsyncDisposable
             // Enrich activity with station metadata
             activity?.SetStationMetadata(currentMetadata.StationId, currentMetadata.UnixTimestamp);
 
-            void ProcessLineNonAsync(ReadOnlyMemory<byte> line, INmeaLineStreamProcessor lineStreamProcessor, Subject<(Exception Exception, string Line)> errorSubject)
+            if (this.rawSentences.HasObservers)
             {
-                try
-                {
-                    lineStreamProcessor.OnNext(new NmeaLineParser(line.Span), lineNumber: 0);
-                }
-                catch (ArgumentException ex)
-                {
-                    Activity.Current?.SetErrorType("parse_error");
-                    Activity.Current?.RecordExceptionWithStatus(ex, escaped: true);
-
-                    if (errorSubject.HasObservers)
-                    {
-                        errorSubject.OnNext((Exception: ex, Encoding.ASCII.GetString(line.Span)));
-                    }
-                }
-                catch (NotImplementedException ex)
-                {
-                    Activity.Current?.SetErrorType("unsupported_message");
-                    Activity.Current?.RecordExceptionWithStatus(ex, escaped: true);
-
-                    if (errorSubject.HasObservers)
-                    {
-                        errorSubject.OnNext((Exception: ex, Encoding.ASCII.GetString(line.Span)));
-                    }
-                }
+                this.rawSentences.OnNext(message.ToArray());
             }
 
             if (this.sentences.HasObservers)
@@ -160,22 +150,72 @@ public class ReceiverHost : IAsyncDisposable
         }
 
         this.sentences.OnCompleted();
+        this.rawSentences.OnCompleted();
         this.messages.OnCompleted();
         this.metadata.OnCompleted();
         this.errors.OnCompleted();
+    }
+
+    private static void ProcessLineNonAsync(ReadOnlyMemory<byte> line, INmeaLineStreamProcessor lineStreamProcessor, Subject<(Exception Exception, string Line)> errorSubject)
+    {
+        try
+        {
+            lineStreamProcessor.OnNext(new NmeaLineParser(line.Span), lineNumber: 0);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // A single malformed sentence must not propagate out of the receive loop: that would
+            // fault StartAsyncInternal and trigger a full reconnect plus retry backoff - a long stall
+            // caused by one bad line. Instead, categorise the failure, surface it as a per-message
+            // error, and carry on with the next line. Known-shaped failures keep their existing error
+            // types; anything else (e.g. an IndexOutOfRangeException from a truncated payload) is a
+            // parse error.
+            string errorType = ex switch
+            {
+                NotImplementedException => "unsupported_message",
+                _ => "parse_error",
+            };
+
+            Activity.Current?.SetErrorType(errorType);
+            Activity.Current?.RecordExceptionWithStatus(ex, escaped: true);
+
+            if (errorSubject.HasObservers)
+            {
+                errorSubject.OnNext((Exception: ex, Encoding.ASCII.GetString(line.Span)));
+            }
+        }
     }
 
     private async IAsyncEnumerable<ReadOnlyMemory<byte>> GetAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         await foreach (ReadOnlyMemory<byte> message in this.receiver.GetAsync(cancellationToken))
         {
-            yield return message.Span.IsMissingNmeaBlockTags ? message.PrependNmeaBlockTags(this.timeProvider) : message;
+            if (!message.Span.IsMissingNmeaBlockTags)
+            {
+                yield return message;
+                continue;
+            }
+
+            // Prepend the NMEA tag block into a reusable buffer instead of allocating a fresh
+            // array per message. This is safe because each yielded item is consumed synchronously
+            // and completely within a single iteration of the StartAsyncInternal loop before the
+            // next item is pulled (there is no await in that loop body, and the span-based Ais.Net
+            // parser cannot retain the buffer), so the buffer is never read after it is reused.
+            int required = message.Length + NmeaMessageExtensions.MaxPrefixLength;
+            if (this.prependBuffer.Length < required)
+            {
+                this.prependBuffer = new byte[Math.Max(required, this.prependBuffer.Length * 2)];
+            }
+
+            int written = message.Span.PrependNmeaBlockTags(this.timeProvider, this.prependBuffer);
+            yield return this.prependBuffer.AsMemory(0, written);
         }
     }
 
     public async ValueTask DisposeAsync()
     {
         this.sentences.Dispose();
+        this.rawSentences.Dispose();
         this.messages.Dispose();
         this.metadata.Dispose();
         this.errors.Dispose();

@@ -32,8 +32,8 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
 
     private ReceiverHost? receiverHost;
     private CompositeDisposable? subscriptions;
-    private BatchBlock<string>? batchBlock;
-    private ActionBlock<IEnumerable<string>>? actionBlock;
+    private BatchBlock<ReadOnlyMemory<byte>>? batchBlock;
+    private ActionBlock<IEnumerable<ReadOnlyMemory<byte>>>? actionBlock;
     private IStorageClient? storageClient;
     private Timer? batchTimer;
 
@@ -184,7 +184,7 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
 
         // Subscribe to sentences for metrics
         this.subscriptions.Add(
-            this.receiverHost.Sentences.Subscribe(_ =>
+            this.receiverHost.RawSentences.Subscribe(_ =>
             {
                 this.metrics.SentencesReceived.Add(1);
             }));
@@ -195,9 +195,8 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
             {
                 string errorType = error.Exception switch
                 {
-                    ArgumentException => "parse_error",
                     NotImplementedException => "unsupported_message",
-                    _ => "unknown"
+                    _ => "parse_error"
                 };
                 this.metrics.ErrorsReceived.Add(
                     1,
@@ -221,7 +220,7 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
                     .Subscribe(
                         statistics =>
                             this.logger.StreamStatistics(
-                                DateTime.UtcNow,
+                                this.timeProvider.GetUtcNow().UtcDateTime,
                                 statistics.Sentence,
                                 statistics.Message,
                                 statistics.Error),
@@ -252,7 +251,7 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
             this.subscriptions.Add(
                 this.receiverHost.Sentences.Subscribe(s =>
                 {
-                    if (this.logger.IsEnabled(LogLevel.Information))
+                    if (this.logger.IsEnabled(LogLevel.Debug))
                     {
                         this.logger.SentenceReceived(s);
                     }
@@ -264,7 +263,7 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
             this.subscriptions.Add(
                 this.receiverHost.Messages.Subscribe(m =>
                 {
-                    if (this.logger.IsEnabled(LogLevel.Information))
+                    if (this.logger.IsEnabled(LogLevel.Trace))
                     {
                         this.logger.MessageReceived(m.ToString() ?? string.Empty);
                     }
@@ -298,11 +297,11 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
             this.instrumentation,
             this.logger);
 
-        this.batchBlock = new BatchBlock<string>(
+        this.batchBlock = new BatchBlock<ReadOnlyMemory<byte>>(
             storageConfig.WriteBatchSize,
             new GroupingDataflowBlockOptions { BoundedCapacity = storageConfig.BoundedCapacity });
 
-        this.actionBlock = new ActionBlock<IEnumerable<string>>(
+        this.actionBlock = new ActionBlock<IEnumerable<ReadOnlyMemory<byte>>>(
             async batch =>
             {
                 // Update batches pending metric before processing
@@ -328,6 +327,6 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
             TimeSpan.FromSeconds(storageConfig.BatchTimeoutSeconds),
             TimeSpan.FromSeconds(storageConfig.BatchTimeoutSeconds));
 
-        this.subscriptions.Add(this.receiverHost.Sentences.Subscribe(this.batchBlock.AsObserver()));
+        this.subscriptions.Add(this.receiverHost.RawSentences.Subscribe(this.batchBlock.AsObserver()));
     }
 }
