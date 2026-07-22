@@ -65,6 +65,11 @@ public sealed class ApplicationMetrics : IDisposable
             unit: "{batch}",
             description: "Number of batches abandoned or dead-lettered after storage write retries were exhausted");
 
+        this.StorageBatchesReplayed = this.meter.CreateCounter<long>(
+            "ais.storage.batches.replayed",
+            unit: "{batch}",
+            description: "Number of dead-lettered batches successfully replayed to storage after the backend recovered");
+
         this.ConnectionAttempts = this.meter.CreateCounter<long>(
             "ais.receiver.connection.attempts",
             unit: "{attempt}",
@@ -133,6 +138,11 @@ public sealed class ApplicationMetrics : IDisposable
     /// Gets the counter for batches abandoned or dead-lettered after storage write retries were exhausted.
     /// </summary>
     public Counter<long> StorageBatchesFailed { get; }
+
+    /// <summary>
+    /// Gets the counter for dead-lettered batches successfully replayed to storage after the backend recovered.
+    /// </summary>
+    public Counter<long> StorageBatchesReplayed { get; }
 
     /// <summary>
     /// Gets the counter for connection attempts.

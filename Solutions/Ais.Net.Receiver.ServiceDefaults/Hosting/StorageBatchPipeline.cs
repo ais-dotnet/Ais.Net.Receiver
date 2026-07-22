@@ -30,6 +30,7 @@ public sealed class StorageBatchPipeline : IAsyncDisposable
     private readonly IDisposable subscription;
     private readonly Action<Exception> onPersistError;
     private readonly Action<long> onSentencesDropped;
+    private readonly DeadLetterReplayer? replayer;
     private long droppedSentences;
     private int stopped;
 
@@ -43,13 +44,15 @@ public sealed class StorageBatchPipeline : IAsyncDisposable
     /// <param name="metrics">Optional application metrics.</param>
     /// <param name="onPersistError">Invoked when a batch cannot be persisted (after the pipeline records the exception on the current activity).</param>
     /// <param name="onSentencesDropped">Invoked with the running dropped-sentence total when the bounded buffer sheds load (throttled: first drop, then every ten-thousandth).</param>
+    /// <param name="replayer">Optional dead-letter replayer; when supplied it is owned by this pipeline and stopped on disposal before the storage client is disposed.</param>
     public StorageBatchPipeline(
         IObservable<ReadOnlyMemory<byte>> rawSentences,
         IStorageClient storageClient,
         StorageBatchOptions options,
         ApplicationMetrics? metrics,
         Action<Exception> onPersistError,
-        Action<long> onSentencesDropped)
+        Action<long> onSentencesDropped,
+        DeadLetterReplayer? replayer = null)
     {
         ArgumentNullException.ThrowIfNull(rawSentences);
         ArgumentNullException.ThrowIfNull(storageClient);
@@ -60,6 +63,7 @@ public sealed class StorageBatchPipeline : IAsyncDisposable
         this.metrics = metrics;
         this.onPersistError = onPersistError;
         this.onSentencesDropped = onSentencesDropped;
+        this.replayer = replayer;
 
         this.batchBlock = new BatchBlock<ReadOnlyMemory<byte>>(
             options.WriteBatchSize,
@@ -129,6 +133,13 @@ public sealed class StorageBatchPipeline : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         await this.StopFeedingAsync().ConfigureAwait(false);
+
+        // Stop replay before disposing the storage client it writes through.
+        if (this.replayer is not null)
+        {
+            await this.replayer.DisposeAsync().ConfigureAwait(false);
+        }
+
         this.storageClient.Dispose();
     }
 

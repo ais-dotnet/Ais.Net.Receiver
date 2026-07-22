@@ -22,6 +22,7 @@ public class AzureAppendBlobStorageClient : IStorageClient
     private readonly ApplicationInstrumentation? instrumentation;
     private readonly ILogger? logger;
     private readonly SemaphoreSlim initializationLock = new(1, 1);
+    private readonly SemaphoreSlim writeLock = new(1, 1);
     private BlobContainerClient? blobContainerClient;
     private BlobTarget? currentTarget;
 
@@ -62,6 +63,11 @@ public class AzureAppendBlobStorageClient : IStorageClient
         using Activity? activity = this.instrumentation?.ActivitySource.StartActivity("StorageWrite");
         Stopwatch stopwatch = Stopwatch.StartNew();
 
+        // Serialize appends so concurrent callers - notably live capture and dead-letter replay -
+        // never interleave blocks on the same append blob (append order is only well-defined for a
+        // single writer). The batching pipeline already writes with a single worker, so this is
+        // uncontended in the common case and only matters when replay is also running.
+        await this.writeLock.WaitAsync().ConfigureAwait(false);
         try
         {
             // Snapshot the current blob target once; using this local rather than the field means a
@@ -105,11 +111,16 @@ public class AzureAppendBlobStorageClient : IStorageClient
             this.logger?.BlobWriteFailed(ex);
             throw;
         }
+        finally
+        {
+            this.writeLock.Release();
+        }
     }
 
     public void Dispose()
     {
         this.initializationLock.Dispose();
+        this.writeLock.Dispose();
         GC.SuppressFinalize(this);
     }
 

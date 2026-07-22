@@ -104,6 +104,22 @@ public static class ReceiverPipeline
             metrics,
             storageLogger);
 
+        // When dead-lettering is enabled, run a background replayer that drains the local dead-letter
+        // directory back to storage once it recovers. It writes through the underlying blob client
+        // (which serializes appends), so replayed batches never race live capture.
+        DeadLetterReplayer? replayer = null;
+        if (storageConfig.DeadLetterPath is not null)
+        {
+            DeadLetterStore deadLetterStore = new(storageConfig.DeadLetterPath, timeProvider);
+            replayer = new DeadLetterReplayer(
+                deadLetterStore,
+                blobStorageClient,
+                timeProvider,
+                TimeSpan.FromSeconds(storageConfig.DeadLetterReplayIntervalSeconds),
+                storageLogger,
+                metrics);
+        }
+
         StorageBatchOptions options = new(
             storageConfig.WriteBatchSize,
             storageConfig.BoundedCapacity,
@@ -120,7 +136,8 @@ public static class ReceiverPipeline
             options,
             metrics,
             onPersistError,
-            onSentencesDropped);
+            onSentencesDropped,
+            replayer);
     }
 
     /// <summary>

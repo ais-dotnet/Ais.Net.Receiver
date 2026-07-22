@@ -20,9 +20,8 @@ namespace Ais.Net.Receiver.Storage;
 public sealed class ResilientStorageClient : IStorageClient
 {
     private readonly IStorageClient inner;
-    private readonly TimeProvider timeProvider;
     private readonly ResiliencePipeline retryPipeline;
-    private readonly string? deadLetterPath;
+    private readonly DeadLetterStore? deadLetterStore;
     private readonly ApplicationMetrics? metrics;
     private readonly ILogger? logger;
 
@@ -46,9 +45,8 @@ public sealed class ResilientStorageClient : IStorageClient
         ILogger? logger = null)
     {
         this.inner = inner ?? throw new ArgumentNullException(nameof(inner));
-        this.timeProvider = timeProvider;
         this.retryPipeline = RetryPipelines.ConstantDelay(retryPeriodicity, maxAttempts);
-        this.deadLetterPath = deadLetterPath;
+        this.deadLetterStore = deadLetterPath is null ? null : new DeadLetterStore(deadLetterPath, timeProvider);
         this.metrics = metrics;
         this.logger = logger;
     }
@@ -69,7 +67,7 @@ public sealed class ResilientStorageClient : IStorageClient
         {
             this.metrics?.StorageBatchesFailed.Add(1);
 
-            if (this.deadLetterPath is not null)
+            if (this.deadLetterStore is not null)
             {
                 await this.WriteDeadLetterAsync(batch).ConfigureAwait(false);
                 return;
@@ -85,20 +83,7 @@ public sealed class ResilientStorageClient : IStorageClient
 
     private async Task WriteDeadLetterAsync(IReadOnlyList<ReadOnlyMemory<byte>> batch)
     {
-        Directory.CreateDirectory(this.deadLetterPath!);
-        string file = Path.Combine(
-            this.deadLetterPath!,
-            $"deadletter-{this.timeProvider.GetUtcNow():yyyyMMddTHHmmssfff}-{Guid.NewGuid():N}.nm4");
-
-        await using (FileStream stream = new(file, FileMode.CreateNew, FileAccess.Write))
-        {
-            foreach (ReadOnlyMemory<byte> message in batch)
-            {
-                await stream.WriteAsync(message).ConfigureAwait(false);
-                stream.WriteByte((byte)'\n');
-            }
-        }
-
+        string file = await this.deadLetterStore!.WriteAsync(batch).ConfigureAwait(false);
         this.logger?.StorageBatchDeadLettered(batch.Count, file, new IOException("storage write retries exhausted"));
     }
 }

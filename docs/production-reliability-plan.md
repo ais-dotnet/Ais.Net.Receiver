@@ -67,6 +67,20 @@ file for later replay. Verify `BlobClientOptions.Retry` is configured on the cli
 **Acceptance.** Mock storage client that fails N times then succeeds proves retry; terminal-failure
 test asserts the failed counter increments (and the dead-letter file is written, if implemented).
 
+**Done (with replay).** `ResilientStorageClient` retries via Polly, then dead-letters each still-failing
+batch to `DeadLetterPath` as an atomic `.nm4` file (staged then renamed, via `DeadLetterStore`). A
+background `DeadLetterReplayer` sweeps that directory every `DeadLetterReplayIntervalSeconds` (default
+60) and re-persists each batch once the backend recovers, deleting the file on success and stopping at
+the first still-failing batch so it never hammers a down backend. Replay writes through the underlying
+`AzureAppendBlobStorageClient`, which now serializes appends with a write lock, so replayed batches
+never race live capture on the append blob. Surfaced via `ais.storage.batches.replayed`. Wired in
+`ReceiverPipeline`/`StorageBatchPipeline`, so both hosts get it with no host changes. Covered by
+`DeadLetterStore` round-trip tests and `DeadLetterReplayer` tests (replay-and-delete, leave-on-failure,
+recover-on-later-sweep). *Caveat — at-least-once, current-hour:* a crash after a successful replay but
+before the file delete would replay that batch again (harmless duplicate lines, which carry their own
+timestamp tags), and replayed sentences land in the current hour's blob rather than their original
+hour. Both are acceptable for a raw capture archive; exact-hour routing would be a further change.
+
 ### R3. Managed-identity auth  ·  Status: Not planned (by decision)
 Connection-string auth is retained by choice for now. Recorded for context only; revisit only if
 secret management becomes a requirement — the drop-in would be `DefaultAzureCredential` + a

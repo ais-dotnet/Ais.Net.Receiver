@@ -45,4 +45,12 @@ public class StorageConfig
     /// is written here (newline-separated NMEA) for later replay instead of being dropped.
     /// </summary>
     public string? DeadLetterPath { get; set; }
+
+    /// <summary>
+    /// How often, in seconds, to sweep <see cref="DeadLetterPath"/> and replay dead-lettered batches
+    /// back to storage once the backend recovers. Only has an effect when <see cref="DeadLetterPath"/>
+    /// is set.
+    /// </summary>
+    [Range(1, 3600)]
+    public int DeadLetterReplayIntervalSeconds { get; set; } = 60;
 }
