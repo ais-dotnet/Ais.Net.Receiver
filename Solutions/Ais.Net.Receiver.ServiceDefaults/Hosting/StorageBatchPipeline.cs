@@ -13,10 +13,12 @@ namespace Ais.Net.Receiver.Hosting;
 
 /// <summary>
 /// Batches raw NMEA sentence bytes from a stream and persists each batch through an
-/// <see cref="IStorageClient"/>. A bounded dataflow buffer provides backpressure; a timer flushes
-/// partial batches so latency stays bounded even at low message rates. Both the console and worker
-/// hosts share this pipeline so the batching, backpressure, and shutdown-flush logic lives in one
-/// place; the hosts supply only the sink-specific logging via the callbacks.
+/// <see cref="IStorageClient"/>. Both stages are bounded, so if the storage backend stalls the buffers
+/// fill, backpressure propagates back to the source, and load is shed through the drop callback rather
+/// than memory growing without limit; a timer flushes partial batches so latency stays bounded even at
+/// low message rates. Both the console and worker hosts share this pipeline so the batching,
+/// backpressure, and shutdown-flush logic lives in one place; the hosts supply only the sink-specific
+/// logging via the callbacks.
 /// </summary>
 public sealed class StorageBatchPipeline : IAsyncDisposable
 {
@@ -65,7 +67,18 @@ public sealed class StorageBatchPipeline : IAsyncDisposable
 
         this.actionBlock = new ActionBlock<IEnumerable<ReadOnlyMemory<byte>>>(
             this.PersistBatchAsync,
-            new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = options.MaxDegreeOfParallelism });
+            new ExecutionDataflowBlockOptions
+            {
+                MaxDegreeOfParallelism = options.MaxDegreeOfParallelism,
+
+                // Bound the action block so a stalled storage backend cannot grow this queue without
+                // limit. When it fills, the batch block backs up to its own bounded capacity and then
+                // sheds load through the backpressure callback - so total buffered memory is bounded
+                // end-to-end and drops are surfaced rather than the process eventually running out of
+                // memory. The batch block remains the main (configurable) buffer; this is just enough
+                // headroom to keep every persist worker fed plus one batch ready to hand off.
+                BoundedCapacity = options.MaxPendingBatches,
+            });
 
         this.batchBlock.LinkTo(this.actionBlock, new DataflowLinkOptions { PropagateCompletion = true });
 
@@ -159,11 +172,13 @@ public sealed class StorageBatchPipeline : IAsyncDisposable
 /// The tuning knobs for a <see cref="StorageBatchPipeline"/>.
 /// </summary>
 /// <param name="WriteBatchSize">The number of sentences per persisted batch.</param>
-/// <param name="BoundedCapacity">The maximum number of pending sentences buffered before backpressure sheds load.</param>
+/// <param name="BoundedCapacity">The maximum number of pending sentences buffered in the batch block before backpressure sheds load.</param>
 /// <param name="BatchTimeout">The interval at which a partial batch is force-flushed.</param>
 /// <param name="MaxDegreeOfParallelism">The maximum number of batches persisted concurrently.</param>
+/// <param name="MaxPendingBatches">The maximum number of formed batches queued at the persist stage; bounds downstream memory so backpressure propagates back to the batch block. Should be at least <paramref name="MaxDegreeOfParallelism"/> so every persist worker can stay busy.</param>
 public readonly record struct StorageBatchOptions(
     int WriteBatchSize,
     int BoundedCapacity,
     TimeSpan BatchTimeout,
-    int MaxDegreeOfParallelism);
+    int MaxDegreeOfParallelism,
+    int MaxPendingBatches);

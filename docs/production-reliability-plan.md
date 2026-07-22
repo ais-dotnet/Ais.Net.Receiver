@@ -97,10 +97,17 @@ a new package. Both hosts now shed ~220 duplicated lines and supply only their s
 (`ILogger` vs `AnsiConsole`). The pipeline is unit-tested for the first time (batching, shutdown
 flush, persist-error reporting). The verbosity/metrics *subscriptions* stay in each host because they
 diverge by output sink; only the batch pipeline, storage-client stack, host construction, and
-error-type switch were unified. *Observation while extracting:* the `ActionBlock` is unbounded, so the
-`BatchBlock`'s bounded capacity rarely sheds load — backpressure drops are effectively unreachable
-today and memory would instead grow in the action block's queue under a sustained storage outage.
-Left as-is (behaviour-preserving) — bounding the action block is a separate resilience change.
+error-type switch were unified.
+
+**Follow-up (backpressure made real).** While extracting, the `ActionBlock` was found to be unbounded,
+so the `BatchBlock`'s bounded capacity rarely shed load — drops were effectively unreachable and memory
+would instead grow in the action block's queue during a sustained storage stall. The action block is
+now bounded (`MaxPendingBatches` = `MaxDegreeOfParallelism + 1`): when the persist stage stalls, the
+buffers fill, backpressure propagates back to the source, and load is shed through the drop callback
+(surfaced via the `ais.receiver.sentences.dropped` metric and a throttled log) instead of growing
+without limit. Total buffered memory is now bounded end-to-end; the `BatchBlock` remains the main
+configurable buffer. Covered by a new test that saturates the pipeline behind a stalled backend and
+asserts load is shed.
 
 ---
 

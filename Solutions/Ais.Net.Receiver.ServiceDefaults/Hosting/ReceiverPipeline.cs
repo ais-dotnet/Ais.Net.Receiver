@@ -108,7 +108,11 @@ public static class ReceiverPipeline
             storageConfig.WriteBatchSize,
             storageConfig.BoundedCapacity,
             TimeSpan.FromSeconds(storageConfig.BatchTimeoutSeconds),
-            storageConfig.MaxDegreeOfParallelism);
+            storageConfig.MaxDegreeOfParallelism,
+
+            // One queued batch per persist worker plus one ready to hand off: enough to keep the
+            // workers fed without letting the persist queue grow unbounded during a storage stall.
+            MaxPendingBatches: storageConfig.MaxDegreeOfParallelism + 1);
 
         return new StorageBatchPipeline(
             rawSentences,

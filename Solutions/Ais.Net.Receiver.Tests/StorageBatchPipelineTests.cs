@@ -20,7 +20,7 @@ public class StorageBatchPipelineTests
 
         // Batch size far above what we send and an effectively infinite timer, so the only thing
         // that can flush the partial batch is FlushAsync itself.
-        StorageBatchOptions options = new(WriteBatchSize: 100, BoundedCapacity: 1000, BatchTimeout: TimeSpan.FromHours(1), MaxDegreeOfParallelism: 1);
+        StorageBatchOptions options = new(WriteBatchSize: 100, BoundedCapacity: 1000, BatchTimeout: TimeSpan.FromHours(1), MaxDegreeOfParallelism: 1, MaxPendingBatches: 4);
 
         await using StorageBatchPipeline pipeline = new(
             source, storage, options, metrics: null,
@@ -52,7 +52,7 @@ public class StorageBatchPipelineTests
             return Task.CompletedTask;
         });
 
-        StorageBatchOptions options = new(WriteBatchSize: 3, BoundedCapacity: 100, BatchTimeout: TimeSpan.FromHours(1), MaxDegreeOfParallelism: 1);
+        StorageBatchOptions options = new(WriteBatchSize: 3, BoundedCapacity: 100, BatchTimeout: TimeSpan.FromHours(1), MaxDegreeOfParallelism: 1, MaxPendingBatches: 4);
 
         await using StorageBatchPipeline pipeline = new(
             source, storage, options, metrics: null,
@@ -76,7 +76,7 @@ public class StorageBatchPipelineTests
         List<Exception> errors = [];
 
         // Batch size 1 so a single sentence forms a batch and is persisted immediately.
-        StorageBatchOptions options = new(WriteBatchSize: 1, BoundedCapacity: 100, BatchTimeout: TimeSpan.FromHours(1), MaxDegreeOfParallelism: 1);
+        StorageBatchOptions options = new(WriteBatchSize: 1, BoundedCapacity: 100, BatchTimeout: TimeSpan.FromHours(1), MaxDegreeOfParallelism: 1, MaxPendingBatches: 4);
 
         await using StorageBatchPipeline pipeline = new(
             source, storage, options, metrics: null,
@@ -91,6 +91,40 @@ public class StorageBatchPipelineTests
 
         await errorSeen.Task.WaitAsync(TimeSpan.FromSeconds(10));
         errors.ShouldHaveSingleItem().ShouldBeOfType<IOException>();
+    }
+
+    [TestMethod]
+    public async Task WhenBufferSaturatesBehindStalledStorage_ShedsLoadViaDropCallback()
+    {
+        Subject<ReadOnlyMemory<byte>> source = new();
+        TaskCompletionSource gate = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        // Persist blocks until the gate is released, so the storage stage never drains.
+        RecordingStorageClient storage = new(onPersist: () => gate.Task);
+        bool loadShed = false;
+
+        // Tiny buffers at both stages: total capacity is a handful of items, so a burst far larger
+        // than that cannot be absorbed while the consumer is stalled - it must be shed.
+        StorageBatchOptions options = new(
+            WriteBatchSize: 1, BoundedCapacity: 1, BatchTimeout: TimeSpan.FromHours(1),
+            MaxDegreeOfParallelism: 1, MaxPendingBatches: 1);
+
+        await using StorageBatchPipeline pipeline = new(
+            source, storage, options, metrics: null,
+            onPersistError: static _ => { },
+            onSentencesDropped: _ => loadShed = true);
+
+        // Subject.OnNext runs the backpressure observer synchronously on this thread, so every
+        // declined Post (and its drop callback) has resolved by the time the loop returns.
+        for (int i = 0; i < 200; i++)
+        {
+            source.OnNext(new byte[] { (byte)i });
+        }
+
+        // Release the stalled persist so the pipeline can drain cleanly on disposal.
+        gate.SetResult();
+
+        loadShed.ShouldBeTrue();
     }
 
     private sealed class RecordingStorageClient : IStorageClient
