@@ -187,7 +187,23 @@ public class ReceiveCommand : AsyncCommand<ReceiveCommand.Settings>
                 TimeSpan.FromSeconds(this.storageConfig.BatchTimeoutSeconds));
 
             subscriptions.Add(batchTimer);
-            subscriptions.Add(receiverHost.RawSentences.Subscribe(batchBlock.AsObserver()));
+
+            // Surface backpressure drops rather than losing them silently (AsObserver would
+            // post-and-ignore, so a full bounded block would drop unseen).
+            BatchBlock<ReadOnlyMemory<byte>> block = batchBlock;
+            long droppedSentences = 0;
+            subscriptions.Add(
+                receiverHost.RawSentences.SubscribeWithBackpressure(
+                    message => block.Post(message),
+                    () =>
+                    {
+                        metrics?.SentencesDropped.Add(1);
+                        long total = Interlocked.Increment(ref droppedSentences);
+                        if (total == 1 || total % 10_000 == 0)
+                        {
+                            AnsiConsole.MarkupLine($"[yellow]Storage backpressure: {total:N0} sentences dropped (batch buffer full)[/]");
+                        }
+                    }));
         }
 
         // Handle Ctrl+C gracefully

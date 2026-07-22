@@ -22,9 +22,8 @@ public class AzureAppendBlobStorageClient : IStorageClient
     private readonly ApplicationInstrumentation? instrumentation;
     private readonly ILogger? logger;
     private readonly SemaphoreSlim initializationLock = new(1, 1);
-    private AppendBlobClient? appendBlobClient;
     private BlobContainerClient? blobContainerClient;
-    private string? currentBlobPath;
+    private BlobTarget? currentTarget;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AzureAppendBlobStorageClient"/> class.
@@ -65,7 +64,9 @@ public class AzureAppendBlobStorageClient : IStorageClient
 
         try
         {
-            await this.EnsureCurrentHourBlobInitializedAsync().ConfigureAwait(false);
+            // Snapshot the current blob target once; using this local rather than the field means a
+            // concurrent hour-boundary swap can never redirect this batch to the wrong blob.
+            BlobTarget target = await this.EnsureCurrentHourBlobInitializedAsync().ConfigureAwait(false);
 
             // Write the raw sentence bytes straight into the block, newline-separated. This avoids
             // the bytes -> string -> UTF-8 round trip the previous StreamWriter path incurred (and,
@@ -82,12 +83,12 @@ public class AzureAppendBlobStorageClient : IStorageClient
             long byteCount = stream.Length;
             activity?.SetTag("ais.storage.message_count", messageCount);
             activity?.SetTag("ais.storage.bytes", byteCount);
-            activity?.SetTag("ais.storage.blob_path", this.currentBlobPath);
+            activity?.SetTag("ais.storage.blob_path", target.Path);
 
-            this.logger?.WritingBatch(messageCount, byteCount, this.currentBlobPath ?? "unknown");
+            this.logger?.WritingBatch(messageCount, byteCount, target.Path);
 
             stream.Position = 0;
-            await this.appendBlobClient!.AppendBlockAsync(stream).ConfigureAwait(false);
+            await target.Client.AppendBlockAsync(stream).ConfigureAwait(false);
 
             // Record metrics
             this.metrics?.StorageWriteOperations.Add(1);
@@ -112,14 +113,28 @@ public class AzureAppendBlobStorageClient : IStorageClient
         GC.SuppressFinalize(this);
     }
 
-    private async Task EnsureCurrentHourBlobInitializedAsync()
-    {
-        DateTimeOffset timestamp = this.timeProvider.GetUtcNow();
-        string newBlobPath = $"raw/{timestamp:yyyy}/{timestamp:MM}/{timestamp:dd}/{timestamp:yyyyMMddTHH}.nm4";
+    /// <summary>
+    /// Computes the hourly, date-partitioned blob path for a timestamp
+    /// (<c>raw/yyyy/MM/dd/yyyyMMddTHH.nm4</c>).
+    /// </summary>
+    internal static string GetHourlyBlobPath(DateTimeOffset timestamp) =>
+        $"raw/{timestamp:yyyy}/{timestamp:MM}/{timestamp:dd}/{timestamp:yyyyMMddTHH}.nm4";
 
-        if (this.appendBlobClient is not null && this.currentBlobPath == newBlobPath)
+    /// <summary>
+    /// Creates the container client. Overridable so tests can substitute a fake without a live account.
+    /// </summary>
+    protected virtual BlobContainerClient CreateBlobContainerClient() =>
+        new(this.configuration.ConnectionString, this.configuration.ContainerName);
+
+    private async Task<BlobTarget> EnsureCurrentHourBlobInitializedAsync()
+    {
+        string newBlobPath = GetHourlyBlobPath(this.timeProvider.GetUtcNow());
+
+        // Fast path: a single atomic read of the current target (reference reads are atomic).
+        BlobTarget? target = this.currentTarget;
+        if (target is not null && target.Path == newBlobPath)
         {
-            return;
+            return target;
         }
 
         using Activity? activity = this.instrumentation?.ActivitySource.StartActivity("BlobInitialization");
@@ -129,29 +144,29 @@ public class AzureAppendBlobStorageClient : IStorageClient
 
         try
         {
-            if (this.appendBlobClient is not null && this.currentBlobPath == newBlobPath)
+            target = this.currentTarget;
+            if (target is not null && target.Path == newBlobPath)
             {
-                return;
+                return target;
             }
 
-            this.currentBlobPath = newBlobPath;
             activity?.SetTag("ais.storage.blob_path", newBlobPath);
-
             this.logger?.InitializingBlob(newBlobPath);
 
-            this.blobContainerClient ??= new BlobContainerClient(
-                this.configuration.ConnectionString,
-                this.configuration.ContainerName);
-
-            this.appendBlobClient = this.blobContainerClient.GetAppendBlobClient(newBlobPath);
+            this.blobContainerClient ??= this.CreateBlobContainerClient();
+            AppendBlobClient blobClient = this.blobContainerClient.GetAppendBlobClient(newBlobPath);
 
             await this.blobContainerClient.CreateIfNotExistsAsync().ConfigureAwait(false);
-            await this.appendBlobClient.CreateIfNotExistsAsync().ConfigureAwait(false);
+            await blobClient.CreateIfNotExistsAsync().ConfigureAwait(false);
+
+            target = new BlobTarget(blobClient, newBlobPath);
+            this.currentTarget = target; // atomic publish of the new (client, path) pair
 
             this.logger?.BlobCreated(newBlobPath);
 
             stopwatch.Stop();
             this.logger?.BlobInitializationCompleted(stopwatch.Elapsed.TotalMilliseconds);
+            return target;
         }
         catch (Exception ex)
         {
@@ -163,4 +178,6 @@ public class AzureAppendBlobStorageClient : IStorageClient
             this.initializationLock.Release();
         }
     }
+
+    private sealed record BlobTarget(AppendBlobClient Client, string Path);
 }

@@ -41,4 +41,8 @@
     <ProjectReference Include="..\Ais.Net.Receiver\Ais.Net.Receiver.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Ais.Net.Receiver.Tests" />
+  </ItemGroup>
+
 </Project>

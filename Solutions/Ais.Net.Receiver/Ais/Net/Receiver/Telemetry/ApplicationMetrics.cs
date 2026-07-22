@@ -40,6 +40,11 @@ public sealed class ApplicationMetrics : IDisposable
             unit: "{sentence}",
             description: "Number of NMEA sentences received");
 
+        this.SentencesDropped = this.meter.CreateCounter<long>(
+            "ais.receiver.sentences.dropped",
+            unit: "{sentence}",
+            description: "Number of NMEA sentences dropped because the storage batch buffer was full");
+
         this.ErrorsReceived = this.meter.CreateCounter<long>(
             "ais.receiver.errors",
             unit: "{error}",
@@ -98,6 +103,11 @@ public sealed class ApplicationMetrics : IDisposable
     /// Gets the counter for received NMEA sentences.
     /// </summary>
     public Counter<long> SentencesReceived { get; }
+
+    /// <summary>
+    /// Gets the counter for NMEA sentences dropped because the storage batch buffer was full.
+    /// </summary>
+    public Counter<long> SentencesDropped { get; }
 
     /// <summary>
     /// Gets the counter for errors encountered during processing.

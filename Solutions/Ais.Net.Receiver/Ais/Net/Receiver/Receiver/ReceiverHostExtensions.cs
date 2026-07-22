@@ -90,6 +90,29 @@ public static class ReceiverHostExtensions
     }
 
     /// <summary>
+    /// Subscribes to <paramref name="source"/> and feeds each item to <paramref name="tryConsume"/>.
+    /// When the consumer declines an item (returns <see langword="false"/> — e.g. a bounded dataflow
+    /// block at capacity), <paramref name="onDropped"/> is invoked so the drop is surfaced rather than
+    /// lost silently.
+    /// </summary>
+    /// <typeparam name="T">The stream item type.</typeparam>
+    /// <param name="source">The source stream.</param>
+    /// <param name="tryConsume">Consumes an item; returns <see langword="false"/> if it was declined.</param>
+    /// <param name="onDropped">Invoked once per declined item.</param>
+    /// <returns>The subscription.</returns>
+    public static IDisposable SubscribeWithBackpressure<T>(
+        this IObservable<T> source,
+        Func<T, bool> tryConsume,
+        Action onDropped) =>
+        source.Subscribe(item =>
+        {
+            if (!tryConsume(item))
+            {
+                onDropped();
+            }
+        });
+
+    /// <summary>
     /// Provides a running count of events provided by an observable stream.
     /// </summary>
     /// <typeparam name="T">Type of events to count.</typeparam>

@@ -120,4 +120,10 @@ internal static partial class Log
         Level = LogLevel.Error,
         Message = "Storage persistence failed")]
     public static partial void StoragePersistenceFailed(this ILogger logger, Exception exception);
+
+    [LoggerMessage(
+        EventId = 1303,
+        Level = LogLevel.Warning,
+        Message = "Storage backpressure: {TotalDropped} NMEA sentences dropped (batch buffer full)")]
+    public static partial void SentencesDropped(this ILogger logger, long totalDropped);
 }

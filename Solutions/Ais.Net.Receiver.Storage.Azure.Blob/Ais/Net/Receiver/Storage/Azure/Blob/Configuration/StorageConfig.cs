@@ -25,6 +25,11 @@ public class StorageConfig
     [Range(1, 100000)]
     public int BoundedCapacity { get; set; } = 10000;
 
+    /// <summary>
+    /// Parallelism for storage writes. Defaults to 1: an hourly append blob is written sequentially,
+    /// so concurrent writers would reorder blocks and race the hour-boundary blob swap. Only raise
+    /// this if you understand those trade-offs.
+    /// </summary>
     [Range(1, 8)]
-    public int MaxDegreeOfParallelism { get; set; } = 2;
+    public int MaxDegreeOfParallelism { get; set; } = 1;
 }

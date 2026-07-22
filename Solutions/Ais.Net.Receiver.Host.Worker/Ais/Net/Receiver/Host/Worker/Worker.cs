@@ -327,6 +327,21 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
             TimeSpan.FromSeconds(storageConfig.BatchTimeoutSeconds),
             TimeSpan.FromSeconds(storageConfig.BatchTimeoutSeconds));
 
-        this.subscriptions.Add(this.receiverHost.RawSentences.Subscribe(this.batchBlock.AsObserver()));
+        // Feed sentences into the batch, but surface backpressure drops instead of losing them
+        // silently: AsObserver would post-and-ignore, so a full bounded block would drop unseen.
+        BatchBlock<ReadOnlyMemory<byte>> block = this.batchBlock;
+        long droppedSentences = 0;
+        this.subscriptions.Add(
+            this.receiverHost.RawSentences.SubscribeWithBackpressure(
+                message => block.Post(message),
+                () =>
+                {
+                    this.metrics.SentencesDropped.Add(1);
+                    long total = Interlocked.Increment(ref droppedSentences);
+                    if (total == 1 || total % 10_000 == 0)
+                    {
+                        this.logger.SentencesDropped(total);
+                    }
+                }));
     }
 }
