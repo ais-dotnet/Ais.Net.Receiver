@@ -1,7 +1,9 @@
 # See https://aka.ms/customizecontainer to learn how to customize your debug container and how Visual Studio uses this Dockerfile to build your images for faster debugging.
 
 # This stage is used when running from VS in fast mode (Default for Debug configuration)
-FROM mcr.microsoft.com/dotnet/runtime:10.0-noble-chiseled AS base
+# aspnet (not runtime): the host references Ais.Net.Receiver.ServiceDefaults, which brings in the
+# Microsoft.AspNetCore.App shared framework - so the app requires the ASP.NET Core runtime.
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled AS base
 USER $APP_UID
 WORKDIR /app
 
@@ -10,6 +12,7 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0-noble AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["Ais.Net.Receiver.Host.Worker/Ais.Net.Receiver.Host.Worker.csproj", "Ais.Net.Receiver.Host.Worker/"]
+COPY ["Ais.Net.Receiver.ServiceDefaults/Ais.Net.Receiver.ServiceDefaults.csproj", "Ais.Net.Receiver.ServiceDefaults/"]
 COPY ["Ais.Net.Receiver.Storage.Azure.Blob/Ais.Net.Receiver.Storage.Azure.Blob.csproj", "Ais.Net.Receiver.Storage.Azure.Blob/"]
 COPY ["Ais.Net.Receiver/Ais.Net.Receiver.csproj", "Ais.Net.Receiver/"]
 RUN dotnet restore "./Ais.Net.Receiver.Host.Worker/Ais.Net.Receiver.Host.Worker.csproj"
