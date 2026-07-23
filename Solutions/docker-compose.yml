@@ -15,6 +15,10 @@ services:
       - Storage__connectionString=${AIS_NET_RECEIVER_AZURE_CONNECTION_STRING}
       - Storage__containerName=nmea-ais-dev
       - Storage__writeBatchSize=500
+      # Persist batches that still fail after retries, then replay them when storage recovers.
+      - Storage__deadLetterPath=/data/deadletter
+    volumes:
+      - console-deadletter:/data/deadletter
   ais.net.receiver.host.worker:
     image: ${DOCKER_REGISTRY-}aisnetreceiverhostworker
     build:
@@ -31,3 +35,13 @@ services:
       - Storage__connectionString=${AIS_NET_RECEIVER_AZURE_CONNECTION_STRING}
       - Storage__containerName=nmea-ais-dev
       - Storage__writeBatchSize=500
+      # Persist batches that still fail after retries, then replay them when storage recovers.
+      - Storage__deadLetterPath=/data/deadletter
+    volumes:
+      - worker-deadletter:/data/deadletter
+
+# Named volumes inherit the /data/deadletter directory's app-user ownership from the image, so the
+# non-root container process can write dead-letter files to them.
+volumes:
+  console-deadletter:
+  worker-deadletter:
