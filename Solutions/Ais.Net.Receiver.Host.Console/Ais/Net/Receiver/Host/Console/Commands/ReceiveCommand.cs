@@ -101,7 +101,7 @@ public class ReceiveCommand : AsyncCommand<ReceiveCommand.Settings>
                 receiverHost.Messages.VesselNavigationWithNameStream(this.aisConfig.Telemetry.VesselInactivityTimeout).Subscribe(navigationWithName =>
                 {
                     (uint mmsi, IVesselNavigation navigation, IVesselName name) = navigationWithName;
-                    string positionText = navigation.Position is null ? "unknown position" : $"{navigation.Position.Latitude},{navigation.Position.Longitude}";
+                    string positionText = navigation.Position is { } position ? $"{position.Latitude},{position.Longitude}" : "unknown position";
 
                     AnsiConsole.MarkupLine($"[green][[{mmsi}: '{Markup.Escape(name.VesselName.CleanVesselName())}' ]] - [[{Markup.Escape(positionText)}]] - [[{navigation.CourseOverGround ?? 0}]][/]");
                 }));

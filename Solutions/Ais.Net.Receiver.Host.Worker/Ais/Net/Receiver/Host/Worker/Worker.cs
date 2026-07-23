@@ -205,7 +205,7 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
                 this.receiverHost.Messages.VesselNavigationWithNameStream(aisConfig.Telemetry.VesselInactivityTimeout).Subscribe(navigationWithName =>
                 {
                     (uint mmsi, IVesselNavigation navigation, IVesselName name) = navigationWithName;
-                    string positionText = navigation.Position is null ? "unknown position" : $"{navigation.Position.Latitude},{navigation.Position.Longitude}";
+                    string positionText = navigation.Position is { } position ? $"{position.Latitude},{position.Longitude}" : "unknown position";
 
                     if (this.logger.IsEnabled(LogLevel.Information))
                     {

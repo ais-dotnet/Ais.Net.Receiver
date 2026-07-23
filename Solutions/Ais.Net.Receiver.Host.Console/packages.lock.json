@@ -644,7 +644,7 @@
       "ais.net.receiver": {
         "type": "Project",
         "dependencies": {
-          "Ais.Net.Models": "[0.3.1, )",
+          "Ais.Net.Models": "[1.0.1, )",
           "Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions": "[10.0.10, )",
           "Microsoft.Extensions.Logging.Abstractions": "[10.0.10, )",
           "OpenTelemetry.Api": "[1.17.0, )",
@@ -679,9 +679,9 @@
       },
       "Ais.Net.Models": {
         "type": "CentralTransitive",
-        "requested": "[0.3.1, )",
-        "resolved": "0.3.1",
-        "contentHash": "HcqGkzYW9BVZ4s9Jny87cH1c4fDkt3FpYtklH/T+vNFnncJmLDFNbAIOqFnO+JqvygBP6qDWo6WyEylAIFrgwQ==",
+        "requested": "[1.0.1, )",
+        "resolved": "1.0.1",
+        "contentHash": "irKtFX2z8wDJB7IKVmeztgyIArczoanL1FLI+zLpUGgWDoutiPAX73V7IJrfMJ96BAeuIkIQUHJFW3ifS26Wlw==",
         "dependencies": {
           "Ais.Net": "0.4.2"
         }
