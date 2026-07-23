@@ -57,16 +57,15 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
             this.aisOptionsMonitor.CurrentValue,
             this.timeProvider,
             this.instrumentation,
-            this.metrics);
+            this.metrics,
+            // Drive connection health from the receiver's real TCP state rather than worker lifetime.
+            onConnectionStateChanged: this.connectionMonitor.RecordConnectionStateChanged);
 
         this.subscriptions = [];
 
         this.SetupMetricsSubscriptions();
         this.SetupLoggingSubscriptions();
         this.SetupStorageIfEnabled();
-
-        // Mark as connected since we're starting
-        this.connectionMonitor.RecordConnectionStateChanged(true);
 
         this.logger.WorkerInitializationComplete();
 

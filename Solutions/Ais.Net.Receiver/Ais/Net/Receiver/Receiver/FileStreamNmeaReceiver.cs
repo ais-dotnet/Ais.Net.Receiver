@@ -33,7 +33,11 @@ public class FileStreamNmeaReceiver : INmeaReceiver
     {
         var file = this.fileSystem.File.Retrieve(this.path);
         this.fileStream = file.OpenRead();
-        this.streamReader = new StreamReader(this.fileStream);
+
+        // Latin1 maps each byte 0-255 to the same-valued char and back, so reading here and
+        // re-encoding below round-trips the original bytes losslessly (ASCII would corrupt any
+        // byte > 0x7F - e.g. in a tag block - to '?').
+        this.streamReader = new StreamReader(this.fileStream, System.Text.Encoding.Latin1);
 
         try
         {
@@ -56,7 +60,7 @@ public class FileStreamNmeaReceiver : INmeaReceiver
                     break;
                 }
 
-                yield return System.Text.Encoding.ASCII.GetBytes(line);
+                yield return System.Text.Encoding.Latin1.GetBytes(line);
             }
         }
         finally

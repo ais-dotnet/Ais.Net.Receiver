@@ -31,28 +31,28 @@ public static class ReceiverHostExtensions
                     (messages, sentences, errors) => (messages, sentences, errors));
 
             return runningCounts.Buffer(period, scheduler ?? Scheduler.Default)
-                .Select(window =>
-                {
-                    switch (window.Count)
+                .Scan(
+                    (LastMessages: 0L, LastSentences: 0L, LastErrors: 0L, Message: 0L, Sentence: 0L, Error: 0L),
+                    (state, window) =>
                     {
-                        // Handle empty window or window with only one element
-                        case 0:
-                            return (Message: 0L, Sentence: 0L, Error: 0L);
-                        case 1:
-                            // With only one element, there's no difference to calculate
-                            return (Message: 0L, Sentence: 0L, Error: 0L);
-                    }
+                        // The running totals are cumulative, so a period's count is the total at the end
+                        // of this window minus the total at the end of the previous window. Diffing
+                        // within a single window (as the old code did) dropped the window's first event
+                        // and reported zero for any single-event window. An empty window (an idle period)
+                        // carries the previous totals forward and reports zeros.
+                        (long messages, long sentences, long errors) = window.Count > 0
+                            ? window[^1]
+                            : (state.LastMessages, state.LastSentences, state.LastErrors);
 
-                    // Normal case with at least two elements
-                    (long firstMessages, long firstSentences, long firstErrors) = window[0];
-                    (long lastMessages, long lastSentences, long lastErrors) = window[^1];
-
-                    return (
-                        Message: lastMessages - firstMessages,
-                        Sentence: lastSentences - firstSentences,
-                        Error: lastErrors - firstErrors
-                    );
-                });
+                        return (
+                            messages,
+                            sentences,
+                            errors,
+                            messages - state.LastMessages,
+                            sentences - state.LastSentences,
+                            errors - state.LastErrors);
+                    })
+                .Select(state => (Message: state.Message, Sentence: state.Sentence, Error: state.Error));
         }
     }
 

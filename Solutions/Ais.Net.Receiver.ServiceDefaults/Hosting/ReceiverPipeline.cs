@@ -31,12 +31,14 @@ public static class ReceiverPipeline
     /// <param name="timeProvider">The time provider.</param>
     /// <param name="instrumentation">Optional application instrumentation for tracing.</param>
     /// <param name="metrics">Optional application metrics.</param>
+    /// <param name="onConnectionStateChanged">Optional callback invoked with the live TCP connection state (true on connect, false on any disconnect/idle/error), e.g. to drive a health check.</param>
     /// <returns>A configured, not-yet-started <see cref="ReceiverHost"/>.</returns>
     public static ReceiverHost CreateHost(
         AisConfig aisConfig,
         TimeProvider timeProvider,
         ApplicationInstrumentation? instrumentation,
-        ApplicationMetrics? metrics)
+        ApplicationMetrics? metrics,
+        Action<bool>? onConnectionStateChanged = null)
     {
         ArgumentNullException.ThrowIfNull(aisConfig);
 
@@ -46,7 +48,8 @@ public static class ReceiverPipeline
             timeProvider,
             aisConfig.Connection.Retry.Periodicity,
             retryAttemptLimit: aisConfig.Connection.Retry.Attempts,
-            metrics: metrics);
+            metrics: metrics,
+            onConnectionStateChanged: onConnectionStateChanged);
 
         return new ReceiverHost(
             receiver,

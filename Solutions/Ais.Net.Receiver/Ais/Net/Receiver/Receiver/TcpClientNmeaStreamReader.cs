@@ -15,6 +15,11 @@ namespace Ais.Net.Receiver.Receiver;
 
 public class TcpClientNmeaStreamReader : INmeaStreamReader
 {
+    // A single NMEA line is well under this; the cap only exists to bound memory if a feed sends a
+    // long burst of bytes with no newline (a malformed or hostile peer) so the pipe cannot grow
+    // without limit.
+    private const int MaxLineLength = 8192;
+
     private readonly ILogger logger;
     private byte[] lineBuffer = new byte[512];
     private TcpClient? tcpClient;
@@ -75,40 +80,81 @@ public class TcpClientNmeaStreamReader : INmeaStreamReader
 
             if (position != null)
             {
+                ReadOnlySequence<byte> lineSlice = buffer.Slice(0, position.Value);
+                SequencePosition afterNewline = buffer.GetPosition(1, position.Value);
+
+                // A newline-terminated line that is still absurdly long is malformed; drop it rather
+                // than surface (and buffer) garbage.
+                if (lineSlice.Length > MaxLineLength)
+                {
+                    this.logger.NmeaLineDiscarded(ClampLength(lineSlice.Length), MaxLineLength);
+                    this.reader.AdvanceTo(afterNewline);
+                    continue;
+                }
+
                 // Found a line. Copy it into a reusable buffer (grown as needed) rather than
                 // allocating a fresh array per line. The returned memory is only valid until the
                 // next ReadLineAsync/DisposeAsync call, as documented on INmeaStreamReader.
-                ReadOnlySequence<byte> line = buffer.Slice(0, position.Value);
-                int length = (int)line.Length;
-
-                if (length > this.lineBuffer.Length)
-                {
-                    this.lineBuffer = new byte[Math.Max(length, this.lineBuffer.Length * 2)];
-                }
-
-                line.CopyTo(this.lineBuffer);
-
-                // Advance reader past the newline
-                this.reader.AdvanceTo(buffer.GetPosition(1, position.Value));
-
-                // Trim \r if present
-                if (length > 0 && this.lineBuffer[length - 1] == (byte)'\r')
-                {
-                    length--;
-                }
-
-                return this.lineBuffer.AsMemory(0, length);
+                ReadOnlyMemory<byte> line = this.CopyLine(lineSlice);
+                this.reader.AdvanceTo(afterNewline);
+                return line;
             }
-
-            this.reader.AdvanceTo(buffer.Start, buffer.End);
 
             if (result.IsCompleted)
             {
-                break;
+                // The stream closed with no further newline. Emit any final, unterminated line
+                // (StreamReader.ReadLineAsync did) before signalling end of stream, unless it is over
+                // the length cap, in which case drop it.
+                if (buffer.Length == 0 || buffer.Length > MaxLineLength)
+                {
+                    if (buffer.Length > 0)
+                    {
+                        this.reader.AdvanceTo(buffer.End);
+                    }
+
+                    break;
+                }
+
+                ReadOnlyMemory<byte> line = this.CopyLine(buffer);
+                this.reader.AdvanceTo(buffer.End);
+                return line;
             }
+
+            // No newline yet. Bound the buffered length so a feed that never sends '\n' cannot grow
+            // the pipe without limit; drop the over-long partial line and resync on the next newline.
+            if (buffer.Length > MaxLineLength)
+            {
+                this.logger.NmeaLineDiscarded(ClampLength(buffer.Length), MaxLineLength);
+                this.reader.AdvanceTo(buffer.End);
+                continue;
+            }
+
+            this.reader.AdvanceTo(buffer.Start, buffer.End);
         }
 
         return null;
+    }
+
+    private static int ClampLength(long length) => (int)Math.Min(length, int.MaxValue);
+
+    private ReadOnlyMemory<byte> CopyLine(ReadOnlySequence<byte> line)
+    {
+        int length = (int)line.Length;
+
+        if (length > this.lineBuffer.Length)
+        {
+            this.lineBuffer = new byte[Math.Max(length, this.lineBuffer.Length * 2)];
+        }
+
+        line.CopyTo(this.lineBuffer);
+
+        // Trim a trailing '\r' (CRLF line endings) if present.
+        if (length > 0 && this.lineBuffer[length - 1] == (byte)'\r')
+        {
+            length--;
+        }
+
+        return this.lineBuffer.AsMemory(0, length);
     }
 
     public async ValueTask DisposeAsync()

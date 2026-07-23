@@ -6,6 +6,8 @@ using Ais.Net.Receiver.Configuration;
 using Ais.Net.Receiver.Host.Worker;
 using Ais.Net.Receiver.Storage.Azure.Blob.Configuration;
 
+using Microsoft.Extensions.Options;
+
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 
 builder.AddServiceDefaults("Ais.Net.Receiver");
@@ -21,6 +23,9 @@ builder.Services.AddOptions<StorageConfig>()
     .Bind(builder.Configuration.GetSection("Storage"))
     .ValidateDataAnnotations()
     .ValidateOnStart();
+
+// ConnectionString/ContainerName are only required when capture is enabled.
+builder.Services.AddSingleton<IValidateOptions<StorageConfig>, StorageConfigValidator>();
 
 // Configure host options for graceful shutdown and exception behavior
 builder.Services.Configure<HostOptions>(options =>

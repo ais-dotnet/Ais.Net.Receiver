@@ -25,6 +25,9 @@ builder.Services.AddOptions<StorageConfig>()
     .ValidateDataAnnotations()
     .ValidateOnStart();
 
+// ConnectionString/ContainerName are only required when capture is enabled.
+builder.Services.AddSingleton<IValidateOptions<StorageConfig>, StorageConfigValidator>();
+
 builder.Services.AddSingleton(TimeProvider.System);
 
 TypeRegistrar registrar = new(builder.Services);

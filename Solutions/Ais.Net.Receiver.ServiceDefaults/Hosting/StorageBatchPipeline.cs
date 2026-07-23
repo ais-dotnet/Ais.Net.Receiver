@@ -140,6 +140,21 @@ public sealed class StorageBatchPipeline : IAsyncDisposable
             await this.replayer.DisposeAsync().ConfigureAwait(false);
         }
 
+        // Drain any in-flight persist before disposing the storage client. Otherwise, if FlushAsync
+        // had timed out with a batch still in the action block, disposing the client here would tear
+        // down the locks a running PersistAsync still holds (ObjectDisposedException, and a lost or
+        // dead-lettered batch). Completing the block and awaiting it (bounded) lets that batch finish
+        // first; Complete() is idempotent, so calling it after FlushAsync already did is harmless.
+        this.batchBlock.Complete();
+        try
+        {
+            await this.actionBlock.Completion.WaitAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
+        }
+        catch
+        {
+            // Timed out or the block faulted; dispose anyway as a last resort.
+        }
+
         this.storageClient.Dispose();
     }
 

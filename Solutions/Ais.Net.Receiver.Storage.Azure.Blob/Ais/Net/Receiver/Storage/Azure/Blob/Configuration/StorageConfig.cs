@@ -8,11 +8,11 @@ namespace Ais.Net.Receiver.Storage.Azure.Blob.Configuration;
 
 public class StorageConfig
 {
-    [Required]
-    public required string ConnectionString { get; set; }
+    // Required only when EnableCapture is true - enforced by StorageConfigValidator - so the receiver
+    // can run for live display with no storage configured.
+    public string ConnectionString { get; set; } = string.Empty;
 
-    [Required]
-    public required string ContainerName { get; set; }
+    public string ContainerName { get; set; } = string.Empty;
 
     public bool EnableCapture { get; set; }
 

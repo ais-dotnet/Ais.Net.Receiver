@@ -14,17 +14,24 @@ namespace Ais.Net.Receiver.Receiver;
 
 public class NetworkStreamNmeaReceiver : INmeaReceiver
 {
+    // Fallback idle-read timeout when none is configured. Detects a silently dropped (half-open) TCP
+    // connection without being so short that a legitimately quiet feed churns reconnects. Deliberately
+    // independent of the reconnect knobs, which are unrelated and (with the shipped 1s x 5) would
+    // otherwise make this only ~5 seconds.
+    private static readonly TimeSpan DefaultIdleTimeout = TimeSpan.FromSeconds(60);
+
     private readonly INmeaStreamReader nmeaStreamReader;
     private readonly TimeProvider timeProvider;
     private readonly ApplicationMetrics? metrics;
     private readonly ILogger logger;
+    private readonly Action<bool>? onConnectionStateChanged;
 
-    public NetworkStreamNmeaReceiver(string host, int port, TimeProvider timeProvider, TimeSpan? retryPeriodicity = null, int retryAttemptLimit = 100, TimeSpan? idleTimeout = null, ApplicationMetrics? metrics = null, ILogger<NetworkStreamNmeaReceiver>? logger = null)
-        : this(new TcpClientNmeaStreamReader(), host, port, timeProvider, retryPeriodicity, retryAttemptLimit, idleTimeout, metrics, logger)
+    public NetworkStreamNmeaReceiver(string host, int port, TimeProvider timeProvider, TimeSpan? retryPeriodicity = null, int retryAttemptLimit = 100, TimeSpan? idleTimeout = null, ApplicationMetrics? metrics = null, ILogger<NetworkStreamNmeaReceiver>? logger = null, Action<bool>? onConnectionStateChanged = null)
+        : this(new TcpClientNmeaStreamReader(), host, port, timeProvider, retryPeriodicity, retryAttemptLimit, idleTimeout, metrics, logger, onConnectionStateChanged)
     {
     }
 
-    public NetworkStreamNmeaReceiver(INmeaStreamReader reader, string host, int port, TimeProvider timeProvider, TimeSpan? retryPeriodicity = null, int retryAttemptLimit = 100, TimeSpan? idleTimeout = null, ApplicationMetrics? metrics = null, ILogger<NetworkStreamNmeaReceiver>? logger = null)
+    public NetworkStreamNmeaReceiver(INmeaStreamReader reader, string host, int port, TimeProvider timeProvider, TimeSpan? retryPeriodicity = null, int retryAttemptLimit = 100, TimeSpan? idleTimeout = null, ApplicationMetrics? metrics = null, ILogger<NetworkStreamNmeaReceiver>? logger = null, Action<bool>? onConnectionStateChanged = null)
     {
         this.Host = host;
         this.Port = port;
@@ -35,6 +42,10 @@ public class NetworkStreamNmeaReceiver : INmeaReceiver
         this.nmeaStreamReader = reader ?? throw new ArgumentNullException(nameof(reader));
         this.metrics = metrics;
         this.logger = logger ?? NullLogger<NetworkStreamNmeaReceiver>.Instance;
+
+        // Reports the live TCP connection state (true on connect, false on any disconnect/idle/error),
+        // so health reflects the real socket rather than the host's start/stop lifetime.
+        this.onConnectionStateChanged = onConnectionStateChanged;
     }
 
     public string Host { get; }
@@ -69,6 +80,7 @@ public class NetworkStreamNmeaReceiver : INmeaReceiver
                 this.logger.StreamConnected(this.Host, this.Port);
                 retryAttempt = 0; // Reset retry count on successful connection
                 connected = true;
+                this.onConnectionStateChanged?.Invoke(true);
             }
             catch (OperationCanceledException)
             {
@@ -78,11 +90,14 @@ public class NetworkStreamNmeaReceiver : INmeaReceiver
             {
                 this.metrics?.ConnectionFailures.Add(1);
                 this.logger.StreamConnectionError(ex, this.Host, this.Port);
+                this.onConnectionStateChanged?.Invoke(false);
             }
 
             if (connected)
             {
-                TimeSpan idleTimeout = this.IdleTimeout ?? TimeSpan.FromTicks(this.RetryPeriodicity.Ticks * this.RetryAttemptLimit);
+                TimeSpan idleTimeout = this.IdleTimeout is { } configured && configured > TimeSpan.Zero
+                    ? configured
+                    : DefaultIdleTimeout;
                 TimeSpan minResetInterval = idleTimeout / 2;
                 long lastResetTimestamp = this.timeProvider.GetTimestamp();
 
@@ -136,6 +151,9 @@ public class NetworkStreamNmeaReceiver : INmeaReceiver
                 finally
                 {
                     await this.nmeaStreamReader.DisposeAsync().ConfigureAwait(false);
+
+                    // The connection ended (disconnect, idle timeout, read error, or cancellation).
+                    this.onConnectionStateChanged?.Invoke(false);
                 }
             }
 

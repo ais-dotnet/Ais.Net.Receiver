@@ -36,6 +36,42 @@ public class NetworkStreamNmeaReceiverReconnectionTests
         await receiver.DisposeAsync();
     }
 
+    [TestMethod]
+    public async Task GetAsync_ReportsConnectionStateOnConnectAndDisconnect()
+    {
+        CyclingStreamReader reader = new(linesPerConnection: 2);
+        List<bool> states = [];
+
+        NetworkStreamNmeaReceiver receiver = new(
+            reader, "localhost", 12345, TimeProvider.System,
+            retryPeriodicity: TimeSpan.FromMilliseconds(1),
+            onConnectionStateChanged: state =>
+            {
+                lock (states)
+                {
+                    states.Add(state);
+                }
+            });
+
+        using CancellationTokenSource cts = new();
+        int lineCount = 0;
+
+        await foreach (ReadOnlyMemory<byte> line in receiver.GetAsync(cts.Token))
+        {
+            if (++lineCount >= 4)
+            {
+                await cts.CancelAsync();
+            }
+        }
+
+        await receiver.DisposeAsync();
+
+        // Each connection reports connected (true) then, when it ends, disconnected (false) - so the
+        // health monitor tracks the real socket rather than the host's lifetime.
+        states.ShouldContain(true);
+        states.ShouldContain(false);
+    }
+
     private sealed class CyclingStreamReader : INmeaStreamReader
     {
         private static readonly byte[] Sentence = "!AIVDM,1,1,,A,13u?etPv2;0n:dDPwUM1U1Cb069D,0*24"u8.ToArray();

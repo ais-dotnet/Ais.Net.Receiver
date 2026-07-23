@@ -39,6 +39,26 @@ public class FileStreamNmeaReceiverTests
     }
 
     [TestMethod]
+    public async Task GetAsync_PreservesNonAsciiBytes()
+    {
+        // A line containing a byte > 0x7F (0xE9). The previous ASCII path corrupted such bytes to
+        // '?'; the reader must round-trip them so capture -> replay preserves the original bytes.
+        byte[] fileBytes = [(byte)'!', 0xE9, (byte)'A', (byte)'\n'];
+        IFile file = this.fileSystem.CreateFile(this.testFilePath);
+        await using (Stream stream = file.OpenWrite())
+        {
+            await stream.WriteAsync(fileBytes);
+        }
+
+        FileStreamNmeaReceiver receiver = new(this.fileSystem, this.testFilePath);
+
+        List<ReadOnlyMemory<byte>> result = await receiver.GetAsync(CancellationToken.None).ToListAsync(CancellationToken.None);
+
+        result.Count.ShouldBe(1);
+        result[0].ToArray().ShouldBe(new byte[] { (byte)'!', 0xE9, (byte)'A' });
+    }
+
+    [TestMethod]
     public async Task GetAsync_WhenDelayConfigured_WaitsBeforeEachLine()
     {
         // Arrange

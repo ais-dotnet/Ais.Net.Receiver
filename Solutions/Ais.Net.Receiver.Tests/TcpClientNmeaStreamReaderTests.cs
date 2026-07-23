@@ -430,6 +430,95 @@ public class TcpClientNmeaStreamReaderTests
     }
 
     [TestMethod]
+    public async Task ReadLineAsync_FinalLineWithoutTrailingNewline_IsReturnedBeforeNull()
+    {
+        TcpListener? listener = null;
+        TcpClientNmeaStreamReader reader = new();
+
+        try
+        {
+            listener = new(IPAddress.Loopback, 0);
+            listener.Start();
+            int port = ((IPEndPoint)listener.LocalEndpoint).Port;
+
+            await reader.ConnectAsync("127.0.0.1", port, this.TestContext.CancellationTokenSource.Token);
+
+            TcpClient serverClient = await listener.AcceptTcpClientAsync(this.TestContext.CancellationTokenSource.Token);
+            NetworkStream stream = serverClient.GetStream();
+
+            // Send a sentence with NO trailing newline, then close the connection.
+            await stream.WriteAsync("!AIVDM,1,1,,A,tail,0*00"u8.ToArray(), this.TestContext.CancellationTokenSource.Token);
+            await stream.FlushAsync(this.TestContext.CancellationTokenSource.Token);
+            serverClient.Close();
+
+            // The final unterminated line is still emitted (StreamReader did), then end-of-stream.
+            ReadOnlyMemory<byte>? line = await reader.ReadLineAsync(this.TestContext.CancellationTokenSource.Token);
+            line.HasValue.ShouldBeTrue();
+            Encoding.ASCII.GetString(line.Value.Span).ShouldBe("!AIVDM,1,1,,A,tail,0*00");
+
+            ReadOnlyMemory<byte>? next = await reader.ReadLineAsync(this.TestContext.CancellationTokenSource.Token);
+            next.HasValue.ShouldBeFalse();
+        }
+        finally
+        {
+            listener?.Stop();
+            await reader.DisposeAsync();
+        }
+    }
+
+    [TestMethod]
+    public async Task ReadLineAsync_OverLongLineWithoutNewline_IsBoundedAndResyncsToNextLine()
+    {
+        TcpListener? listener = null;
+        TcpClientNmeaStreamReader reader = new();
+
+        try
+        {
+            listener = new(IPAddress.Loopback, 0);
+            listener.Start();
+            int port = ((IPEndPoint)listener.LocalEndpoint).Port;
+
+            await reader.ConnectAsync("127.0.0.1", port, this.TestContext.CancellationTokenSource.Token);
+
+            TcpClient serverClient = await listener.AcceptTcpClientAsync(this.TestContext.CancellationTokenSource.Token);
+            NetworkStream stream = serverClient.GetStream();
+
+            // A 32 KB burst with no newline (far over the reader's cap), then a clean sentence.
+            byte[] junk = new byte[32 * 1024];
+            Array.Fill(junk, (byte)'X');
+            await stream.WriteAsync(junk, this.TestContext.CancellationTokenSource.Token);
+            await stream.WriteAsync("\n!AIVDM,1,1,,A,good,0*00\n"u8.ToArray(), this.TestContext.CancellationTokenSource.Token);
+            await stream.FlushAsync(this.TestContext.CancellationTokenSource.Token);
+
+            // The reader must never surface a line longer than its cap, and must resync to the
+            // clean sentence rather than buffering the junk without bound.
+            string? recovered = null;
+            for (int i = 0; i < 40 && recovered is null; i++)
+            {
+                ReadOnlyMemory<byte>? line = await reader.ReadLineAsync(this.TestContext.CancellationTokenSource.Token);
+                if (line is null)
+                {
+                    break;
+                }
+
+                line.Value.Length.ShouldBeLessThanOrEqualTo(8192);
+
+                if (Encoding.ASCII.GetString(line.Value.Span) == "!AIVDM,1,1,,A,good,0*00")
+                {
+                    recovered = "!AIVDM,1,1,,A,good,0*00";
+                }
+            }
+
+            recovered.ShouldBe("!AIVDM,1,1,,A,good,0*00");
+        }
+        finally
+        {
+            listener?.Stop();
+            await reader.DisposeAsync();
+        }
+    }
+
+    [TestMethod]
     public async Task ReadLineAsync_AfterDispose_ReturnsNull()
     {
         // Arrange

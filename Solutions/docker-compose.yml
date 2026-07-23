@@ -1,36 +1,32 @@
 services:
+  # Live display only. Capture is disabled here so this host does not write the same sentence stream
+  # to the same blob as the worker below - running both with capture on would double-store every
+  # sentence on one append blob. Typically you run one host at a time.
   ais.net.receiver.host.console:
     image: ${DOCKER_REGISTRY-}aisnetreceiverhostconsole
     build:
       context: .
       dockerfile: Ais.Net.Receiver.Host.Console/Dockerfile
     environment:
-      - Ais__host=153.44.253.27
-      - Ais__port=5631
-      - Ais__loggerVerbosity=Minimal
-      - Ais__statisticsPeriodicity=00:00:01:00
-      - Ais__retryAttempts=5
-      - Ais__retryPeriodicity=00:00:00:01
-      - Storage__enableCapture=true
-      - Storage__connectionString=${AIS_NET_RECEIVER_AZURE_CONNECTION_STRING}
-      - Storage__containerName=nmea-ais-dev
-      - Storage__writeBatchSize=500
-      # Persist batches that still fail after retries, then replay them when storage recovers.
-      - Storage__deadLetterPath=/data/deadletter
-    volumes:
-      - console-deadletter:/data/deadletter
+      - Ais__Connection__Host=153.44.253.27
+      - Ais__Connection__Port=5631
+      - Ais__Connection__Retry__Attempts=5
+      - Ais__Connection__Retry__Periodicity=00:00:00:01
+      - Ais__Telemetry__Verbosity=Information
+      - Ais__Telemetry__StatisticsPeriodicity=00:00:01:00
+      - Storage__enableCapture=false
   ais.net.receiver.host.worker:
     image: ${DOCKER_REGISTRY-}aisnetreceiverhostworker
     build:
       context: .
       dockerfile: Ais.Net.Receiver.Host.Worker/Dockerfile
     environment:
-      - Ais__host=153.44.253.27
-      - Ais__port=5631
-      - Ais__loggerVerbosity=Minimal
-      - Ais__statisticsPeriodicity=00:00:01:00
-      - Ais__retryAttempts=5
-      - Ais__retryPeriodicity=00:00:00:01
+      - Ais__Connection__Host=153.44.253.27
+      - Ais__Connection__Port=5631
+      - Ais__Connection__Retry__Attempts=5
+      - Ais__Connection__Retry__Periodicity=00:00:00:01
+      - Ais__Telemetry__Verbosity=Warning
+      - Ais__Telemetry__StatisticsPeriodicity=00:00:01:00
       - Storage__enableCapture=true
       - Storage__connectionString=${AIS_NET_RECEIVER_AZURE_CONNECTION_STRING}
       - Storage__containerName=nmea-ais-dev
@@ -40,8 +36,7 @@ services:
     volumes:
       - worker-deadletter:/data/deadletter
 
-# Named volumes inherit the /data/deadletter directory's app-user ownership from the image, so the
-# non-root container process can write dead-letter files to them.
+# The named volume inherits the /data/deadletter directory's app-user ownership from the image, so the
+# non-root container process can write dead-letter files to it.
 volumes:
-  console-deadletter:
   worker-deadletter:

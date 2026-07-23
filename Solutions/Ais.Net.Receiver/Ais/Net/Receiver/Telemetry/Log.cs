@@ -133,4 +133,10 @@ internal static partial class Log
         Level = LogLevel.Error,
         Message = "TCP connection failed to {Host}:{Port}")]
     public static partial void TcpConnectionFailed(this ILogger logger, Exception exception, string host, int port);
+
+    [LoggerMessage(
+        EventId = 4014,
+        Level = LogLevel.Warning,
+        Message = "Discarded an over-long NMEA line ({Length} bytes with no newline, limit {Limit}); resyncing on the next newline")]
+    public static partial void NmeaLineDiscarded(this ILogger logger, int length, int limit);
 }
