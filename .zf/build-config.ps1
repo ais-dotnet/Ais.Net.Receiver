@@ -20,6 +20,12 @@ $zerofailedExtensions = @(
 )
 . ZeroFailed.tasks -ZfPath $here/.zf
 
+# Endjin.RecommendedPractices.Build 1.5.14 (loaded above) hard-pins the Covenant SBOM tool to 0.19.0,
+# which predates Central Package Management support and reports "no components could be found" for this
+# CPM solution, failing the build. Override it to a CPM-aware version. This assignment runs after both
+# extensions load, so it wins over their defaults.
+$covenantVersion = "0.24.0"
+
 #
 # Build process configuration
 #
