@@ -334,6 +334,24 @@ public class ActivityExtensionsTests
     }
 
     [TestMethod]
+    public void RecordBlobRotation_TagsTheEventInTheAisStorageNamespace()
+    {
+        // Arrange
+        using Activity? activity = this.testSource.StartActivity("Test");
+
+        // Act
+        activity?.RecordBlobRotation("2026/07/27/16.nm4", "2026/07/27/17.nm4");
+
+        // Assert - the rotation paths sit alongside the other ais.storage.* attributes, so a
+        // dashboard filtering on that namespace sees all of them.
+        activity.ShouldNotBeNull();
+        ActivityEvent rotation = activity.Events.ShouldHaveSingleItem();
+        rotation.Name.ShouldBe("storage.blob.rotated");
+        rotation.Tags.First(t => t.Key == "ais.storage.old_blob_path").Value.ShouldBe("2026/07/27/16.nm4");
+        rotation.Tags.First(t => t.Key == "ais.storage.new_blob_path").Value.ShouldBe("2026/07/27/17.nm4");
+    }
+
+    [TestMethod]
     public void MethodChaining_AllowsFluentAPI()
     {
         // Arrange

@@ -147,10 +147,10 @@ public static class SemanticConventions
             public const string BlobPath = "ais.storage.blob_path";
 
             /// <summary>Old storage blob path (for rotation events).</summary>
-            public const string OldBlobPath = "storage.blob.old_path";
+            public const string OldBlobPath = "ais.storage.old_blob_path";
 
             /// <summary>New storage blob path (for rotation events).</summary>
-            public const string NewBlobPath = "storage.blob.new_path";
+            public const string NewBlobPath = "ais.storage.new_blob_path";
         }
     }
 
