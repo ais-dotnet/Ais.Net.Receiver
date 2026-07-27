@@ -74,13 +74,44 @@ sum(rate(ais_receiver_messages_received_total[5m]))
 - **Dimensions**: `error.type` (parse_error, unsupported_message — see `ReceiverPipeline.ClassifyError`)
 - **Purpose**: Track parsing and processing errors
 
-**Healthy Range**: <0.1% of messages received
-**Alert Threshold**: >1% error rate
+**Healthy Range**: 3-5% of sentences received, against a live coastal feed
+
+This is not the sub-0.1% figure a parser error rate usually implies, and the difference is a
+property of the feed rather than a fault. A measured 11-minute run against the Norwegian Coastal
+Administration feed (`153.44.253.27:5631`) produced a steady 3-4% error rate, and every failure was
+the same one:
+
+```
+Invalid data. Unrecognized talker id - cannot end with 50
+Bad line: \s:2573105,c:1785153033*07\!B2VDM,1,1,6,B,13mqaH0PAr0hh4rR03rQ3@i40<31,0*2B
+```
+
+`50` and `49` are ASCII `2` and `1`: the parser accepts the `!BSVDM` talker id but rejects `!B1VDM`
+and `!B2VDM`. Sampling 1,605 sentences straight off the socket gave 1,544 `!BSVDM`, 9 `!BSVDO`,
+49 `!B2VDM` and 3 `!B1VDM` - so **3.2% of that feed is rejected before decoding**. The limitation is
+in the `Ais.Net.Models` NMEA parser, not in this receiver.
+
+Two consequences for alerting:
+
+- A threshold below the feed's own baseline fires permanently and gets muted, taking the useful
+  signal with it. Set it above the observed baseline for the feed you actually consume, and
+  re-measure when the feed changes.
+- Because these sentences fail before decoding, they are counted in
+  `ais.receiver.sentences.received` but never reach `ais.receiver.messages.received`. Compute the
+  rate against **sentences**; dividing errors by messages overstates it, since the denominator
+  excludes the very sentences that failed.
+
+**Alert Threshold**: >8% of sentences, or any sustained step-change from the established baseline -
+the shape matters more than the absolute number, since a jump indicates a new class of failure
+rather than more of the known one.
 
 **Query Example**:
 ```promql
-# Error rate percentage
-(sum(rate(ais_receiver_errors_total[5m])) / sum(rate(ais_receiver_messages_received_total[5m]))) * 100
+# Error rate as a percentage of sentences received (not messages - see above)
+(sum(rate(ais_receiver_errors_total[5m])) / sum(rate(ais_receiver_sentences_received_total[5m]))) * 100
+
+# Split by classification, to separate a new failure mode from the known talker-id baseline
+sum(rate(ais_receiver_errors_total[5m])) by (error_type)
 ```
 
 ### Connection Health Metrics
@@ -122,13 +153,16 @@ sum(rate(ais_receiver_messages_received_total[5m]))
 #### `ais.storage.write.duration` (Histogram)
 - **Type**: Histogram
 - **Unit**: milliseconds
-- **Buckets**: 10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000, 30000
+- **Buckets**: 1, 2.5, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000, 30000
 - **Purpose**: Measure storage latency
 
 **Healthy Percentiles**:
 - P50: <100ms
 - P95: <500ms
 - P99: <1000ms
+
+Measured P50 against the local Azurite emulator is ~9.5ms; a real blob endpoint is slower. The
+boundaries start at 1ms so the fast path stays resolved rather than collapsing into the first bucket.
 
 **Query Example**:
 ```promql
@@ -178,8 +212,13 @@ histogram_quantile(0.95, sum(rate(ais_storage_write_duration_bucket[5m])) by (le
 #### `ais.receiver.message.processing.duration` (Histogram)
 - **Type**: Histogram
 - **Unit**: milliseconds
-- **Buckets**: 0.1, 0.5, 1, 2.5, 5, 10, 25, 50, 100
+- **Buckets**: 0.0005, 0.001, 0.0025, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 1, 5, 25
 - **Purpose**: Per-message decode cost
+
+Measured P50 0.0009ms, P95 0.022ms, P99 0.145ms at ~40 sentences/sec. Decoding is sub-microsecond, so
+the range starts at 0.0005ms - low enough to bracket the median, but not below the point where
+`Stopwatch` resolution (~100ns) would make the buckets measure timer noise. The upper boundaries exist
+to catch a decode delayed behind a GC pause rather than to resolve normal work.
 
 ### Resource Utilization
 
@@ -218,9 +257,11 @@ sum(rate(ais_receiver_messages_received_total[1m])) by (ais_message_type)
 
 #### Error Rate Trending
 ```promql
-# Errors as percentage of total messages
+# Errors as percentage of sentences received. Sentences, not messages: a sentence that fails to
+# decode never becomes a message, so a messages denominator excludes the failures and overstates
+# the rate.
 (sum(rate(ais_receiver_errors_total[5m]))
- / sum(rate(ais_receiver_messages_received_total[5m]))) * 100
+ / sum(rate(ais_receiver_sentences_received_total[5m]))) * 100
 
 # By error type
 sum(rate(ais_receiver_errors_total[5m])) by (error_type)
@@ -294,8 +335,8 @@ rate(process_cpu_seconds_total[1m])
    - 15-minute window
 
 3. **Error Rate** (Time Series)
-   - `(sum(rate(ais_receiver_errors_total[1m])) / sum(rate(ais_receiver_messages_received_total[1m]))) * 100`
-   - Alert threshold line at 1%
+   - `(sum(rate(ais_receiver_errors_total[1m])) / sum(rate(ais_receiver_sentences_received_total[1m]))) * 100`
+   - Baseline band at the feed's measured rate (~3-4% on the Norwegian feed), alert line at 8%
 
 4. **Connection Health** (Status History)
    - `ais_receiver_connection_consecutive_failures`
@@ -370,12 +411,15 @@ description: "{{ $value }} consecutive connection failures detected"
 
 #### High Error Rate
 ```yaml
+# Denominator is sentences, not messages: failing sentences never become messages, so dividing by
+# messages inflates the rate. The 8% threshold sits above the ~3-4% talker-id baseline measured on
+# the Norwegian feed - re-measure this for your own feed before relying on it.
 alert: AISHighErrorRate
-expr: (sum(rate(ais_receiver_errors_total[5m])) / sum(rate(ais_receiver_messages_received_total[5m]))) * 100 > 1
+expr: (sum(rate(ais_receiver_errors_total[5m])) / sum(rate(ais_receiver_sentences_received_total[5m]))) * 100 > 8
 for: 5m
 severity: critical
-summary: "High AIS message error rate"
-description: "Error rate is {{ $value | printf \"%.2f\" }}% (threshold: 1%)"
+summary: "High AIS sentence error rate"
+description: "Error rate is {{ $value | printf \"%.2f\" }}% of sentences (threshold: 8%)"
 ```
 
 #### Storage Falling Behind
@@ -392,21 +436,28 @@ description: "{{ $value }} batches pending (threshold: 20)"
 
 #### Elevated Error Rate
 ```yaml
+# A step-change relative to the previous hour, rather than an absolute number. This is the alert that
+# catches a new failure mode appearing on top of the known talker-id baseline, which a fixed
+# threshold set above that baseline would miss.
 alert: AISElevatedErrorRate
-expr: (sum(rate(ais_receiver_errors_total[5m])) / sum(rate(ais_receiver_messages_received_total[5m]))) * 100 > 0.5
+expr: |
+  (sum(rate(ais_receiver_errors_total[5m])) / sum(rate(ais_receiver_sentences_received_total[5m])))
+  > 1.5 * (sum(rate(ais_receiver_errors_total[1h] offset 1h)) / sum(rate(ais_receiver_sentences_received_total[1h] offset 1h)))
 for: 10m
 severity: warning
-summary: "Elevated AIS error rate detected"
+summary: "AIS error rate has stepped up from its established baseline"
 ```
 
 #### Slow Storage Operations
 ```yaml
+# The instrument records milliseconds, so the threshold is 1000, not 1.0. Against a real blob
+# endpoint P50 sits in the tens of milliseconds; a P95 past a second means throttling or a stall.
 alert: AISSlowStorage
-expr: histogram_quantile(0.95, sum(rate(ais_storage_write_duration_bucket[5m])) by (le)) > 1.0
+expr: histogram_quantile(0.95, sum(rate(ais_storage_write_duration_bucket[5m])) by (le)) > 1000
 for: 5m
 severity: warning
 summary: "Storage operations are slow"
-description: "P95 latency is {{ $value | printf \"%.2f\" }}s (threshold: 1s)"
+description: "P95 latency is {{ $value | printf \"%.0f\" }}ms (threshold: 1000ms)"
 ```
 
 #### High Memory Usage
@@ -561,48 +612,69 @@ ais_receiver_connection_consecutive_failures
 - Backend reporting high cardinality warnings
 
 **Diagnosis**:
-1. Verify tag cardinality in backend UI
-2. Check for unbounded tags (MMSI, vessel names, coordinates)
+1. Check span *volume*, not attribute cardinality, first - `ProcessMessage` runs once per sentence, so
+   at 40 sentences/sec an unsampled deployment emits ~3.5M spans/day
+2. Confirm the sampling configuration is actually in effect (see below)
 
 **Resolution**:
-This should not occur if using the updated `ActivityExtensions.cs` that moves unbounded values to events. If it does:
 
-1. Verify `ActivityExtensions.cs` uses events for:
-   - MMSI (1 billion values)
-   - Vessel names (unbounded)
-   - Coordinates (infinite precision)
-   - Timestamps
+`ActivityExtensions` deliberately records MMSI, vessel name, call sign, position and timestamp as
+**span attributes**. That is intentional and should not be "fixed" by moving them to events: a span
+attribute is one indexed field on one span record, not a metric dimension, so a distinct value costs
+nothing ongoing - and finding the spans that handled a given vessel is the entire purpose of trace
+search. An earlier revision moved these to events for cardinality reasons and thereby removed the
+ability to query by vessel at all, which is the more likely cause of a complaint here than backend
+memory pressure.
 
-2. Update to latest version with cardinality fixes
+Cardinality discipline belongs on **metric** dimensions, where each distinct value is a new time
+series. Those are kept bounded: message type (28 values), ship type, station id, `error.type`, and
+`component` on the retry counter.
+
+If backend pressure is genuinely span volume:
+
+1. Lower `OpenTelemetry:TraceSamplingRatio`, or set `OTEL_TRACES_SAMPLER` /
+   `OTEL_TRACES_SAMPLER_ARG` - the environment variables take precedence and disable the programmatic
+   sampler entirely
+2. Confirm the process is not running in the Development environment, which applies `AlwaysOnSampler`
 
 ## Performance Baselines
 
-### Low Volume (<100 msg/sec)
+### Low Volume (<100 msg/sec) - measured
 
-**Expected Performance**:
-- Message Rate: 50-100 msg/sec
-- Error Rate: <0.1%
-- Storage Latency P95: <200ms
-- Memory: ~200-300MB working set
-- CPU: <10% on single core
+From an 11-minute run against the Norwegian Coastal Administration feed
+(`153.44.253.27:5631`), Release build, appending to a local Azurite emulator, on a 20-core Linux
+container:
 
-### Medium Volume (100-1000 msg/sec)
+| Measure | Observed |
+| --- | --- |
+| Sentence rate | ~40 sentences/sec |
+| Message rate | ~31 messages/sec |
+| Error rate | 3-4% of sentences (all talker-id rejections; see Key Metrics) |
+| Managed heap | 1.83 -> 1.99 MB, ~20k objects, flat |
+| Working set | 99.6 MB rising to ~116 MB over ~5 min, then flat |
+| Allocation rate | ~84 KB/sec (44 MB total over 9 min) |
+| GC | 1 gen0, 1 gen1, 2 gen2 collections in 9 min; pause time ~0 |
+| CPU | 4.28 s over 540 s = **0.79% of one core** |
+| Storage write P50 | ~9.5 ms (Azurite; a real endpoint is slower) |
+| Batch size | ~412 messages, flushing on the 10s timeout before reaching `writeBatchSize` 500 |
+| Batches pending | 0 throughout |
+| Lock contention | 3 events total |
 
-**Expected Performance**:
-- Message Rate: 100-1000 msg/sec
-- Error Rate: <0.1%
-- Storage Latency P95: <500ms
-- Memory: ~500-800MB working set
-- CPU: 10-30% on single core
+Two notes on the memory figure. The working set is runtime-dominated - the managed heap is under
+2 MB, while mapped CoreLib, JIT'd code, libcoreclr/libclrjit and ICU account for ~40 MB - so it
+reflects the .NET runtime and the loaded assembly set far more than message volume. And the rise to
+116 MB is warm-up (3,176 methods JIT'd, 1.26 s of JIT time) that plateaus; it is not accumulation.
 
-### High Volume (>1000 msg/sec)
+### Higher volumes - not measured
 
-**Expected Performance**:
-- Message Rate: >1000 msg/sec
-- Error Rate: <0.1%
-- Storage Latency P95: <1s
-- Memory: ~1-2GB working set
-- CPU: 30-60% on multi-core
+The figures below are extrapolations, not observations. Given that 31 msg/sec consumed 0.79% of one
+core, headroom is expected to be very large and these are almost certainly conservative - but they
+have not been tested and should not be treated as baselines until they are.
+
+- **100-1000 msg/sec**: storage latency and batch flush behaviour become the variables of interest,
+  since batches start filling to `writeBatchSize` before the timeout rather than after it
+- **>1000 msg/sec**: the bounded storage queue (`boundedCapacity`, default 10000) and
+  `ais.receiver.sentences.dropped` are the signals to watch; CPU is unlikely to bind first
 
 **Optimization Tips**:
 - Increase `WriteBatchSize` to 1000+
