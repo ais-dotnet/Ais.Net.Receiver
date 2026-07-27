@@ -70,6 +70,26 @@ internal static partial class Log
         Message = "Storage flush failed with an error")]
     public static partial void StorageFlushError(this ILogger logger, Exception exception);
 
+    [LoggerMessage(
+        EventId = 1010,
+        Level = LogLevel.Information,
+        Message = "AIS connection configured: {Host}:{Port}, retries: {RetryAttempts}")]
+    public static partial void ConfigurationLoaded(this ILogger logger, string host, int port, int retryAttempts);
+
+    [LoggerMessage(
+        EventId = 1011,
+        Level = LogLevel.Information,
+        Message = "Storage configured: enabled={Enabled}, container={Container}, batchSize={BatchSize}")]
+    public static partial void StorageConfigured(this ILogger logger, bool enabled, string container, int batchSize);
+
+    [LoggerMessage(
+        EventId = 1012,
+        Level = LogLevel.Information,
+        Message = "Telemetry verbosity: {Verbosity}")]
+    // Takes a string rather than LogLevel: the source generator treats a LogLevel parameter as the
+    // record's dynamic level, so it cannot also appear in the message template.
+    public static partial void TelemetryConfigured(this ILogger logger, string verbosity);
+
     // Statistics events (1100-1109)
     [LoggerMessage(
         EventId = 1100,

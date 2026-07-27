@@ -2,6 +2,7 @@
 // Copyright (c) Endjin Limited. All rights reserved.
 // </copyright>
 
+using System.Diagnostics;
 using System.Reactive.Disposables;
 
 using Ais.Net.Models;
@@ -19,6 +20,11 @@ namespace Ais.Net.Receiver.Host.Worker;
 
 public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposable
 {
+    // AIS message types run 1-27. Tagging the counter with the type would otherwise box the int on
+    // every message; these are built once and reused. Index is the message type itself, so slot 0
+    // is unused and the array is sized 28.
+    private static readonly TagList[] MessageTypeTags = CreateMessageTypeTags();
+
     private readonly ILogger<Worker> logger;
     private readonly IOptionsMonitor<AisConfig> aisOptionsMonitor;
     private readonly IOptionsMonitor<StorageConfig> storageOptionsMonitor;
@@ -53,8 +59,26 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
     {
         this.logger.WorkerStarting();
 
+        AisConfig aisConfig = this.aisOptionsMonitor.CurrentValue;
+        StorageConfig storageConfig = this.storageOptionsMonitor.CurrentValue;
+
+        // Echo the effective configuration at startup. Config arrives from several layered sources,
+        // so "which host is it actually talking to" is otherwise guesswork when diagnosing a
+        // deployment.
+        this.logger.ConfigurationLoaded(
+            aisConfig.Connection.Host,
+            aisConfig.Connection.Port,
+            aisConfig.Connection.Retry.Attempts);
+
+        this.logger.StorageConfigured(
+            storageConfig.EnableCapture,
+            storageConfig.ContainerName,
+            storageConfig.WriteBatchSize);
+
+        this.logger.TelemetryConfigured(aisConfig.Telemetry.Verbosity.ToString());
+
         this.receiverHost = ReceiverPipeline.CreateHost(
-            this.aisOptionsMonitor.CurrentValue,
+            aisConfig,
             this.timeProvider,
             this.instrumentation,
             this.metrics,
@@ -137,6 +161,27 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
         }
     }
 
+    private static TagList[] CreateMessageTypeTags()
+    {
+        var tags = new TagList[28];
+
+        for (int messageType = 0; messageType < tags.Length; messageType++)
+        {
+            tags[messageType] = new TagList { { "ais.message_type", messageType } };
+        }
+
+        return tags;
+    }
+
+    /// <summary>
+    /// Returns the cached tag set for a message type, falling back to an allocated one if a feed
+    /// ever reports a type outside the documented 1-27 range.
+    /// </summary>
+    private static TagList MessageTypeTagsFor(int messageType) =>
+        (uint)messageType < (uint)MessageTypeTags.Length
+            ? MessageTypeTags[messageType]
+            : new TagList { { "ais.message_type", messageType } };
+
     private void SetupMetricsSubscriptions()
     {
         if (this.receiverHost is null || this.subscriptions is null)
@@ -148,9 +193,7 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
         this.subscriptions.Add(
             this.receiverHost.Messages.Subscribe(msg =>
             {
-                this.metrics.MessagesReceived.Add(
-                    1,
-                    new KeyValuePair<string, object?>("ais.message_type", msg.MessageType));
+                this.metrics.MessagesReceived.Add(1, MessageTypeTagsFor(msg.MessageType));
                 this.connectionMonitor.RecordMessageReceived();
             }));
 
