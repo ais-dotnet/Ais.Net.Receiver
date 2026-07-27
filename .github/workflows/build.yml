@@ -62,6 +62,10 @@ jobs:
           BUILDVAR_ContainerImageVersionOverride: "**UNSET**"
           BUILDVAR_DockerRegistryUsername: "${{ secrets.DOCKERHUB_USERNAME }}"
           BUILDVAR_SkipContainerImages: "true"
+          # GitHub-hosted runners have a working Docker daemon, so the Azurite integration tests must
+          # actually run here. Without this they would skip as inconclusive if Docker ever went away,
+          # and the build would stay green having covered none of the storage path.
+          AIS_TEST_REQUIRE_INTEGRATION: "true"
         secretsYaml: |
           NUGET_API_KEY: "${{ startsWith(github.ref, 'refs/tags/') && secrets.NUGET_APIKEY || secrets.BUILD_PUBLISHER_PAT }}"
           DOCKERHUB_ACCESSTOKEN: "${{ secrets.DOCKERHUB_ACCESSTOKEN }}"

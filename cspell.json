@@ -3,6 +3,7 @@
   "words": [
     "AIVDM",
     "appsettings",
+    "Azurite",
     "backpressure",
     "behavior",
     "BSVDM",
@@ -13,6 +14,9 @@
     "libcoreclr",
     "Mmsi",
     "Nmea",
+    "nologo",
+    "Shouldly",
+    "Testcontainers",
     "threadpool",
     "undecoded"
   ]

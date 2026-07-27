@@ -118,13 +118,54 @@ From the command line: `dotnet Ais.Net.Receiver.Host.Console.dll`
 
 ## Running Tests
 
-To run the unit tests, use the following command:
+To run the tests, use the following command:
 
 ```bash
 dotnet test --solution Solutions/Ais.Net.Receiver.slnx
 ```
 
-The test project is configured to use the `Microsoft.Testing.Platform` runner.
+The test project is configured to use the `Microsoft.Testing.Platform` runner. Note that MTP does not
+accept the older VSTest-era switches — passing `--nologo`, `--logger` or `--test-adapter-path` makes
+the run report `Zero tests ran` rather than an unrecognised-argument error.
+
+### Integration tests
+
+Tests categorised `Integration` run against a real Azure Blob Storage endpoint, provided by an
+[Azurite](https://github.com/Azure/Azurite) container started through
+[Testcontainers](https://dotnet.testcontainers.org/). **They need a working Docker daemon.** One
+container is shared by the whole test process and started only on demand, so a unit-only run costs
+nothing:
+
+```bash
+cd Solutions/Ais.Net.Receiver.Tests
+
+dotnet run -f net10.0                                                  # everything
+dotnet run -f net10.0 -- --filter "TestCategory=Integration"           # integration only
+dotnet run -f net10.0 -- --filter "TestCategory!=Integration"          # unit only, no container
+```
+
+When Docker is unavailable these tests report as inconclusive rather than failing. Any *other*
+startup problem — an unresolvable image tag, a failed pull, a port conflict — fails the build, because
+a broken container reported as a skip is indistinguishable from having no coverage at all.
+
+The following environment variables tune this:
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `AIS_TEST_REQUIRE_INTEGRATION` | unset | Truthy: never skip, so missing Docker fails. Set in CI. |
+| `AIS_TEST_AZURITE_IMAGE` | `mcr.microsoft.com/azure-storage/azurite:latest` | Pin the image, e.g. to work around a bad release. |
+| `AIS_TEST_AZURITE_SKIP_API_VERSION_CHECK` | `true` | Falsy: drop `--skipApiVersionCheck` (see below). |
+| `AIS_TEST_AZURITE_STARTUP_TIMEOUT_SECONDS` | `120` | Bound a hung image pull. |
+
+Azurite trails the newest storage service API version that the Azure SDK sends, and rejects otherwise
+valid requests with `400 InvalidHeaderValue` when it does. The container is therefore started with
+`--skipApiVersionCheck` by default. Setting `AIS_TEST_AZURITE_SKIP_API_VERSION_CHECK=false` re-enables
+the check, which is how you deliberately confirm whether a skew exists between the SDK version in
+`Directory.Packages.props` and the Azurite image in use:
+
+```bash
+AIS_TEST_AZURITE_SKIP_API_VERSION_CHECK=false dotnet run -f net10.0 -- --filter "TestCategory=Integration"
+```
 
 # Raspberry Pi
 

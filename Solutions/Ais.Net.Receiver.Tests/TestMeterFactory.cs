@@ -9,6 +9,12 @@ internal sealed class TestMeterFactory : IMeterFactory
 {
     private readonly List<Meter> meters = [];
 
+    /// <summary>
+    /// Gets the meters this factory has created, so a listener can filter by meter identity rather
+    /// than by name - see <see cref="MeterCollector"/>.
+    /// </summary>
+    public IReadOnlyCollection<Meter> Meters => this.meters;
+
     public Meter Create(MeterOptions options)
     {
         Meter meter = new(options);

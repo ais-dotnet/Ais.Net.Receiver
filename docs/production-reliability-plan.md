@@ -138,11 +138,19 @@ Feed many distinct MMSIs through `VesselNavigationWithNameStream` with a short i
 assert `GroupByUntil` groups are disposed (bounded object/handle count) after inactivity — the explicit
 "prevent memory accumulation" logic that is currently untested.
 
-### T3. Storage integration with Azurite  ·  Priority: Medium  ·  Effort: M–L
+### T3. Storage integration with Azurite  ·  Priority: Medium  ·  Effort: M–L  ·  **Done**
 Azurite-backed (Testcontainers or local) test for `AzureAppendBlobStorageClient`: asserts bytes are
 written correctly (no BOM, `\n`-separated, correct `raw/yyyy/MM/dd/…​.nm4` path), hour rollover creates
 a new blob, and — with C1 — correct placement/ordering under concurrency. First coverage for the blob
 write path.
+
+Delivered, and extended past the client to the whole pipeline. `AzuriteFixture` +
+`AzuriteIntegrationTestBase` share one lazily started container across the test process;
+`ReceiverEndToEndTests` drives NMEA sentences through `ReceiverHost` decoding and the production
+`ReceiverPipeline.CreateStorage` wiring into real blobs, covering the happy path, hour rollover,
+dead-letter-then-replay after a storage failure, and load shedding under a stalled backend;
+`StorageHealthCheckIntegrationTests` covers `StorageHealthCheck` against a real endpoint. See the
+Integration tests section of `README.md` for the Docker requirement and the environment variables.
 
 ### T4. Long-run soak in CI (optional)  ·  Priority: Low  ·  Effort: S
 Parameterize the leak harness as an on-demand/nightly soak (10–15 min) that fails the build on
