@@ -27,7 +27,10 @@ public sealed class ApplicationMetrics : IDisposable
     /// <param name="meterFactory">The meter factory for creating meters.</param>
     public ApplicationMetrics(IMeterFactory meterFactory)
     {
-        this.meter = meterFactory.Create(MeterName);
+        this.meter = meterFactory.Create(new MeterOptions(MeterName)
+        {
+            Version = ApplicationInstrumentation.ServiceVersion,
+        });
 
         // Counters for cumulative values
         this.MessagesReceived = this.meter.CreateCounter<long>(
@@ -80,21 +83,52 @@ public sealed class ApplicationMetrics : IDisposable
             unit: "{failure}",
             description: "Number of failed connection attempts");
 
-        // Histograms for distributions
+        this.RetryAttempts = this.meter.CreateCounter<long>(
+            "ais.receiver.retry.attempts",
+            unit: "{attempt}",
+            description: "Number of reconnection attempts, tagged by component");
+
+        // An up-down counter rather than a counter: this is a level, not a total. It answers "are we
+        // failing right now", which a monotonic failure count cannot, and resets to zero on connect.
+        this.ConsecutiveConnectionFailures = this.meter.CreateUpDownCounter<long>(
+            "ais.receiver.connection.consecutive_failures",
+            unit: "{failure}",
+            description: "Consecutive connection failures; resets to zero on a successful connection");
+
+        // Histograms for distributions. Explicit bucket boundaries matter here: the OpenTelemetry
+        // defaults (0, 5, 10, 25, ... 10000) are a poor fit for both ends of this workload - message
+        // processing is sub-millisecond, and blob writes run to tens of seconds - so the defaults
+        // collapse most observations into the first or last bucket and lose all percentile detail.
+
+        // Message processing: sub-millisecond to ~100ms.
         this.MessageProcessingDuration = this.meter.CreateHistogram<double>(
             "ais.receiver.message.processing.duration",
             unit: "ms",
-            description: "Duration of message processing in milliseconds");
+            description: "Duration of message processing in milliseconds",
+            advice: new InstrumentAdvice<double>
+            {
+                HistogramBucketBoundaries = [0.1, 0.5, 1, 2.5, 5, 10, 25, 50, 100],
+            });
 
+        // Storage writes: ~10ms to 30s for blob operations.
         this.StorageWriteDuration = this.meter.CreateHistogram<double>(
             "ais.storage.write.duration",
             unit: "ms",
-            description: "Duration of storage write operations in milliseconds");
+            description: "Duration of storage write operations in milliseconds",
+            advice: new InstrumentAdvice<double>
+            {
+                HistogramBucketBoundaries = [10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000, 30000],
+            });
 
+        // Batch sizes: 1 to 10000 messages.
         this.BatchSize = this.meter.CreateHistogram<long>(
             "ais.receiver.batch.size",
             unit: "{message}",
-            description: "Number of messages per batch write operation");
+            description: "Number of messages per batch write operation",
+            advice: new InstrumentAdvice<long>
+            {
+                HistogramBucketBoundaries = [1, 10, 50, 100, 250, 500, 1000, 2500, 5000, 10000],
+            });
 
         // Observable gauge for storage backlog
         this.meter.CreateObservableGauge(
@@ -153,6 +187,17 @@ public sealed class ApplicationMetrics : IDisposable
     /// Gets the counter for failed connection attempts.
     /// </summary>
     public Counter<long> ConnectionFailures { get; }
+
+    /// <summary>
+    /// Gets the counter for reconnection attempts.
+    /// </summary>
+    public Counter<long> RetryAttempts { get; }
+
+    /// <summary>
+    /// Gets the up-down counter tracking consecutive connection failures, which resets to zero
+    /// whenever a connection succeeds.
+    /// </summary>
+    public UpDownCounter<long> ConsecutiveConnectionFailures { get; }
 
     /// <summary>
     /// Gets the histogram for message processing duration.

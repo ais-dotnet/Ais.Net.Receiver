@@ -32,7 +32,11 @@ public sealed class ApplicationInstrumentation : IDisposable
     /// </summary>
     public ApplicationInstrumentation()
     {
-        this.ActivitySource = new ActivitySource(ServiceName, ServiceVersion);
+        this.ActivitySource = new ActivitySource(new ActivitySourceOptions(ServiceName)
+        {
+            Version = ServiceVersion,
+            TelemetrySchemaUrl = "https://opentelemetry.io/schemas/1.38.0",
+        });
     }
 
     /// <summary>

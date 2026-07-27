@@ -68,6 +68,10 @@ public class NetworkStreamNmeaReceiver : INmeaReceiver
     {
         int retryAttempt = 0;
 
+        // Mirrors retryAttempt into the consecutive-failure gauge. Tracked separately so the gauge
+        // can be wound back to zero on connect without assuming what it currently reads.
+        long reportedConsecutiveFailures = 0;
+
         while (!cancellationToken.IsCancellationRequested)
         {
             bool connected = false;
@@ -79,6 +83,13 @@ public class NetworkStreamNmeaReceiver : INmeaReceiver
                 await this.nmeaStreamReader.ConnectAsync(this.Host, this.Port, cancellationToken).ConfigureAwait(false);
                 this.logger.StreamConnected(this.Host, this.Port);
                 retryAttempt = 0; // Reset retry count on successful connection
+
+                if (reportedConsecutiveFailures > 0)
+                {
+                    this.metrics?.ConsecutiveConnectionFailures.Add(-reportedConsecutiveFailures);
+                    reportedConsecutiveFailures = 0;
+                }
+
                 connected = true;
                 this.onConnectionStateChanged?.Invoke(true);
             }
@@ -89,6 +100,8 @@ public class NetworkStreamNmeaReceiver : INmeaReceiver
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 this.metrics?.ConnectionFailures.Add(1);
+                this.metrics?.ConsecutiveConnectionFailures.Add(1);
+                reportedConsecutiveFailures++;
                 this.logger.StreamConnectionError(ex, this.Host, this.Port);
                 this.onConnectionStateChanged?.Invoke(false);
             }
@@ -166,6 +179,11 @@ public class NetworkStreamNmeaReceiver : INmeaReceiver
             retryAttempt++;
             int cappedRetryAttempt = Math.Min(retryAttempt, this.RetryAttemptLimit);
             TimeSpan delay = TimeSpan.FromTicks(this.RetryPeriodicity.Ticks * cappedRetryAttempt);
+
+            this.metrics?.RetryAttempts.Add(
+                1,
+                new KeyValuePair<string, object?>("component", "connection"));
+
             this.logger.StreamConnectionRetry(retryAttempt, this.Host, this.Port, (long)delay.TotalMilliseconds);
 
             try
