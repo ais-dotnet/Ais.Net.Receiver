@@ -63,13 +63,13 @@ public sealed class ResilientStorageClient : IStorageClient
                 async _ => await this.inner.PersistAsync(batch).ConfigureAwait(false),
                 CancellationToken.None).ConfigureAwait(false);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
             this.metrics?.StorageBatchesFailed.Add(1);
 
             if (this.deadLetterStore is not null)
             {
-                await this.WriteDeadLetterAsync(batch).ConfigureAwait(false);
+                await this.WriteDeadLetterAsync(batch, ex).ConfigureAwait(false);
                 return;
             }
 
@@ -81,9 +81,11 @@ public sealed class ResilientStorageClient : IStorageClient
     /// <inheritdoc/>
     public void Dispose() => this.inner.Dispose();
 
-    private async Task WriteDeadLetterAsync(IReadOnlyList<ReadOnlyMemory<byte>> batch)
+    // Logs the batch with the exception that exhausted the retries, so the dead-letter entry carries
+    // the real cause (auth, DNS, throttling, ...) rather than a synthetic one.
+    private async Task WriteDeadLetterAsync(IReadOnlyList<ReadOnlyMemory<byte>> batch, Exception cause)
     {
         string file = await this.deadLetterStore!.WriteAsync(batch).ConfigureAwait(false);
-        this.logger?.StorageBatchDeadLettered(batch.Count, file, new IOException("storage write retries exhausted"));
+        this.logger?.StorageBatchDeadLettered(batch.Count, file, cause);
     }
 }

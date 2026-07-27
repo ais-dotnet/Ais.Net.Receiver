@@ -4,6 +4,8 @@ using System.Text;
 using Ais.Net.Receiver.Storage;
 using Ais.Net.Receiver.Telemetry;
 
+using Microsoft.Extensions.Logging;
+
 using NSubstitute;
 
 using Shouldly;
@@ -80,6 +82,25 @@ public class ResilientStorageClientTests
     }
 
     [TestMethod]
+    public async Task PersistAsync_WhenDeadLettered_LogsTheExceptionThatExhaustedTheRetries()
+    {
+        IOException cause = new("storage account not found");
+        IStorageClient inner = Substitute.For<IStorageClient>();
+        inner.PersistAsync(Arg.Any<IEnumerable<ReadOnlyMemory<byte>>>()).Returns(_ => Task.FromException(cause));
+
+        CapturingLogger logger = new();
+        using TempDirectory deadLetterDir = new();
+        using ResilientStorageClient client = new(
+            inner, TimeProvider.System, maxAttempts: 2, FastRetry, deadLetterDir.Path, metrics: null, logger);
+
+        await client.PersistAsync(Batch("SENTENCE-A"));
+
+        // The real cause has to reach the log, otherwise the dead-letter entry says nothing about
+        // whether storage was unreachable, throttling, or rejecting our credentials.
+        logger.Exceptions.ShouldHaveSingleItem().ShouldBeSameAs(cause);
+    }
+
+    [TestMethod]
     public async Task Dispose_DisposesInner()
     {
         IStorageClient inner = Substitute.For<IStorageClient>();
@@ -106,5 +127,26 @@ public class ResilientStorageClientTests
         listener.SetMeasurementEventCallback<long>((_, measurement, _, _) => onMeasurement(measurement));
         listener.Start();
         return listener;
+    }
+
+    /// <summary>Records the exceptions attached to log entries.</summary>
+    private sealed class CapturingLogger : ILogger
+    {
+        private readonly List<Exception> exceptions = [];
+
+        public IReadOnlyList<Exception> Exceptions => this.exceptions;
+
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            if (exception is not null)
+            {
+                this.exceptions.Add(exception);
+            }
+        }
     }
 }
