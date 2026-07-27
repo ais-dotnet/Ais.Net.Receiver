@@ -109,6 +109,12 @@ internal static partial class Log
         Message = "Stream connection error to {Host}:{Port}")]
     public static partial void StreamConnectionError(this ILogger logger, Exception exception, string host, int port);
 
+    [LoggerMessage(
+        EventId = 4006,
+        Level = LogLevel.Warning,
+        Message = "Connection to {Host}:{Port} ended without delivering any sentences; treating as an outage")]
+    public static partial void StreamConnectedButSilent(this ILogger logger, string host, int port);
+
     // TCP client stream reader events (4010-4029)
     [LoggerMessage(
         EventId = 4010,
@@ -143,7 +149,7 @@ internal static partial class Log
     [LoggerMessage(
         EventId = 4015,
         Level = LogLevel.Debug,
-        Message = "TCP socket configured for {Host}:{Port}: KeepAlive=60s/10s/3, ReceiveTimeout=120s, LingerState=5s")]
+        Message = "TCP socket configured for {Host}:{Port}: KeepAlive=60s/10s/3, ReceiveBufferSize=64KB, NoDelay=true")]
     public static partial void TcpSocketConfigured(this ILogger logger, string host, int port);
 
     [LoggerMessage(
@@ -151,6 +157,18 @@ internal static partial class Log
         Level = LogLevel.Debug,
         Message = "TCP first read from {Host}:{Port}: BufferLength={BufferLength}, IsCompleted={IsCompleted}")]
     public static partial void TcpFirstRead(this ILogger logger, string host, int port, long bufferLength, bool isCompleted);
+
+    [LoggerMessage(
+        EventId = 4025,
+        Level = LogLevel.Debug,
+        Message = "TCP awaiting first read from {Host}:{Port}; connection is established but no data has arrived yet")]
+    public static partial void TcpAwaitingFirstRead(this ILogger logger, string host, int port);
+
+    [LoggerMessage(
+        EventId = 4026,
+        Level = LogLevel.Debug,
+        Message = "TCP connect to {Host}:{Port} cancelled by caller during shutdown")]
+    public static partial void TcpConnectCancelled(this ILogger logger, string host, int port);
 
     [LoggerMessage(
         EventId = 4017,
