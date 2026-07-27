@@ -15,12 +15,18 @@ namespace Ais.Net.Receiver.Telemetry;
 public static class ActivityExtensions
 {
     /// <summary>
-    /// Sets AIS message context on the activity using only bounded dimensions.
-    /// MMSI is recorded as an event to avoid cardinality explosion (1 billion possible values).
+    /// Sets AIS message context on the activity.
     /// </summary>
+    /// <remarks>
+    /// These go on as span attributes, including the high-cardinality MMSI. Span attributes are stored
+    /// per span record rather than defining a metric time series, so a distinct value costs one
+    /// indexed field on one span and nothing ongoing - and identifying a specific vessel is precisely
+    /// what trace search is for. Cardinality discipline belongs on metric dimensions
+    /// (see <see cref="ApplicationMetrics"/>), not here.
+    /// </remarks>
     /// <param name="activity">The activity to enrich.</param>
-    /// <param name="messageType">The AIS message type (bounded to 28 values).</param>
-    /// <param name="mmsi">The Maritime Mobile Service Identity (recorded as event, not tag).</param>
+    /// <param name="messageType">The AIS message type.</param>
+    /// <param name="mmsi">The Maritime Mobile Service Identity.</param>
     /// <returns>The activity for method chaining.</returns>
     public static Activity? SetAisMessageContext(this Activity? activity, int messageType, uint mmsi)
     {
@@ -29,28 +35,22 @@ public static class ActivityExtensions
             return activity;
         }
 
-        // Only bounded values as tags (message type has 28 values - safe)
         activity.SetTag(SemanticConventions.Ais.MessageType, messageType);
         activity.SetTag(SemanticConventions.Messaging.System, "ais");
-
-        // MMSI is unbounded (1 billion values) - record as event for context
-        activity.AddEvent(new ActivityEvent("ais.message.context", tags: new ActivityTagsCollection
-        {
-            { SemanticConventions.Ais.Mmsi, mmsi },
-        }));
+        activity.SetTag(SemanticConventions.Ais.Mmsi, mmsi);
 
         return activity;
     }
 
     /// <summary>
-    /// Sets vessel identity information on the activity.
-    /// Vessel name and call sign are recorded as events to avoid cardinality explosion.
-    /// Ship type is bounded (~100 values) so it's safe as a tag.
+    /// Sets vessel identity information on the activity as span attributes, so a trace can be found by
+    /// vessel name or call sign - the latter often being the only usable identifier when the
+    /// transmitted name is blank or garbled.
     /// </summary>
     /// <param name="activity">The activity to enrich.</param>
-    /// <param name="vesselName">The vessel name (recorded as event).</param>
-    /// <param name="callSign">The vessel call sign (recorded as event).</param>
-    /// <param name="shipType">The ship type code (bounded, recorded as tag).</param>
+    /// <param name="vesselName">The vessel name.</param>
+    /// <param name="callSign">The vessel call sign.</param>
+    /// <param name="shipType">The ship type code.</param>
     /// <returns>The activity for method chaining.</returns>
     public static Activity? SetVesselIdentity(
         this Activity? activity,
@@ -63,36 +63,27 @@ public static class ActivityExtensions
             return activity;
         }
 
-        // Ship type is bounded (~100 values) - safe as tag
         if (shipType.HasValue)
         {
             activity.SetTag(SemanticConventions.Ais.ShipType, shipType.Value);
         }
 
-        // Vessel name and call sign are unbounded - record as event
-        if (!string.IsNullOrWhiteSpace(vesselName) || !string.IsNullOrWhiteSpace(callSign))
+        if (!string.IsNullOrWhiteSpace(vesselName))
         {
-            var tags = new ActivityTagsCollection();
+            activity.SetTag(SemanticConventions.Ais.VesselName, vesselName);
+        }
 
-            if (!string.IsNullOrWhiteSpace(vesselName))
-            {
-                tags.Add(SemanticConventions.Ais.VesselName, vesselName);
-            }
-
-            if (!string.IsNullOrWhiteSpace(callSign))
-            {
-                tags.Add(SemanticConventions.Ais.CallSign, callSign);
-            }
-
-            activity.AddEvent(new ActivityEvent("ais.vessel.identity", tags: tags));
+        if (!string.IsNullOrWhiteSpace(callSign))
+        {
+            activity.SetTag(SemanticConventions.Ais.CallSign, callSign);
         }
 
         return activity;
     }
 
     /// <summary>
-    /// Records vessel position as an event to avoid cardinality explosion.
-    /// Geographic coordinates are high-precision floating-point values (infinite cardinality).
+    /// Sets vessel position on the activity as span attributes, so traces can be filtered to a
+    /// geographic area.
     /// </summary>
     /// <param name="activity">The activity to enrich.</param>
     /// <param name="latitude">The latitude in degrees.</param>
@@ -105,14 +96,10 @@ public static class ActivityExtensions
             return activity;
         }
 
-        // Coordinates are infinite precision - record as event, not tags
         if (latitude.HasValue && longitude.HasValue)
         {
-            activity.AddEvent(new ActivityEvent("ais.vessel.position", tags: new ActivityTagsCollection
-            {
-                { SemanticConventions.Ais.PositionLatitude, latitude.Value },
-                { SemanticConventions.Ais.PositionLongitude, longitude.Value },
-            }));
+            activity.SetTag(SemanticConventions.Ais.PositionLatitude, latitude.Value);
+            activity.SetTag(SemanticConventions.Ais.PositionLongitude, longitude.Value);
         }
 
         return activity;
@@ -140,13 +127,12 @@ public static class ActivityExtensions
     }
 
     /// <summary>
-    /// Sets station metadata on the activity.
-    /// Unix timestamp is recorded as an event to avoid cardinality explosion (every second is unique).
-    /// Station ID is bounded (limited number of stations) so it's safe as a tag.
+    /// Sets station metadata on the activity as span attributes, including the message id that
+    /// correlates a span with the source sentence.
     /// </summary>
     /// <param name="activity">The activity to enrich.</param>
-    /// <param name="stationId">The station identifier (bounded, recorded as tag).</param>
-    /// <param name="unixTimestamp">The Unix timestamp of the message (unbounded, recorded as event).</param>
+    /// <param name="stationId">The station identifier.</param>
+    /// <param name="unixTimestamp">The Unix timestamp of the message.</param>
     /// <returns>The activity for method chaining.</returns>
     public static Activity? SetStationMetadata(this Activity? activity, int stationId, long unixTimestamp)
     {
@@ -155,16 +141,9 @@ public static class ActivityExtensions
             return activity;
         }
 
-        // Station ID is bounded (limited number of stations) - safe as tag
         activity.SetTag(SemanticConventions.Ais.StationId, stationId);
-
-        // Unix timestamp is unbounded (every second is unique) - record as event
-        // Message ID is also unbounded - include in event
-        activity.AddEvent(new ActivityEvent("ais.station.metadata", tags: new ActivityTagsCollection
-        {
-            { SemanticConventions.Ais.Timestamp, unixTimestamp },
-            { SemanticConventions.Messaging.MessageId, $"{stationId}-{unixTimestamp}" },
-        }));
+        activity.SetTag(SemanticConventions.Ais.Timestamp, unixTimestamp);
+        activity.SetTag(SemanticConventions.Messaging.MessageId, $"{stationId}-{unixTimestamp}");
 
         return activity;
     }
@@ -376,7 +355,7 @@ public static class ActivityExtensions
     /// <param name="host">The host being connected to.</param>
     /// <param name="port">The port being connected to.</param>
     /// <returns>The activity for method chaining.</returns>
-    public static Activity? RecordConnectionStateChanged(
+    public static Activity? RecordConnectionStateEvent(
         this Activity? activity,
         bool connected,
         string reason,
@@ -473,88 +452,21 @@ public static class ActivityExtensions
         return activity;
     }
 
-    /// <summary>
-    /// Sets AIS-specific baggage for cross-cutting context propagation.
-    /// Baggage is automatically propagated across distributed trace boundaries.
-    /// </summary>
-    /// <param name="activity">The activity to enrich.</param>
-    /// <param name="stationId">The station identifier for multi-station deployments.</param>
-    /// <param name="deploymentEnvironment">Optional deployment environment (dev, staging, prod).</param>
-    /// <returns>The activity for method chaining.</returns>
-    public static Activity? SetAisBaggage(
-        this Activity? activity,
-        int stationId,
-        string? deploymentEnvironment = null)
-    {
-        if (activity is null)
-        {
-            return null;
-        }
-
-        // Set station ID baggage for correlation across distributed components
-        activity.SetBaggage("ais.station_id", stationId.ToString());
-
-        // Set deployment environment if provided
-        if (!string.IsNullOrWhiteSpace(deploymentEnvironment))
-        {
-            activity.SetBaggage("deployment.environment", deploymentEnvironment);
-        }
-
-        return activity;
-    }
-
-    /// <summary>
-    /// Sets batch processing context in baggage for correlating messages within the same batch.
-    /// Useful for tracking message flow through storage and processing pipelines.
-    /// </summary>
-    /// <param name="activity">The activity to enrich.</param>
-    /// <param name="batchId">The unique identifier for this batch.</param>
-    /// <param name="batchSize">The size of the batch being processed.</param>
-    /// <returns>The activity for method chaining.</returns>
-    public static Activity? SetBatchBaggage(
-        this Activity? activity,
-        string batchId,
-        int batchSize)
-    {
-        if (activity is null)
-        {
-            return null;
-        }
-
-        activity.SetBaggage("batch.id", batchId);
-        activity.SetBaggage("batch.size", batchSize.ToString());
-
-        return activity;
-    }
-
-    /// <summary>
-    /// Retrieves AIS station ID from baggage if available.
-    /// </summary>
-    /// <param name="activity">The activity to query.</param>
-    /// <returns>The station ID if found in baggage, null otherwise.</returns>
-    public static int? GetStationIdFromBaggage(this Activity? activity)
-    {
-        if (activity is null)
-        {
-            return null;
-        }
-
-        string? stationIdStr = activity.GetBaggageItem("ais.station_id");
-        if (int.TryParse(stationIdStr, out int stationId))
-        {
-            return stationId;
-        }
-
-        return null;
-    }
-
-    /// <summary>
-    /// Retrieves batch ID from baggage if available.
-    /// </summary>
-    /// <param name="activity">The activity to query.</param>
-    /// <returns>The batch ID if found in baggage, null otherwise.</returns>
-    public static string? GetBatchIdFromBaggage(this Activity? activity)
-    {
-        return activity?.GetBaggageItem("batch.id");
-    }
+    // The baggage helpers that used to sit here (SetAisBaggage, SetBatchBaggage,
+    // GetStationIdFromBaggage, GetBatchIdFromBaggage) were removed rather than wired up, because this
+    // topology gives them nowhere correct to go:
+    //
+    //  - Baggage flows to child activities and, via the W3C 'baggage' header, out of the process. The
+    //    only outbound calls here are to Azure Blob Storage, so the effect would be to attach internal
+    //    station and batch identifiers to every storage request - a per-request wire cost and a small
+    //    information leak to a third party, for no local benefit.
+    //  - The getters could never observe what the setters wrote. Storage writes are deliberately
+    //    decoupled from message decoding by the bounded queue in StorageBatchPipeline, so a
+    //    StorageWrite span is not a child of any ProcessMessage span and no baggage crosses that
+    //    boundary; GetStationIdFromBaggage would have returned null in the one place it was meant for.
+    //  - deployment.environment is already a resource attribute (see ServiceDefaults), so carrying it
+    //    in baggage would duplicate it on every span.
+    //
+    // Station id and batch context are on the spans that own them instead (SetStationMetadata and
+    // RecordBatchCompleted).
 }

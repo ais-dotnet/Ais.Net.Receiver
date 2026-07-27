@@ -38,9 +38,6 @@ public static class SemanticConventions
 
         /// <summary>Messaging system name (e.g., "ais").</summary>
         public const string System = "messaging.system";
-
-        /// <summary>Type of messaging operation.</summary>
-        public const string OperationType = "messaging.operation.type";
     }
 
     /// <summary>
@@ -170,11 +167,5 @@ public static class SemanticConventions
 
         /// <summary>Reason for connection state change.</summary>
         public const string StateChangeReason = "connection.state_change.reason";
-
-        /// <summary>Retry delay in milliseconds.</summary>
-        public const string RetryDelayMs = "retry.delay_ms";
-
-        /// <summary>Retry attempt number.</summary>
-        public const string RetryAttempt = "retry.attempt";
     }
 }

@@ -13,23 +13,25 @@ namespace Ais.Net.Receiver.Tests;
 [TestClass]
 public class ActivityExtensionsTests
 {
-    private const string TestSourceName = "TestActivitySource";
+    // ActivityListeners are process-global and this assembly runs tests in parallel at method scope,
+    // so a listener keyed on a shared source name would observe activities started by every other
+    // concurrent test in this class. Each test instance therefore gets its own uniquely named source
+    // and matches on that exact instance, keeping the listeners disjoint.
+    private string testSourceName = null!;
     private ActivitySource testSource = null!;
     private ActivityListener listener = null!;
-    private List<Activity> capturedActivities = null!;
 
     [TestInitialize]
     public void Setup()
     {
-        this.testSource = new ActivitySource(TestSourceName);
-        this.capturedActivities = [];
+        this.testSourceName = $"TestActivitySource.{Guid.NewGuid():N}";
+        this.testSource = new ActivitySource(this.testSourceName);
 
         this.listener = new ActivityListener
         {
-            ShouldListenTo = source => source.Name == TestSourceName,
+            ShouldListenTo = source => ReferenceEquals(source, this.testSource),
             Sample = (ref ActivityCreationOptions<ActivityContext> _) =>
                 ActivitySamplingResult.AllDataAndRecorded,
-            ActivityStarted = activity => this.capturedActivities.Add(activity),
         };
 
         ActivitySource.AddActivityListener(this.listener);
@@ -56,12 +58,9 @@ public class ActivityExtensionsTests
         activity.GetTagItem("ais.message.type").ShouldBe(1);
         activity.GetTagItem("messaging.system").ShouldBe("ais");
 
-        // Verify MMSI is in event, not as tag (cardinality fix)
-        activity.GetTagItem("ais.mmsi").ShouldBeNull();
-        activity.Events.ShouldContain(e => e.Name == "ais.message.context");
-
-        ActivityEvent contextEvent = activity.Events.First(e => e.Name == "ais.message.context");
-        contextEvent.Tags.First(t => t.Key == "ais.mmsi").Value.ShouldBe((uint)123456789);
+        // MMSI is a span attribute so a trace can be searched for a specific vessel. Span attributes
+        // are per-span records rather than metric dimensions, so its cardinality costs nothing here.
+        activity.GetTagItem("ais.mmsi").ShouldBe((uint)123456789);
     }
 
     [TestMethod]
@@ -86,25 +85,15 @@ public class ActivityExtensionsTests
             callSign: "ABC123",
             shipType: 70);
 
-        // Assert
+        // Assert - all three are span attributes, so a trace is findable by name or call sign
         activity.ShouldNotBeNull();
-
-        // Ship type should be a tag (bounded ~100 values)
         activity.GetTagItem("ais.ship_type").ShouldBe(70);
-
-        // Vessel name and call sign should be in event (unbounded - cardinality fix)
-        activity.GetTagItem("ais.vessel.name").ShouldBeNull();
-        activity.GetTagItem("ais.call_sign").ShouldBeNull();
-
-        activity.Events.ShouldContain(e => e.Name == "ais.vessel.identity");
-        ActivityEvent identityEvent = activity.Events.First(e => e.Name == "ais.vessel.identity");
-
-        identityEvent.Tags.First(t => t.Key == "ais.vessel.name").Value.ShouldBe("TEST VESSEL");
-        identityEvent.Tags.First(t => t.Key == "ais.call_sign").Value.ShouldBe("ABC123");
+        activity.GetTagItem("ais.vessel.name").ShouldBe("TEST VESSEL");
+        activity.GetTagItem("ais.call_sign").ShouldBe("ABC123");
     }
 
     [TestMethod]
-    public void SetVesselIdentity_WithOnlyShipType_DoesNotCreateEvent()
+    public void SetVesselIdentity_WithOnlyShipType_SetsOnlyShipType()
     {
         // Arrange
         using Activity? activity = this.testSource.StartActivity("Test");
@@ -115,14 +104,15 @@ public class ActivityExtensionsTests
             callSign: null,
             shipType: 70);
 
-        // Assert
+        // Assert - absent fields must not be written as empty attributes
         activity.ShouldNotBeNull();
         activity.GetTagItem("ais.ship_type").ShouldBe(70);
-        activity.Events.ShouldNotContain(e => e.Name == "ais.vessel.identity");
+        activity.GetTagItem("ais.vessel.name").ShouldBeNull();
+        activity.GetTagItem("ais.call_sign").ShouldBeNull();
     }
 
     [TestMethod]
-    public void SetVesselPosition_WithValidCoordinates_RecordsAsEvent()
+    public void SetVesselPosition_WithValidCoordinates_SetsTags()
     {
         // Arrange
         using Activity? activity = this.testSource.StartActivity("Test");
@@ -130,22 +120,14 @@ public class ActivityExtensionsTests
         // Act
         activity?.SetVesselPosition(latitude: 51.5074, longitude: -0.1278);
 
-        // Assert
+        // Assert - span attributes, so traces can be filtered to a geographic area
         activity.ShouldNotBeNull();
-
-        // Coordinates should be in event, not as tags (infinite precision - cardinality fix)
-        activity.GetTagItem("ais.position.latitude").ShouldBeNull();
-        activity.GetTagItem("ais.position.longitude").ShouldBeNull();
-
-        activity.Events.ShouldContain(e => e.Name == "ais.vessel.position");
-        ActivityEvent positionEvent = activity.Events.First(e => e.Name == "ais.vessel.position");
-
-        positionEvent.Tags.First(t => t.Key == "ais.position.latitude").Value.ShouldBe(51.5074);
-        positionEvent.Tags.First(t => t.Key == "ais.position.longitude").Value.ShouldBe(-0.1278);
+        activity.GetTagItem("ais.position.latitude").ShouldBe(51.5074);
+        activity.GetTagItem("ais.position.longitude").ShouldBe(-0.1278);
     }
 
     [TestMethod]
-    public void SetVesselPosition_WithNullCoordinates_DoesNotRecordEvent()
+    public void SetVesselPosition_WithNullCoordinates_DoesNotSetTags()
     {
         // Arrange
         using Activity? activity = this.testSource.StartActivity("Test");
@@ -155,7 +137,8 @@ public class ActivityExtensionsTests
 
         // Assert
         activity.ShouldNotBeNull();
-        activity.Events.ShouldNotContain(e => e.Name == "ais.vessel.position");
+        activity.GetTagItem("ais.position.latitude").ShouldBeNull();
+        activity.GetTagItem("ais.position.longitude").ShouldBeNull();
     }
 
     [TestMethod]
@@ -173,7 +156,7 @@ public class ActivityExtensionsTests
     }
 
     [TestMethod]
-    public void SetStationMetadata_SetsStationIdAsTag_AndTimestampAsEvent()
+    public void SetStationMetadata_SetsStationTimestampAndMessageIdTags()
     {
         // Arrange
         using Activity? activity = this.testSource.StartActivity("Test");
@@ -182,20 +165,12 @@ public class ActivityExtensionsTests
         // Act
         activity?.SetStationMetadata(stationId: 5, unixTimestamp: timestamp);
 
-        // Assert
+        // Assert - the message id in particular has to be searchable to correlate a span with the
+        // source sentence, which is only true of a span attribute.
         activity.ShouldNotBeNull();
-
-        // Station ID should be tag (bounded number of stations)
         activity.GetTagItem("ais.station_id").ShouldBe(5);
-
-        // Timestamp should be in event (unbounded - every second is unique)
-        activity.GetTagItem("ais.timestamp").ShouldBeNull();
-
-        activity.Events.ShouldContain(e => e.Name == "ais.station.metadata");
-        ActivityEvent metadataEvent = activity.Events.First(e => e.Name == "ais.station.metadata");
-
-        metadataEvent.Tags.First(t => t.Key == "ais.timestamp").Value.ShouldBe(timestamp);
-        metadataEvent.Tags.First(t => t.Key == "messaging.message.id").Value.ShouldBe($"5-{timestamp}");
+        activity.GetTagItem("ais.timestamp").ShouldBe(timestamp);
+        activity.GetTagItem("messaging.message.id").ShouldBe($"5-{timestamp}");
     }
 
     [TestMethod]
@@ -316,11 +291,46 @@ public class ActivityExtensionsTests
     [TestMethod]
     public void IsAllDataRequested_WhenFalse_DoesNotSetTags()
     {
-        // Note: This test would require creating an activity with sampling decision = Drop
-        // which is complex to set up. The IsAllDataRequested check is already verified
-        // by the fact that tags are set in other tests (when sampling is AllDataAndRecorded).
-        // This is a defensive check in the code that's hard to test directly without
-        // complex ActivityListener configuration.
+        // Arrange: a source whose listener returns PropagationData, so the activity is created and
+        // carries trace context but IsAllDataRequested is false. This is the guard every enrichment
+        // method opens with, and it is the branch the rest of the suite never reaches - all other
+        // tests sample AllDataAndRecorded.
+        string unsampledSourceName = $"UnsampledActivitySource.{Guid.NewGuid():N}";
+        using ActivitySource unsampledSource = new(unsampledSourceName);
+
+        using ActivityListener unsampledListener = new()
+        {
+            ShouldListenTo = source => ReferenceEquals(source, unsampledSource),
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) =>
+                ActivitySamplingResult.PropagationData,
+        };
+
+        ActivitySource.AddActivityListener(unsampledListener);
+
+        using Activity? activity = unsampledSource.StartActivity("Unsampled");
+
+        // Guard the premise: if this ever became true the assertions below would pass vacuously.
+        activity.ShouldNotBeNull();
+        activity.IsAllDataRequested.ShouldBeFalse();
+
+        // Act
+        activity
+            .SetAisMessageContext(messageType: 1, mmsi: 123456789)
+            .SetVesselIdentity(vesselName: "TEST", callSign: "ABC", shipType: 70)
+            .SetVesselPosition(latitude: 51.5, longitude: -0.1)
+            .SetNavigationStatus(status: 0)
+            .SetStationMetadata(stationId: 5, unixTimestamp: 1234567890);
+
+        // Assert: nothing was recorded on an unsampled span.
+        activity.GetTagItem("ais.message.type").ShouldBeNull();
+        activity.GetTagItem("ais.mmsi").ShouldBeNull();
+        activity.GetTagItem("ais.vessel.name").ShouldBeNull();
+        activity.GetTagItem("ais.call_sign").ShouldBeNull();
+        activity.GetTagItem("ais.ship_type").ShouldBeNull();
+        activity.GetTagItem("ais.position.latitude").ShouldBeNull();
+        activity.GetTagItem("ais.navigation_status").ShouldBeNull();
+        activity.GetTagItem("ais.station_id").ShouldBeNull();
+        activity.Events.ShouldBeEmpty();
     }
 
     [TestMethod]
@@ -337,14 +347,17 @@ public class ActivityExtensionsTests
             .SetNavigationStatus(status: 0)
             .SetStationMetadata(stationId: 5, unixTimestamp: 1234567890);
 
-        // Assert
+        // Assert - every enrichment in the chain landed on the same span
         activity.ShouldNotBeNull();
         activity.GetTagItem("ais.message.type").ShouldBe(1);
+        activity.GetTagItem("ais.mmsi").ShouldBe((uint)123456789);
+        activity.GetTagItem("ais.vessel.name").ShouldBe("TEST");
+        activity.GetTagItem("ais.call_sign").ShouldBe("ABC");
         activity.GetTagItem("ais.ship_type").ShouldBe(70);
+        activity.GetTagItem("ais.position.latitude").ShouldBe(51.5);
+        activity.GetTagItem("ais.position.longitude").ShouldBe(-0.1);
         activity.GetTagItem("ais.navigation_status").ShouldBe(0);
         activity.GetTagItem("ais.station_id").ShouldBe(5);
-
-        // Verify events were created
-        activity.Events.Count().ShouldBeGreaterThan(0);
+        activity.GetTagItem("messaging.message.id").ShouldBe("5-1234567890");
     }
 }

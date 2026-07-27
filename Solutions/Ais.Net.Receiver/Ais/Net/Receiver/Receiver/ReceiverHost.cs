@@ -112,17 +112,31 @@ public class ReceiverHost : IAsyncDisposable
             {
                 activity.SetAisMessageContext(message.MessageType, message.Mmsi);
 
-                // Vessel identity arrives on static messages (types 5 and 24).
+                // Vessel identity arrives on static messages (types 5 and 24). Call sign is carried
+                // separately from the name, and is often the only usable identifier when the
+                // transmitted name is blank or garbled, so forward both.
                 if (message is IVesselName vesselName)
                 {
                     int? shipType = message is IShipType shipTypeMessage ? (int?)shipTypeMessage.ShipType : null;
-                    activity.SetVesselIdentity(vesselName.VesselName.CleanVesselName(), callSign: null, shipType);
+                    string? callSign = message is ICallSign callSignMessage
+                        ? callSignMessage.CallSign?.CleanVesselName()
+                        : null;
+
+                    activity.SetVesselIdentity(vesselName.VesselName.CleanVesselName(), callSign, shipType);
                 }
 
                 // Position arrives on navigation messages (types 1, 2, 3, 18 and 19).
-                if (message is IVesselNavigation { Position: { } position })
+                if (message is IVesselNavigation navigation)
                 {
-                    activity.SetVesselPosition(position.Latitude, position.Longitude);
+                    if (navigation.Position is { } position)
+                    {
+                        activity.SetVesselPosition(position.Latitude, position.Longitude);
+                    }
+
+                    if (message is IVesselNavigationStatus { NavigationStatus: { } navigationStatus })
+                    {
+                        activity.SetNavigationStatus((int)navigationStatus);
+                    }
                 }
             }
 
