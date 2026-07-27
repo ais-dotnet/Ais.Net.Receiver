@@ -6,6 +6,7 @@ using Ais.Net.Receiver.Health;
 using Ais.Net.Receiver.Storage.Azure.Blob.Health;
 using Ais.Net.Receiver.Telemetry;
 
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
@@ -108,17 +109,33 @@ public static class Extensions
             }
         });
 
+        // Stamp trace context onto every log record, so a log line can be pivoted to the trace it
+        // belongs to without the call sites having to carry the ids themselves.
+        builder.Logging.Configure(options =>
+        {
+            options.ActivityTrackingOptions =
+                ActivityTrackingOptions.SpanId |
+                ActivityTrackingOptions.TraceId |
+                ActivityTrackingOptions.ParentId |
+                ActivityTrackingOptions.TraceState |
+                ActivityTrackingOptions.TraceFlags;
+        });
+
         builder.Services.AddOpenTelemetry()
             .ConfigureResource(resource => resource
                 .AddService(
                     serviceName: serviceName,
                     serviceVersion: ApplicationInstrumentation.ServiceVersion,
-                    serviceInstanceId: Environment.MachineName)
+
+                    // Machine name collides when several replicas share a host or run in containers
+                    // built from one image; the generated id is unique per process.
+                    autoGenerateServiceInstanceId: true)
                 .AddAttributes(new Dictionary<string, object>
                 {
                     ["deployment.environment.name"] = builder.Environment.EnvironmentName,
                     ["service.namespace"] = "ais-net",
-                }))
+                })
+                .AddEnvironmentVariableDetector())
             .WithMetrics(metrics =>
             {
                 metrics.AddMeter(serviceName);
@@ -128,7 +145,12 @@ public static class Extensions
                     metrics.AddMeter(meter);
                 }
 
+                // Attaches exemplars - sampled trace ids - to metric points, so a spike in a
+                // histogram links through to example traces that produced it.
+                metrics.SetExemplarFilter(ExemplarFilterType.TraceBased);
+
                 metrics.AddRuntimeInstrumentation()
+                    .AddProcessInstrumentation()
                     .AddHttpClientInstrumentation();
 
                 if (useOtlpExporter)
@@ -141,6 +163,26 @@ public static class Extensions
             })
             .WithTracing(tracing =>
             {
+                if (builder.Environment.IsDevelopment())
+                {
+                    // Capture everything for the Aspire dashboard.
+                    tracing.SetSampler(new AlwaysOnSampler());
+                }
+                else
+                {
+                    double samplingRatio = builder.Configuration.GetValue("OpenTelemetry:TraceSamplingRatio", 1.0);
+
+                    if (samplingRatio is < 0.0 or > 1.0)
+                    {
+                        throw new InvalidOperationException(
+                            $"OpenTelemetry:TraceSamplingRatio must be between 0.0 and 1.0, but was {samplingRatio}");
+                    }
+
+                    // ParentBased so a sampled upstream trace stays intact end to end rather than
+                    // being re-diced at this service and losing spans from the middle.
+                    tracing.SetSampler(new ParentBasedSampler(new TraceIdRatioBasedSampler(samplingRatio)));
+                }
+
                 tracing.AddSource(serviceName);
                 tracing.AddSource(ApplicationInstrumentation.ServiceName);
                 foreach (string source in additionalSources)

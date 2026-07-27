@@ -37,6 +37,8 @@
     <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.17.0" />
     <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.17.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.17.0" />
+    <!-- Process instrumentation has no stable release; rc.1 tracks the 1.17.0 line of the others. -->
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Process" Version="1.17.0-rc.1" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.17.0" />
     <PackageVersion Include="Polly.Core" Version="8.*" />
     <PackageVersion Include="Roslynator.Analyzers" Version="4.14.1" />

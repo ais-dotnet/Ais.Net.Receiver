@@ -589,6 +589,7 @@
           "OpenTelemetry.Exporter.OpenTelemetryProtocol": "[1.17.0, )",
           "OpenTelemetry.Extensions.Hosting": "[1.17.0, )",
           "OpenTelemetry.Instrumentation.Http": "[1.17.0, )",
+          "OpenTelemetry.Instrumentation.Process": "[1.17.0-rc.1, )",
           "OpenTelemetry.Instrumentation.Runtime": "[1.17.0, )"
         }
       },
@@ -737,6 +738,15 @@
           "Microsoft.Extensions.Configuration": "10.0.0",
           "Microsoft.Extensions.Options": "10.0.0",
           "OpenTelemetry.Api.ProviderBuilderExtensions": "[1.17.0, 2.0.0)"
+        }
+      },
+      "OpenTelemetry.Instrumentation.Process": {
+        "type": "CentralTransitive",
+        "requested": "[1.17.0-rc.1, )",
+        "resolved": "1.17.0-rc.1",
+        "contentHash": "oN56aaWQ6p+1JRTDXf7QXEOZi8sX7OGVRvBYDlPstPDQ9MAtn695+E68HeJFJeD7F2KhD4CBPiMWieVW2UQK2w==",
+        "dependencies": {
+          "OpenTelemetry.Api": "[1.17.0, 2.0.0)"
         }
       },
       "Polly.Core": {
