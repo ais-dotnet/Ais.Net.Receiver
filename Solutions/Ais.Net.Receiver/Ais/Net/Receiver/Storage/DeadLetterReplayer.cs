@@ -129,12 +129,16 @@ public sealed class DeadLetterReplayer : IAsyncDisposable
         {
             this.sweepGate.Release();
             this.sweepGate.Dispose();
-            this.cts.Dispose();
         }
         else
         {
+            // A sweep is still wedged, so the gate stays alive for its Release; but the source is
+            // already cancelled and the timer disposed, so nothing will register on the token again
+            // (registration on an already-cancelled token runs inline) and it can be released here.
             this.logger?.DeadLetterReplayStopTimedOut();
         }
+
+        this.cts.Dispose();
     }
 
     private async Task SweepSafeAsync()
