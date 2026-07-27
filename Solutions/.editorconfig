@@ -80,27 +80,13 @@ dotnet_code_quality_unused_parameters = all:warning
 # Suppression preferences
 dotnet_remove_unnecessary_suppression_exclusions = none
 
-# StyleCop rules
-# SA1413: Use trailing comma in multi-line initializers
-dotnet_diagnostic.SA1413.severity = silent
-# SA1101: Prefix local calls with this
-dotnet_diagnostic.SA1101.severity = silent
-# SA1602: Enumeration items should be documented
-dotnet_diagnostic.SA1602.severity = silent
-# SA1028: Code should not contain trailing whitespace
-dotnet_diagnostic.SA1028.severity = silent
-# SA1201: Elements should appear in the correct order
-dotnet_diagnostic.SA1201.severity = silent
-# SA1516: Elements should be separated by blank line
-dotnet_diagnostic.SA1516.severity = silent
-
-# Code style for 'this.' qualification (enables auto-fix for SA1101)
+# Code style for 'this.' qualification
 dotnet_style_qualification_for_field = true:silent
 dotnet_style_qualification_for_property = true:silent
 dotnet_style_qualification_for_method = true:silent
 dotnet_style_qualification_for_event = true:silent
 
-# Blank line preferences (helps with SA1516)
+# Blank line preferences
 csharp_blank_lines_around_region = 1
 csharp_blank_lines_inside_region = 1
 csharp_blank_lines_between_using_groups = 1

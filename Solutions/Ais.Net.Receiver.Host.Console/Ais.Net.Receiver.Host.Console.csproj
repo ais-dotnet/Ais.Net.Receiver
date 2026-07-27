@@ -19,7 +19,6 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <NoWarn>RCS1029;SA1200;SA1313;SA1009;SA1600;SA1591;CS1591;</NoWarn>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     <ContainerRegistry>docker.io/endjin/ais-dotnet-receiver</ContainerRegistry>
   </PropertyGroup>

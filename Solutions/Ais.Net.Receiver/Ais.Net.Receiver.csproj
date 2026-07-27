@@ -9,7 +9,6 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <TreatWarningsAsErrors Condition="'$(Configuration)' == 'Release'">true</TreatWarningsAsErrors>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <NoWarn>RCS1029;SA1313;SA1009;SA1600;SA1591;CS1591;</NoWarn>
     <RootNamespace> </RootNamespace>
   </PropertyGroup>
   

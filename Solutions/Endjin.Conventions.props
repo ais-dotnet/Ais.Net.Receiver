@@ -19,8 +19,10 @@
         defaults it to the project name, so clearing it from a Directory.Build.props (imported before
         the SDK) would have no effect. The package used the same trick, via $(EndjinProjectPropsPath).
 
-    The files the package would also have supplied - .editorconfig, stylecop.json, PackageIcon.png -
-    are already checked in alongside this file.
+    The files the package would also have supplied and that are still needed - .editorconfig and
+    PackageIcon.png - are checked in alongside this file. Its stylecop.json went with the package: no
+    analyzer reads it now, and the StyleCop suppressions that accompanied it (in .editorconfig and in
+    each project's NoWarn) referred to rules nothing raises any more.
   -->
 
   <PropertyGroup>

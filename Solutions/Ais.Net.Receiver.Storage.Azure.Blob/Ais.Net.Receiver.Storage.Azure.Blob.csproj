@@ -18,7 +18,6 @@
   </PropertyGroup>
   
   <PropertyGroup>
-    <NoWarn>RCS1029;SA1313;SA1009;SA1600;SA1591;CS1591;</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
