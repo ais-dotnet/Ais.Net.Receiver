@@ -54,4 +54,37 @@ public class SubscribeWithBackpressureTests
 
         dropped.ShouldBe(0);
     }
+
+    [TestMethod]
+    public void SubscribeWithBackpressure_ReportsSourceFaultAndCompletion_WhenHandlersSupplied()
+    {
+        Subject<int> faulting = new();
+        Subject<int> completing = new();
+        Exception? faulted = null;
+        bool completed = false;
+        IOException failure = new("stream lost");
+
+        using IDisposable faultingSubscription = faulting.SubscribeWithBackpressure(
+            _ => true, static () => { }, onError: ex => faulted = ex, onCompleted: static () => { });
+        using IDisposable completingSubscription = completing.SubscribeWithBackpressure(
+            _ => true, static () => { }, onError: static _ => { }, onCompleted: () => completed = true);
+
+        faulting.OnError(failure);
+        completing.OnCompleted();
+
+        faulted.ShouldBeSameAs(failure);
+        completed.ShouldBeTrue();
+    }
+
+    [TestMethod]
+    public void SubscribeWithBackpressure_KeepsRxDefault_WhenNoErrorHandlerSupplied()
+    {
+        Subject<int> source = new();
+
+        using IDisposable subscription = source.SubscribeWithBackpressure(_ => true, static () => { });
+
+        // Without an explicit handler the fault must still surface rather than being swallowed: Rx
+        // rethrows it on the producer's thread.
+        Should.Throw<IOException>(() => source.OnError(new IOException("stream lost")));
+    }
 }

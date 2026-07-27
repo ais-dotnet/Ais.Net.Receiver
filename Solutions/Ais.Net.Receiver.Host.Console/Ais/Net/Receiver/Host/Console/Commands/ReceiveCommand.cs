@@ -143,7 +143,8 @@ public class ReceiveCommand : AsyncCommand<ReceiveCommand.Settings>
                 instrumentation,
                 storageLogger,
                 onPersistError: ex => AnsiConsole.MarkupLine($"[red]Storage error: {Markup.Escape(ex.Message)}[/]"),
-                onSentencesDropped: total => AnsiConsole.MarkupLine($"[yellow]Storage backpressure: {total:N0} sentences dropped (batch buffer full)[/]"));
+                onSentencesDropped: total => AnsiConsole.MarkupLine($"[yellow]Storage backpressure: {total:N0} sentences dropped (batch buffer full)[/]"),
+                onSourceFaulted: ex => AnsiConsole.MarkupLine($"[red]Sentence stream faulted, capture stopping: {Markup.Escape(ex.Message)}[/]"));
         }
 
         await using (storagePipeline)

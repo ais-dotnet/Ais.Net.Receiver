@@ -86,6 +86,7 @@ public static class ReceiverPipeline
     /// <param name="storageLogger">Optional logger for the storage client.</param>
     /// <param name="onPersistError">Invoked when a batch cannot be persisted.</param>
     /// <param name="onSentencesDropped">Invoked with the running dropped-sentence total when the buffer sheds load.</param>
+    /// <param name="onSourceFaulted">Invoked when the sentence stream itself faults, after the pipeline has been completed so buffered batches still drain.</param>
     /// <returns>The pipeline, or <see langword="null"/> when <see cref="StorageConfig.EnableCapture"/> is <see langword="false"/>.</returns>
     public static StorageBatchPipeline? CreateStorage(
         StorageConfig storageConfig,
@@ -95,7 +96,8 @@ public static class ReceiverPipeline
         ApplicationInstrumentation? instrumentation,
         ILogger? storageLogger,
         Action<Exception> onPersistError,
-        Action<long> onSentencesDropped)
+        Action<long> onSentencesDropped,
+        Action<Exception>? onSourceFaulted = null)
     {
         ArgumentNullException.ThrowIfNull(storageConfig);
 
@@ -153,7 +155,8 @@ public static class ReceiverPipeline
             metrics,
             onPersistError,
             onSentencesDropped,
-            replayer);
+            replayer,
+            onSourceFaulted);
     }
 
     /// <summary>

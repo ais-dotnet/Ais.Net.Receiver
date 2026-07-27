@@ -146,4 +146,10 @@ internal static partial class Log
         Level = LogLevel.Warning,
         Message = "Storage backpressure: {TotalDropped} NMEA sentences dropped (batch buffer full)")]
     public static partial void SentencesDropped(this ILogger logger, long totalDropped);
+
+    [LoggerMessage(
+        EventId = 1304,
+        Level = LogLevel.Error,
+        Message = "The NMEA sentence stream faulted; buffered batches are being flushed and capture has stopped")]
+    public static partial void SentenceStreamFaulted(this ILogger logger, Exception exception);
 }

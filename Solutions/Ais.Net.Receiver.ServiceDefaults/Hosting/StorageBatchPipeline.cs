@@ -31,6 +31,7 @@ public sealed class StorageBatchPipeline : IAsyncDisposable
     private readonly Action<Exception> onPersistError;
     private readonly Action<long> onSentencesDropped;
     private readonly DeadLetterReplayer? replayer;
+    private readonly Action<Exception>? onSourceFaulted;
     private long droppedSentences;
     private int stopped;
 
@@ -45,6 +46,7 @@ public sealed class StorageBatchPipeline : IAsyncDisposable
     /// <param name="onPersistError">Invoked when a batch cannot be persisted (after the pipeline records the exception on the current activity).</param>
     /// <param name="onSentencesDropped">Invoked with the running dropped-sentence total when the bounded buffer sheds load (throttled: first drop, then every ten-thousandth).</param>
     /// <param name="replayer">Optional dead-letter replayer; when supplied it is owned by this pipeline and stopped on disposal before the storage client is disposed.</param>
+    /// <param name="onSourceFaulted">Invoked when the sentence stream itself faults, after the pipeline has been completed so the buffered batches still drain.</param>
     public StorageBatchPipeline(
         IObservable<ReadOnlyMemory<byte>> rawSentences,
         IStorageClient storageClient,
@@ -52,7 +54,8 @@ public sealed class StorageBatchPipeline : IAsyncDisposable
         ApplicationMetrics? metrics,
         Action<Exception> onPersistError,
         Action<long> onSentencesDropped,
-        DeadLetterReplayer? replayer = null)
+        DeadLetterReplayer? replayer = null,
+        Action<Exception>? onSourceFaulted = null)
     {
         ArgumentNullException.ThrowIfNull(rawSentences);
         ArgumentNullException.ThrowIfNull(storageClient);
@@ -64,6 +67,7 @@ public sealed class StorageBatchPipeline : IAsyncDisposable
         this.onPersistError = onPersistError;
         this.onSentencesDropped = onSentencesDropped;
         this.replayer = replayer;
+        this.onSourceFaulted = onSourceFaulted;
 
         this.batchBlock = new BatchBlock<ReadOnlyMemory<byte>>(
             options.WriteBatchSize,
@@ -93,9 +97,16 @@ public sealed class StorageBatchPipeline : IAsyncDisposable
             options.BatchTimeout);
 
         // Feed sentences into the batch, surfacing backpressure drops instead of losing them
-        // silently: a full bounded block declines Post, which SubscribeWithBackpressure reports.
+        // silently: a full bounded block declines Post, which SubscribeWithBackpressure reports. An
+        // upstream fault or completion is handled explicitly too, so the dataflow blocks complete (and
+        // the outcome becomes observable through FlushAsync) rather than the error being rethrown on
+        // the producer's thread as an unhandled Rx exception.
         BatchBlock<ReadOnlyMemory<byte>> block = this.batchBlock;
-        this.subscription = rawSentences.SubscribeWithBackpressure(block.Post, this.OnDropped);
+        this.subscription = rawSentences.SubscribeWithBackpressure(
+            block.Post,
+            this.OnDropped,
+            this.OnSourceFaulted,
+            this.OnSourceCompleted);
     }
 
     /// <summary>
@@ -172,6 +183,19 @@ public sealed class StorageBatchPipeline : IAsyncDisposable
             this.onPersistError(ex);
         }
     }
+
+    // The sentence stream faulted: complete the batch block so the partial batch and everything already
+    // queued still gets persisted, then report the fault. Completion propagates to the action block, so
+    // a later FlushAsync/DisposeAsync observes a drained pipeline instead of waiting out its timeout.
+    private void OnSourceFaulted(Exception exception)
+    {
+        Activity.Current?.RecordExceptionWithStatus(exception);
+        this.batchBlock.Complete();
+        this.onSourceFaulted?.Invoke(exception);
+    }
+
+    // The sentence stream ended normally: flush what is buffered by completing the block.
+    private void OnSourceCompleted() => this.batchBlock.Complete();
 
     private void OnDropped()
     {

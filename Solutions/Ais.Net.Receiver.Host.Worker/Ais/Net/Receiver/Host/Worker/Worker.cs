@@ -317,6 +317,7 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
             this.instrumentation,
             this.logger,
             onPersistError: this.logger.StoragePersistenceFailed,
-            onSentencesDropped: this.logger.SentencesDropped);
+            onSentencesDropped: this.logger.SentencesDropped,
+            onSourceFaulted: this.logger.SentenceStreamFaulted);
     }
 }

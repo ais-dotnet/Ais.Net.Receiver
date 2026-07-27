@@ -3,6 +3,7 @@
 // </copyright>
 
 using System.Diagnostics;
+using System.Reactive;
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using Ais.Net.Models.Abstractions;
@@ -136,18 +137,43 @@ public static class ReceiverHostExtensions
     /// <param name="source">The source stream.</param>
     /// <param name="tryConsume">Consumes an item; returns <see langword="false"/> if it was declined.</param>
     /// <param name="onDropped">Invoked once per declined item.</param>
+    /// <param name="onError">
+    /// Invoked when the source faults, so the consumer can shut down in a controlled way. When omitted,
+    /// Rx's default applies and the fault is rethrown on the producer's thread.
+    /// </param>
+    /// <param name="onCompleted">Invoked when the source completes; ignored when omitted.</param>
     /// <returns>The subscription.</returns>
     public static IDisposable SubscribeWithBackpressure<T>(
         this IObservable<T> source,
         Func<T, bool> tryConsume,
-        Action onDropped) =>
-        source.Subscribe(item =>
+        Action onDropped,
+        Action<Exception>? onError = null,
+        Action? onCompleted = null)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(tryConsume);
+        ArgumentNullException.ThrowIfNull(onDropped);
+
+        void OnNext(T item)
         {
             if (!tryConsume(item))
             {
                 onDropped();
             }
-        });
+        }
+
+        // Each arm picks the Observer.Create overload that leaves the unsupplied handlers at their Rx
+        // defaults, so omitting onError keeps the existing rethrow behaviour rather than swallowing it.
+        IObserver<T> observer = (onError, onCompleted) switch
+        {
+            (null, null) => Observer.Create<T>(OnNext),
+            (not null, null) => Observer.Create<T>(OnNext, onError),
+            (null, not null) => Observer.Create<T>(OnNext, onCompleted),
+            _ => Observer.Create<T>(OnNext, onError, onCompleted),
+        };
+
+        return source.Subscribe(observer);
+    }
 
     /// <summary>
     /// Provides a running count of events provided by an observable stream.

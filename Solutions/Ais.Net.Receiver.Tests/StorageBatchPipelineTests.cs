@@ -127,6 +127,41 @@ public class StorageBatchPipelineTests
         loadShed.ShouldBeTrue();
     }
 
+    [TestMethod]
+    public async Task SourceFault_IsReportedAndDrainsBufferedSentences()
+    {
+        Subject<ReadOnlyMemory<byte>> source = new();
+        RecordingStorageClient storage = new();
+        Exception? faulted = null;
+        bool completed = false;
+        IOException failure = new("receiver stream lost");
+
+        // As above: nothing can flush the partial batch except the source ending.
+        StorageBatchOptions options = new(WriteBatchSize: 100, BoundedCapacity: 1000, BatchTimeout: TimeSpan.FromHours(1), MaxDegreeOfParallelism: 1, MaxPendingBatches: 4);
+
+        await using StorageBatchPipeline pipeline = new(
+            source, storage, options, metrics: null,
+            onPersistError: static _ => { },
+            onSentencesDropped: static _ => { },
+            replayer: null,
+            onSourceFaulted: ex => faulted = ex);
+
+        source.OnNext("!AIVDM,1,1,,A,aaaa,0*00"u8.ToArray());
+
+        // An unhandled Rx fault would be rethrown here on the producer's thread instead.
+        source.OnError(failure);
+
+        await pipeline.FlushAsync(
+            TimeSpan.FromSeconds(30),
+            onCompleted: () => completed = true,
+            onTimedOut: static () => { },
+            onError: static _ => { });
+
+        faulted.ShouldBeSameAs(failure);
+        completed.ShouldBeTrue();
+        storage.Persisted.Count.ShouldBe(1);
+    }
+
     private sealed class RecordingStorageClient : IStorageClient
     {
         private readonly List<byte[]> persisted = [];
