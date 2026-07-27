@@ -8,6 +8,15 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <TreatWarningsAsErrors Condition="'$(Configuration)' == 'Release'">true</TreatWarningsAsErrors>
+    <!--
+      Endjin.RecommendedPractices 2.1.18 injects StyleCop.Analyzers and Roslynator.Analyzers as
+      PackageReference items with hardcoded Version attributes, which Central Package Management
+      rejects with NU1008. Setting this makes that injection conditional-out, matching what
+      Ais.Net.Receiver and Ais.Net.Receiver.Storage.Azure.Blob already do. The `dotnet` CLI happens
+      not to surface the error - the analyzers never reach its restore graph - but Visual Studio's
+      restore evaluates them and fails the build.
+    -->
+    <EndjinDisableCodeAnalysis>True</EndjinDisableCodeAnalysis>
     <EnableConfigurationBindingGenerator>true</EnableConfigurationBindingGenerator>
     <IsPackable>false</IsPackable>
     <UserSecretsId>dotnet-Ais.Net.Receiver.Host.Worker-53bc9b9d-9d6a-45d4-8429-2a2761773502</UserSecretsId>
@@ -49,10 +58,6 @@
     <None Update="appsettings.local.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Update="Roslynator.Analyzers" />
   </ItemGroup>
 
 </Project>
