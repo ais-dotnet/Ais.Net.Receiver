@@ -32,24 +32,37 @@ public static class ReceiverPipeline
     /// <param name="instrumentation">Optional application instrumentation for tracing.</param>
     /// <param name="metrics">Optional application metrics.</param>
     /// <param name="onConnectionStateChanged">Optional callback invoked with the live TCP connection state (true on connect, false on any disconnect/idle/error), e.g. to drive a health check.</param>
+    /// <param name="loggerFactory">
+    /// Optional factory used to create loggers for the receiver and its TCP stream reader. Without it
+    /// both fall back to <c>NullLogger</c>, which silently discards the connection and socket-level
+    /// diagnostics (event ids 4000-4024) that are the only way to tell a refused connection from a
+    /// DNS failure from a feed that accepts and then goes quiet.
+    /// </param>
     /// <returns>A configured, not-yet-started <see cref="ReceiverHost"/>.</returns>
     public static ReceiverHost CreateHost(
         AisConfig aisConfig,
         TimeProvider timeProvider,
         ApplicationInstrumentation? instrumentation,
         ApplicationMetrics? metrics,
-        Action<bool>? onConnectionStateChanged = null)
+        Action<bool>? onConnectionStateChanged = null,
+        ILoggerFactory? loggerFactory = null)
     {
         ArgumentNullException.ThrowIfNull(aisConfig);
 
+        INmeaStreamReader streamReader = new TcpClientNmeaStreamReader(
+            loggerFactory?.CreateLogger<TcpClientNmeaStreamReader>());
+
         INmeaReceiver receiver = new NetworkStreamNmeaReceiver(
+            streamReader,
             aisConfig.Connection.Host,
             aisConfig.Connection.Port,
             timeProvider,
             aisConfig.Connection.Retry.Periodicity,
             retryAttemptLimit: aisConfig.Connection.Retry.Attempts,
             metrics: metrics,
-            onConnectionStateChanged: onConnectionStateChanged);
+            logger: loggerFactory?.CreateLogger<NetworkStreamNmeaReceiver>(),
+            onConnectionStateChanged: onConnectionStateChanged,
+            instrumentation: instrumentation);
 
         return new ReceiverHost(
             receiver,

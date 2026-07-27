@@ -72,7 +72,11 @@ public class ReceiveCommand : AsyncCommand<ReceiveCommand.Settings>
         ApplicationInstrumentation? instrumentation = this.serviceProvider.GetService<ApplicationInstrumentation>();
 
         await using ReceiverHost receiverHost = ReceiverPipeline.CreateHost(
-            this.aisConfig, this.timeProvider, instrumentation, metrics);
+            this.aisConfig,
+            this.timeProvider,
+            instrumentation,
+            metrics,
+            loggerFactory: this.serviceProvider.GetService<ILoggerFactory>());
 
         using CompositeDisposable subscriptions = [];
 
@@ -98,7 +102,7 @@ public class ReceiveCommand : AsyncCommand<ReceiveCommand.Settings>
         if (this.aisConfig.Telemetry.Verbosity <= LogLevel.Information)
         {
             subscriptions.Add(
-                receiverHost.Messages.VesselNavigationWithNameStream(this.aisConfig.Telemetry.VesselInactivityTimeout).Subscribe(navigationWithName =>
+                receiverHost.Messages.VesselNavigationWithNameStream(this.aisConfig.Telemetry.VesselInactivityTimeout, instrumentation: instrumentation).Subscribe(navigationWithName =>
                 {
                     (uint mmsi, IVesselNavigation navigation, IVesselName name) = navigationWithName;
                     string positionText = navigation.Position is { } position ? $"{position.Latitude},{position.Longitude}" : "unknown position";

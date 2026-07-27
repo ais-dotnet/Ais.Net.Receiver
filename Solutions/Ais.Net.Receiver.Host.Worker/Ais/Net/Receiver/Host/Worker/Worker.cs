@@ -26,6 +26,7 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
     private static readonly TagList[] MessageTypeTags = CreateMessageTypeTags();
 
     private readonly ILogger<Worker> logger;
+    private readonly ILoggerFactory loggerFactory;
     private readonly IOptionsMonitor<AisConfig> aisOptionsMonitor;
     private readonly IOptionsMonitor<StorageConfig> storageOptionsMonitor;
     private readonly TimeProvider timeProvider;
@@ -39,6 +40,7 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
 
     public Worker(
         ILogger<Worker> logger,
+        ILoggerFactory loggerFactory,
         IOptionsMonitor<AisConfig> aisOptionsMonitor,
         IOptionsMonitor<StorageConfig> storageOptionsMonitor,
         TimeProvider timeProvider,
@@ -47,6 +49,7 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
         IAisConnectionMonitor connectionMonitor)
     {
         this.logger = logger;
+        this.loggerFactory = loggerFactory;
         this.aisOptionsMonitor = aisOptionsMonitor;
         this.storageOptionsMonitor = storageOptionsMonitor;
         this.timeProvider = timeProvider;
@@ -83,7 +86,8 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
             this.instrumentation,
             this.metrics,
             // Drive connection health from the receiver's real TCP state rather than worker lifetime.
-            onConnectionStateChanged: this.connectionMonitor.RecordConnectionStateChanged);
+            onConnectionStateChanged: this.connectionMonitor.RecordConnectionStateChanged,
+            loggerFactory: this.loggerFactory);
 
         this.subscriptions = [];
 
@@ -228,7 +232,7 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
 
         AisConfig aisConfig = this.aisOptionsMonitor.CurrentValue;
 
-        if (aisConfig.Telemetry.Verbosity == LogLevel.Warning)
+        if (aisConfig.Telemetry.Verbosity <= LogLevel.Warning)
         {
             this.subscriptions.Add(
                 this.receiverHost.GetStreamStatistics(aisConfig.Telemetry.StatisticsPeriodicity)
@@ -242,10 +246,10 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
                         error => this.logger.StatisticsStreamError(error)));
         }
 
-        if (aisConfig.Telemetry.Verbosity == LogLevel.Information)
+        if (aisConfig.Telemetry.Verbosity <= LogLevel.Information)
         {
             this.subscriptions.Add(
-                this.receiverHost.Messages.VesselNavigationWithNameStream(aisConfig.Telemetry.VesselInactivityTimeout).Subscribe(navigationWithName =>
+                this.receiverHost.Messages.VesselNavigationWithNameStream(aisConfig.Telemetry.VesselInactivityTimeout, instrumentation: this.instrumentation).Subscribe(navigationWithName =>
                 {
                     (uint mmsi, IVesselNavigation navigation, IVesselName name) = navigationWithName;
                     string positionText = navigation.Position is { } position ? $"{position.Latitude},{position.Longitude}" : "unknown position";
@@ -261,7 +265,7 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
                 }));
         }
 
-        if (aisConfig.Telemetry.Verbosity == LogLevel.Debug)
+        if (aisConfig.Telemetry.Verbosity <= LogLevel.Debug)
         {
             this.subscriptions.Add(
                 this.receiverHost.Sentences.Subscribe(s =>
@@ -273,7 +277,7 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
                 }));
         }
 
-        if (aisConfig.Telemetry.Verbosity == LogLevel.Trace)
+        if (aisConfig.Telemetry.Verbosity <= LogLevel.Trace)
         {
             this.subscriptions.Add(
                 this.receiverHost.Messages.Subscribe(m =>
