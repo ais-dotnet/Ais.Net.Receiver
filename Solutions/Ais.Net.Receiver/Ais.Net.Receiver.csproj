@@ -30,9 +30,6 @@
     <PackageReference Include="System.Reactive" />
   </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Update="StyleCop.Analyzers" />
-  </ItemGroup>
 
   <ItemGroup>
     <InternalsVisibleTo Include="Ais.Net.Receiver.Tests" />

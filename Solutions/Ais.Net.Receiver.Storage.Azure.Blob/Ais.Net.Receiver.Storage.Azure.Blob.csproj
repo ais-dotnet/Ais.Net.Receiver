@@ -27,9 +27,6 @@
     <PackageReference Include="Microsoft.Extensions.Options" />
   </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Update="StyleCop.Analyzers" />
-  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Ais.Net.Receiver\Ais.Net.Receiver.csproj" />
