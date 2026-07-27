@@ -101,12 +101,17 @@ Update the values in the `appsettings.json` file:
 ```json
 {
   "Ais": {
-    "host": "153.44.253.27",
-    "port": "5631",
-    "retryAttempts": 5,
-    "retryPeriodicity": "00:00:00:00.500"
+    "Connection": {
+      "Host": "153.44.253.27",
+      "Port": 5631,
+      "Retry": {
+        "Attempts": 5,
+        "Periodicity": "00:00:00:01"
+      }
+    }
   },
   "Storage": {
+    "enableCapture": true,
     "connectionString": "<YOUR AZURE STORAGE CONNECTION STRING>",
     "containerName": "nmea-ais",
     "writeBatchSize": 500
@@ -114,7 +119,15 @@ Update the values in the `appsettings.json` file:
 }
 ```
 
-From the command line: `dotnet Ais.Net.Receiver.Host.Console.dll`
+See [Configuration](#configuration) for the full schema and every available setting.
+
+From the command line, either host will do — the console host for interactive use, the worker for
+running as a service:
+
+```bash
+dotnet Ais.Net.Receiver.Host.Console.dll
+dotnet Ais.Net.Receiver.Host.Worker.dll
+```
 
 ## Running Tests
 
@@ -166,6 +179,41 @@ the check, which is how you deliberately confirm whether a skew exists between t
 ```bash
 AIS_TEST_AZURITE_SKIP_API_VERSION_CHECK=false dotnet run -f net10.0 -- --filter "TestCategory=Integration"
 ```
+
+## Telemetry
+
+The receiver is instrumented with OpenTelemetry — traces for the connection lifecycle, message
+processing and storage operations; metrics for throughput, errors, connection health and storage
+performance; and logs that carry trace context so a log line can be pivoted to the trace it belongs to.
+
+`docs/telemetry/observability-playbook.md` is the operational reference: every metric with its unit and
+histogram buckets, example queries, alert definitions, and troubleshooting runbooks. It records measured
+baselines rather than estimates, including the ~3–4% sentence error rate a live coastal feed produces
+(the parser rejects `!B1VDM`/`!B2VDM` talker ids), so alert thresholds can be set above a feed's own
+noise floor rather than permanently firing. `docs/telemetry/testing-guide.md` covers testing
+instrumented code.
+
+### Exporting
+
+Nothing is exported unless an endpoint is configured. Set `OTEL_EXPORTER_OTLP_ENDPOINT` to enable the
+OTLP exporters for logs, metrics and traces; without it the exporters are left unregistered rather than
+defaulting to `localhost:4317` and logging periodic connection failures into a deployment that has no
+collector.
+
+| Setting | Purpose |
+| --- | --- |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | Enables the OTLP exporters. Unset means no export. |
+| `OTEL_TRACES_SAMPLER`, `OTEL_TRACES_SAMPLER_ARG` | Standard sampler selection. **Takes precedence** — when set, no sampler is configured in code, so this is the knob to reach for during an ingest-cost or backend-overload incident. |
+| `OpenTelemetry:TraceSamplingRatio` | Ratio (0.0–1.0) used when the environment variables above are not set. Applied `ParentBased`, so a sampled upstream trace stays intact end to end. Ignored in Development, which always samples everything for the Aspire dashboard. |
+| `OTEL_SERVICE_INSTANCE_ID` | Sets `service.instance.id`. Defaults to the machine name, which under Docker or Kubernetes is unique per replica and stable for that replica's life. |
+
+### Health
+
+Two health checks are registered: AIS connection state and storage accessibility. Connection health
+reflects the live TCP state and, importantly, whether the feed is actually *delivering* — a server that
+accepts a connection and then goes silent reconnects cleanly forever, so connect success alone is not
+treated as healthy. `ais.receiver.connection.consecutive_failures` resets on the first delivered
+sentence rather than on connect.
 
 # Raspberry Pi
 
@@ -272,51 +320,109 @@ Use [Azure Storage Explorer](https://azure.microsoft.com/en-us/features/storage-
 
 #### Configuration
 
-Configuration is read from `appsettings.json` and can also be overridden for local development by using an `appsettings.local.json` file.
+Configuration is read from `appsettings.json`. Both hosts use the standard .NET host configuration
+pipeline, so values can be overridden — in increasing order of precedence — by
+`appsettings.{Environment}.json` (selected by `DOTNET_ENVIRONMENT`, e.g. `appsettings.Development.json`),
+environment variables, and command-line arguments.
+
+Environment variables use `__` as the section separator, which is the most practical way to override
+settings in a container without rebuilding the image:
+
+```bash
+Ais__Connection__Host=153.44.253.27 \
+Storage__EnableCapture=true \
+Storage__ConnectionString="UseDevelopmentStorage=true" \
+  ./Ais.Net.Receiver.Host.Worker
+```
 
 ```json
 {
   "Ais": {
-    "host": "153.44.253.27",
-    "port": "5631",
-    "loggerVerbosity": "Minimal", 
-    "statisticsPeriodicity": "00:01:00",
-    "retryAttempts": 5,
-    "retryPeriodicity": "00:00:00:00.500"
+    "Connection": {
+      "Host": "153.44.253.27",
+      "Port": 5631,
+      "Retry": {
+        "Attempts": 5,
+        "Periodicity": "00:00:00:01"
+      }
+    },
+    "Receiver": {
+      "Retry": {
+        "Attempts": 5,
+        "Periodicity": "00:00:00:01"
+      }
+    },
+    "Telemetry": {
+      "Verbosity": "Warning",
+      "StatisticsPeriodicity": "00:00:01:00",
+      "VesselInactivityTimeout": "00:30:00"
+    }
   },
   "Storage": {
     "enableCapture": true,
     "connectionString": "DefaultEndpointsProtocol=https;AccountName=<ACCOUNT_NAME>;AccountKey=<ACCOUNT_KEY>",
     "containerName": "nmea-ais-dev",
-    "writeBatchSize": 500
+    "writeBatchSize": 500,
+    "batchTimeoutSeconds": 10,
+    "boundedCapacity": 10000,
+    "maxDegreeOfParallelism": 1,
+    "writeRetryAttempts": 3
   }
 }
 ```
 
 ##### AIS
 
-These settings control the `ReceiverHost` and its behaviour.
+`Ais:Connection` controls the TCP connection to the feed.
 
-- `host`: IP Address or FQDN of the AIS Source
-- `port`: Port number for the AIS Source
-- `loggerVerbosity`: Controls the output to the console.
-  - `Quiet` = Essential only,
-  - `Minimal` = Statistics only. Sample rate of statistics controlled by `statisticsPeriodicity`,
-  - `Normal` = Vessel Names and Positions,
-  - `Detailed` = NMEA Sentences,
-  - `Diagnostic` = Messages and Errors
-- `statisticsPeriodicity`: TimeSpan defining the sample rate of statistics to display
-- `retryAttempts`: Number of retry attempts when a connection error occurs
-- `retryPeriodicity`: How long to wait before a retry attempt.
-  
+- `Host`: IP address or FQDN of the AIS source
+- `Port`: port number for the AIS source
+- `Retry:Periodicity`: base delay between reconnection attempts. Backoff is linear —
+  `Periodicity × attempt`.
+- `Retry:Attempts`: **caps how far the backoff delay grows, and does not limit the number of
+  attempts.** The receiver reconnects indefinitely; with the shipped `Attempts: 5` and
+  `Periodicity: 1s` the delay climbs to 5 seconds and then stays there. A long-running receiver that
+  gave up after N failures would need manual intervention to resume, which is why there is no cap on
+  attempts. The idle-read timeout that detects a silently dropped connection is deliberately separate
+  from these settings and defaults to 60 seconds.
+
+`Ais:Receiver:Retry` controls the receive loop that sits above the connection, using the same shape.
+
+`Ais:Telemetry` controls console output and derived streams.
+
+- `Verbosity`: a standard `LogLevel` (`Trace`, `Debug`, `Information`, `Warning`, `Error`,
+  `Critical`, `None`), and **cumulative** — each level includes everything the less verbose levels
+  emit:
+  - `None` — nothing
+  - `Warning` — periodic statistics, sampled at `StatisticsPeriodicity`
+  - `Information` — the above, plus vessel names and positions
+  - `Debug` — the above, plus raw NMEA sentences
+  - `Trace` — the above, plus decoded messages and parse errors
+- `StatisticsPeriodicity`: how often to emit the statistics line
+- `VesselInactivityTimeout`: how long a vessel may go unheard before its tracking state is released.
+  Defaults to 30 minutes.
+
 ##### Storage
 
-These settings control the capturing NMEA sentences to Azure Blob Storage.
+These settings control the capturing of NMEA sentences to Azure Blob Storage.
 
-- `enableCapture`: Whether you want to capture the NMEA sentences and write them to Azure Blob Storage
-- `connectionString`: Azure Storage Account Connection String
-- `containerName`: Name of the container to capture the NMEA sentences. You can use this to separate a local dev storage container from your production storage container, within the same storage account.
-- `writeBatchSize`: How many NMEA sentences to batch before writing to Azure Blob Storage.
+- `enableCapture`: whether to capture NMEA sentences and write them to Azure Blob Storage
+- `connectionString`: Azure Storage account connection string
+- `containerName`: container to capture the NMEA sentences into. Useful for separating a local dev
+  container from production within the same storage account.
+- `writeBatchSize`: how many sentences to batch before writing (default 500)
+- `batchTimeoutSeconds`: flush a partial batch after this long, so a quiet feed still gets persisted
+  (default 10)
+- `boundedCapacity`: how many sentences may be buffered awaiting a write (default 10000). When the
+  buffer fills, sentences are shed rather than allowed to grow memory without limit, and the drops are
+  counted by `ais.receiver.sentences.dropped`.
+- `maxDegreeOfParallelism`: concurrent storage writes (default 1). Appends to a single blob are
+  serialized regardless, so raising this only helps if writes are the bottleneck.
+- `writeRetryAttempts`: total attempts per batch, including the first (default 3)
+- `deadLetterPath`: optional local directory. When set, a batch that exhausts its retries is written
+  here instead of being lost, and a background replayer returns it to storage once the backend
+  recovers. When unset, an exhausted batch surfaces as an error instead.
+- `deadLetterReplayIntervalSeconds`: how often to attempt replaying dead-lettered batches (default 60)
 
 ## Running as WASM
 

@@ -152,9 +152,27 @@ dead-letter-then-replay after a storage failure, and load shedding under a stall
 `StorageHealthCheckIntegrationTests` covers `StorageHealthCheck` against a real endpoint. See the
 Integration tests section of `README.md` for the Docker requirement and the environment variables.
 
-### T4. Long-run soak in CI (optional)  ·  Priority: Low  ·  Effort: S
+### T4. Long-run soak in CI (optional)  ·  Priority: Low  ·  Effort: S  ·  **Run manually; automation still open**
 Parameterize the leak harness as an on-demand/nightly soak (10–15 min) that fails the build on
 unbounded live-heap growth.
+
+A soak has been run by hand against the live Norwegian Coastal Administration feed (11.5 minutes,
+~40 sentences/sec, Release build, Azurite backend) using `dotnet-counters`, three `dotnet-gcdump`
+snapshots and `dotnet-trace`. Findings, which are the baseline any automated soak should assert against:
+
+- **No leak.** Managed heap 1.83 → 1.99 MB across the run (~20k objects) and flat; the only growth
+  between snapshots was reflection metadata attributable to the diagnostic tooling itself.
+- Working set rose 99.6 → ~116 MB over the first five minutes and then **plateaued**, tracking JIT
+  warm-up (3,176 methods, 1.26 s) rather than accumulation. It is runtime-dominated: against a sub-2 MB
+  managed heap, mapped CoreLib, JIT'd code, libcoreclr/libclrjit and ICU account for ~40 MB.
+- Allocation ~84 KB/sec; 1 gen0, 1 gen1 and 2 gen2 collections in nine minutes, with pause time ~0.
+- CPU 4.28 s over 540 s — **0.79% of one core**; the thread-time profile is almost entirely socket
+  waits, so this workload is nowhere near a CPU limit.
+- Lock contention: 3 events total, so serializing appends costs nothing at this rate.
+
+Automating it remains open. The useful shape is a fixed-duration run asserting the *plateau* rather than
+an absolute ceiling, since the absolute figure is mostly runtime overhead and would make the threshold
+brittle across SDK versions.
 
 ---
 
@@ -170,10 +188,47 @@ unbounded live-heap growth.
 ## Cross-cutting
 
 - **New metrics:** `ais.receiver.sentences.dropped`, `ais.storage.batches.failed` — registered on the
-  existing meter and documented.
-- **Docs:** update config docs for `MaxDegreeOfParallelism` semantics, `BlobServiceUri`/managed
-  identity, and the new metrics.
+  existing meter and documented. Since joined by `ais.storage.batches.replayed`,
+  `ais.receiver.retry.attempts` and `ais.receiver.connection.consecutive_failures`.
+- **Docs:** ✅ config docs in `README.md` rewritten against the current schema (the previous version
+  still described a flat `loggerVerbosity`/`retryAttempts` shape that no longer exists), covering
+  `MaxDegreeOfParallelism` semantics, the dead-letter settings, and the fact that
+  `Connection.Retry.Attempts` bounds backoff growth rather than the number of attempts. Every metric is
+  documented in `docs/telemetry/observability-playbook.md` with its unit and buckets. `BlobServiceUri` /
+  managed identity remains undocumented because R3 is not planned.
 - **Config-gated** behaviour changes with safe defaults; no surprises on upgrade.
+
+---
+
+## Delivered beyond this plan — observability hardening
+
+Work that followed the items above and is not itself part of the plan, recorded here because it changes
+the reliability signals the plan depends on.
+
+- **Connection health is based on delivered data, not connect success.** The consecutive-failure gauge
+  was incremented only when connect threw and reset as soon as connect succeeded, so a server that
+  accepted and then closed — or accepted and stayed silent — reconnected cleanly forever while the gauge
+  read zero through a total outage. It now resets on the first delivered sentence, and a connection that
+  ends having delivered nothing is counted as a failure. This is what makes the R1/R2 alerting
+  trustworthy.
+- **Socket-level diagnostics reach a logger.** TCP keepalive (60s/10s/3) plus classified socket errors
+  (refused, DNS failure, timeout, unreachable, reset, aborted) distinguish "feed is down" from "host is
+  wrong". `ReceiverPipeline.CreateHost` now takes an `ILoggerFactory`; without it these all resolved to
+  `NullLogger`. Two socket options that looked like safety nets were removed rather than kept:
+  `ReceiveTimeout`/`SendTimeout` have no effect on the asynchronous reads this code performs, and
+  `SO_LINGER` made `DisposeAsync` block for up to five seconds on exactly the dead peers the reconnect
+  path needs to shed quickly.
+- **Trace attributes are searchable again.** An earlier revision moved MMSI, vessel name, call sign and
+  position from span attributes into span events for cardinality reasons. Cardinality discipline belongs
+  on metric dimensions, where each value is a new time series; a span attribute is one indexed field on
+  one span record, and event attributes are not in the span index — so the change removed the ability to
+  find the spans that handled a given vessel. They are span attributes again.
+- **Sampling and correlation.** Log records carry trace context; traces are `ParentBased` ratio-sampled
+  outside Development, with `OTEL_TRACES_SAMPLER` taking precedence so the environment can still
+  override during an incident. OTLP exporters are only registered when an endpoint is configured.
+- **Histogram buckets and alert thresholds are calibrated against measurement**, not estimates — see the
+  T4 findings and the playbook. Both histograms previously placed the common case below their first
+  boundary, which is the same defect their comments claimed to avoid.
 
 ## Out of scope (perf — track separately)
 
