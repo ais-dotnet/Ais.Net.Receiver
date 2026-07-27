@@ -18,6 +18,12 @@ several defaults behave differently.
 * Adopted Central Package Management — package versions now live in `Solutions/Directory.Packages.props`.
 * Added a .NET Aspire AppHost (`Ais.Net.Receiver.AppHost`) and a shared
   `Ais.Net.Receiver.ServiceDefaults` project carrying telemetry, health checks and service discovery.
+  The AppHost also runs an Azurite container and points the worker at it, so `dotnet run` on the
+  AppHost captures NMEA locally with no Azure account and no secrets (Docker required).
+* `Storage:EnableCapture` now defaults to `false` in the tracked `appsettings.json` files. Previously
+  they shipped `true` with an empty connection string, which made `ValidateOnStart` throw before the
+  host started. Supply a connection string via user secrets, the environment, or the AppHost's
+  Azurite container to turn capture back on.
 * Added a Worker Service host (`Ais.Net.Receiver.Host.Worker`) alongside the existing console host, for
   running the receiver as a long-lived service. The published container image is still built from the
   console host; `Solutions/docker-compose.yml` additionally defines worker services, including a

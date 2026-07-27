@@ -129,6 +129,33 @@ dotnet Ais.Net.Receiver.Host.Console.dll
 dotnet Ais.Net.Receiver.Host.Worker.dll
 ```
 
+### Local development with the Aspire AppHost
+
+The AppHost runs the worker alongside an [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite)
+container, so capture works on a fresh clone with no Azure account and no secrets. Docker must be
+running.
+
+```bash
+dotnet run --project Solutions/Ais.Net.Receiver.AppHost
+```
+
+It injects `Storage__ConnectionString` (pointing at the emulator) and `Storage__EnableCapture=true`
+into the worker, and waits for Azurite to be ready first. Captured NMEA lands in the `nmea-ais-dev`
+container and persists across restarts in the `ais-azurite-data` volume. Traces, metrics and logs
+appear in the Aspire dashboard, whose login link the AppHost prints on startup.
+
+`enableCapture` is `false` in the tracked `appsettings.json`, because capture needs a connection
+string to go with it. To capture against a real storage account outside the AppHost, keep that
+connection string out of source control with user secrets rather than editing `appsettings.json`:
+
+```bash
+dotnet user-secrets set "Storage:EnableCapture" "true" --project Solutions/Ais.Net.Receiver.Host.Worker
+dotnet user-secrets set "Storage:ConnectionString" "<connection string>" --project Solutions/Ais.Net.Receiver.Host.Worker
+```
+
+Environment variables still take precedence over user secrets, so what a container or systemd unit
+injects continues to win.
+
 ## Running Tests
 
 To run the tests, use the following command:
