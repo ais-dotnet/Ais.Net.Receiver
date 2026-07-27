@@ -51,14 +51,17 @@ public class TcpClientNmeaStreamReader : INmeaStreamReader
         this.currentHost = host;
         this.currentPort = port;
 
+        // Deliberately no ReceiveTimeout/SendTimeout: those map to SO_RCVTIMEO/SO_SNDTIMEO, which only
+        // affect the synchronous Socket.Receive/Send paths. Every read here goes through
+        // PipeReader.ReadAsync, so setting them would advertise a stall bound that does not exist -
+        // the actual bound is the receiver's idle timeout plus keepalive below. Likewise no
+        // LingerState: this reader never sends payload data, so there is nothing to flush on close,
+        // and SO_LINGER would make the synchronous Dispose() in DisposeAsync block until the FIN is
+        // acknowledged (up to the linger timeout) on exactly the dead peers this class must shed fast.
         this.tcpClient = new TcpClient
         {
-            ReceiveBufferSize = 65_536,             // 64KB buffer for bursty traffic
-            SendBufferSize = 8_192,                 // We send nothing of consequence; keep it small
-            ReceiveTimeout = 120_000,               // Socket-level safety net beneath the idle timeout
-            SendTimeout = 30_000,
-            NoDelay = true,                         // Disable Nagle's algorithm for lower latency
-            LingerState = new LingerOption(true, 5) // Allow up to 5s to flush on close
+            ReceiveBufferSize = 65_536, // 64KB buffer for bursty traffic
+            NoDelay = true              // Disable Nagle's algorithm for lower latency
         };
 
         // Keepalive is what actually detects a half-open connection: an AIS feed that silently
@@ -136,6 +139,16 @@ public class TcpClientNmeaStreamReader : INmeaStreamReader
             await this.DisposeAsync().ConfigureAwait(false);
             throw new SocketException((int)SocketError.TimedOut);
         }
+        catch (OperationCanceledException)
+        {
+            // The caller cancelled - a normal shutdown, not a failure. Logging this at Error (as the
+            // generic handler below would) puts an ERROR record in the log on every clean SIGTERM or
+            // Ctrl-C, which is exactly the kind of routine noise that trains operators to ignore the
+            // severity.
+            this.logger.TcpConnectCancelled(host, port);
+            await this.DisposeAsync().ConfigureAwait(false);
+            throw;
+        }
         catch (Exception ex)
         {
             // If connection fails, clean up resources
@@ -154,12 +167,22 @@ public class TcpClientNmeaStreamReader : INmeaStreamReader
 
         while (true)
         {
+            // Announce the first read *before* awaiting it. A feed that completes the handshake and
+            // then goes silent never returns from ReadAsync, so logging only on completion could not
+            // report the very case this diagnostic exists for: the pairing of this event with no
+            // subsequent TcpFirstRead is what identifies an accepted-but-silent connection.
+            bool awaitingFirstRead = this.firstReadPending;
+            if (awaitingFirstRead)
+            {
+                this.firstReadPending = false;
+                this.logger.TcpAwaitingFirstRead(this.currentHost ?? "unknown", this.currentPort);
+            }
+
             ReadResult result = await this.reader.ReadAsync(cancellationToken).ConfigureAwait(false);
             ReadOnlySequence<byte> buffer = result.Buffer;
 
-            if (this.firstReadPending)
+            if (awaitingFirstRead)
             {
-                this.firstReadPending = false;
                 this.logger.TcpFirstRead(this.currentHost ?? "unknown", this.currentPort, buffer.Length, result.IsCompleted);
             }
 
