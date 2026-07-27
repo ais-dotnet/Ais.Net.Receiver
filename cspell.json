@@ -2,8 +2,14 @@
   "version": "0.2",
   "words": [
     "AIVDM",
+    "appsettings",
+    "backpressure",
+    "behavior",
     "Endjin",
+    "gcdump",
     "Mmsi",
-    "Nmea"
+    "Nmea",
+    "threadpool",
+    "undecoded"
   ]
 }

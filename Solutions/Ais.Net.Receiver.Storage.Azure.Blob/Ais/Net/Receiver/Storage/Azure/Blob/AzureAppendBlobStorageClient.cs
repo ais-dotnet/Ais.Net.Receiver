@@ -87,9 +87,9 @@ public class AzureAppendBlobStorageClient : IStorageClient
             }
 
             long byteCount = stream.Length;
-            activity?.SetTag("ais.storage.message_count", messageCount);
-            activity?.SetTag("ais.storage.bytes", byteCount);
-            activity?.SetTag("ais.storage.blob_path", target.Path);
+            activity?.SetTag(SemanticConventions.Ais.Storage.MessageCount, messageCount);
+            activity?.SetTag(SemanticConventions.Ais.Storage.Bytes, byteCount);
+            activity?.SetTag(SemanticConventions.Ais.Storage.BlobPath, target.Path);
 
             this.logger?.WritingBatch(messageCount, byteCount, target.Path);
 
@@ -103,6 +103,11 @@ public class AzureAppendBlobStorageClient : IStorageClient
 
             stopwatch.Stop();
             this.metrics?.StorageWriteDuration.Record(stopwatch.Elapsed.TotalMilliseconds);
+
+            // Mark the batch boundary on the span, so a slow span can be read as "large batch" versus
+            // "slow backend" without cross-referencing the metrics.
+            activity?.RecordBatchCompleted(messageCount, stopwatch.Elapsed.TotalMilliseconds, batchType: "storage");
+
             this.logger?.StorageWriteCompleted(stopwatch.Elapsed.TotalMilliseconds);
         }
         catch (Exception ex)
@@ -161,7 +166,12 @@ public class AzureAppendBlobStorageClient : IStorageClient
                 return target;
             }
 
-            activity?.SetTag("ais.storage.blob_path", newBlobPath);
+            // A target already existed under a different path, so this is an hourly rotation rather
+            // than first-time initialisation. Record the transition: it is the boundary that explains
+            // why appends moved file, and is what a gap in one blob should be correlated against.
+            string? rotatedFrom = target?.Path;
+
+            activity?.SetTag(SemanticConventions.Ais.Storage.BlobPath, newBlobPath);
             this.logger?.InitializingBlob(newBlobPath);
 
             this.blobContainerClient ??= this.CreateBlobContainerClient();
@@ -172,6 +182,11 @@ public class AzureAppendBlobStorageClient : IStorageClient
 
             target = new BlobTarget(blobClient, newBlobPath);
             this.currentTarget = target; // atomic publish of the new (client, path) pair
+
+            if (rotatedFrom is not null)
+            {
+                activity?.RecordBlobRotation(rotatedFrom, newBlobPath);
+            }
 
             this.logger?.BlobCreated(newBlobPath);
 

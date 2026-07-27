@@ -2,9 +2,11 @@
 // Copyright (c) Endjin Limited. All rights reserved.
 // </copyright>
 
+using System.Diagnostics;
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using Ais.Net.Models.Abstractions;
+using Ais.Net.Receiver.Telemetry;
 
 namespace Ais.Net.Receiver.Receiver;
 
@@ -66,10 +68,18 @@ public static class ReceiverHostExtensions
         /// its group is disposed to prevent memory accumulation. Defaults to 30 minutes if not specified.
         /// </param>
         /// <param name="scheduler">Optional scheduler for the inactivity timeout (defaults to <see cref="Scheduler.Default"/>).</param>
+        /// <param name="instrumentation">
+        /// Optional instrumentation. When supplied, the per-vessel group lifecycle is surfaced as
+        /// telemetry: a vessel appearing in the stream for the first time emits a
+        /// <c>VesselDetected</c> span, and a vessel going quiet for <paramref name="inactivityTimeout"/>
+        /// emits a <c>VesselTrackLost</c> span. This grouping already owns that lifecycle, so it is the
+        /// only place the two events can be observed without tracking vessel state a second time.
+        /// </param>
         /// <returns>An observable sequence of tuple containing vessel information.</returns>
         public IObservable<(uint Mmsi, IVesselNavigation Navigation, IVesselName Name)> VesselNavigationWithNameStream(
             TimeSpan? inactivityTimeout = null,
-            IScheduler? scheduler = null)
+            IScheduler? scheduler = null,
+            ApplicationInstrumentation? instrumentation = null)
         {
             TimeSpan timeout = inactivityTimeout ?? TimeSpan.FromMinutes(30);
             IScheduler timeoutScheduler = scheduler ?? Scheduler.Default;
@@ -79,7 +89,31 @@ public static class ReceiverHostExtensions
             IObservable<IGroupedObservable<uint, IAisMessage>> byVessel = messages
                 .GroupByUntil(
                     m => m.Mmsi,
-                    group => group.Throttle(timeout, timeoutScheduler));
+                    group =>
+                    {
+                        // The duration selector runs once per group, at the moment the group is
+                        // created - i.e. the first time this MMSI is seen.
+                        if (instrumentation is not null)
+                        {
+                            using Activity? detected = instrumentation.ActivitySource.StartActivity("VesselDetected");
+                            detected?.RecordVesselDetected(group.Key);
+                        }
+
+                        return group.Throttle(timeout, timeoutScheduler)
+                            .Do(_ =>
+                            {
+                                // Throttle fires one timeout after the vessel's last message, which
+                                // closes the group; that is the track-lost transition.
+                                if (instrumentation is not null)
+                                {
+                                    using Activity? lost = instrumentation.ActivitySource.StartActivity("VesselTrackLost");
+                                    lost?.RecordVesselTrackLost(
+                                        group.Key,
+                                        timeoutScheduler.Now - timeout,
+                                        timeout.TotalSeconds);
+                                }
+                            });
+                    });
 
             // Combine the various message types required to create a stream containing name and navigation
             return

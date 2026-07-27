@@ -127,9 +127,16 @@ public static class Extensions
                     serviceName: serviceName,
                     serviceVersion: ApplicationInstrumentation.ServiceVersion,
 
-                    // Machine name collides when several replicas share a host or run in containers
-                    // built from one image; the generated id is unique per process.
-                    autoGenerateServiceInstanceId: true)
+                    // Stable per replica, honouring OTEL_SERVICE_INSTANCE_ID when the platform sets
+                    // it (e.g. to a pod name). Deliberately not autoGenerateServiceInstanceId: that
+                    // mints a fresh GUID per process start, so in any backend that carries resource
+                    // attributes as labels every restart forks a new set of time series - breaking
+                    // per-instance dashboards and growing label cardinality without bound. Under
+                    // Docker and Kubernetes the container hostname is already unique per replica and
+                    // stable for that replica's life, which is exactly the property wanted here.
+                    serviceInstanceId: builder.Configuration["OTEL_SERVICE_INSTANCE_ID"] is { Length: > 0 } instanceId
+                        ? instanceId
+                        : Environment.MachineName)
                 .AddAttributes(new Dictionary<string, object>
                 {
                     ["deployment.environment.name"] = builder.Environment.EnvironmentName,
@@ -163,7 +170,17 @@ public static class Extensions
             })
             .WithTracing(tracing =>
             {
-                if (builder.Environment.IsDevelopment())
+                // OTEL_TRACES_SAMPLER (with OTEL_TRACES_SAMPLER_ARG) is the standard, environment-level
+                // sampling knob, and the SDK applies it only when nothing is configured in code. Any
+                // programmatic SetSampler silently wins over it, so during an ingest-cost or
+                // backend-overload incident an operator could set the variable, restart, see no
+                // warning, and still export every span. When it is present we therefore leave
+                // sampling entirely to the SDK.
+                if (!string.IsNullOrWhiteSpace(builder.Configuration["OTEL_TRACES_SAMPLER"]))
+                {
+                    // Deliberately no SetSampler call - the environment owns this decision.
+                }
+                else if (builder.Environment.IsDevelopment())
                 {
                     // Capture everything for the Aspire dashboard.
                     tracing.SetSampler(new AlwaysOnSampler());

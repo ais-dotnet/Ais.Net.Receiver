@@ -34,14 +34,14 @@ AIS Stream → NetworkStreamNmeaReceiver → ReceiverHost → Worker
 
 - **Service Name**: `Ais.Net.Receiver`
 - **Service Namespace**: `ais-net`
-- **Meter Name**: `Ais.Net.Receiver.Metrics`
+- **Meter Name**: `Ais.Net.Receiver`
 - **Activity Source**: `Ais.Net.Receiver`
 
 ## Key Metrics
 
 ### Message Processing Metrics
 
-#### `ais.messages.received` (Counter)
+#### `ais.receiver.messages.received` (Counter)
 - **Type**: Counter
 - **Unit**: messages
 - **Dimensions**: `ais.message_type` (1-27)
@@ -56,22 +56,22 @@ AIS Stream → NetworkStreamNmeaReceiver → ReceiverHost → Worker
 **Query Example** (Prometheus):
 ```promql
 # Messages per second by type
-rate(ais_messages_received_total{ais_message_type="1"}[5m])
+rate(ais_receiver_messages_received_total{ais_message_type="1"}[5m])
 
 # Total message rate
-sum(rate(ais_messages_received_total[5m]))
+sum(rate(ais_receiver_messages_received_total[5m]))
 ```
 
-#### `ais.sentences.received` (Counter)
+#### `ais.receiver.sentences.received` (Counter)
 - **Type**: Counter
 - **Unit**: sentences
 - **Purpose**: Track raw NMEA sentences (includes multi-part messages)
 
 **Typical Ratio**: Sentences:Messages ≈ 1.1:1 (due to multi-part Type 5/24)
 
-#### `ais.errors.received` (Counter)
+#### `ais.receiver.errors` (Counter)
 - **Type**: Counter
-- **Dimensions**: `error.type` (parse_error, unsupported_message, unknown)
+- **Dimensions**: `error.type` (parse_error, unsupported_message — see `ReceiverPipeline.ClassifyError`)
 - **Purpose**: Track parsing and processing errors
 
 **Healthy Range**: <0.1% of messages received
@@ -80,76 +80,108 @@ sum(rate(ais_messages_received_total[5m]))
 **Query Example**:
 ```promql
 # Error rate percentage
-(sum(rate(ais_errors_received_total[5m])) / sum(rate(ais_messages_received_total[5m]))) * 100
+(sum(rate(ais_receiver_errors_total[5m])) / sum(rate(ais_receiver_messages_received_total[5m]))) * 100
 ```
 
 ### Connection Health Metrics
 
-#### `ais.connection.attempts` (Counter)
+#### `ais.receiver.connection.attempts` (Counter)
 - **Type**: Counter
 - **Purpose**: Track connection attempts to AIS stream
 
 **Expected Pattern**: Should be low after initial connection
 
-#### `ais.connection.failures` (Counter)
+#### `ais.receiver.connection.failures` (Counter)
 - **Type**: Counter
 - **Purpose**: Track failed connection attempts
 
 **Alert Threshold**: >0 failures per minute indicates network issues
 
-#### `ais.connection.consecutive_failures` (UpDownCounter)
+#### `ais.receiver.connection.consecutive_failures` (UpDownCounter)
 - **Type**: UpDownCounter (gauge-like)
 - **Purpose**: Current consecutive failure count
 
 **Alert Threshold**: >5 consecutive failures
 **Recovery**: Resets to 0 on successful connection
 
-#### `ais.connection.retry_attempts` (Counter)
+#### `ais.receiver.retry.attempts` (Counter)
 - **Type**: Counter
-- **Dimensions**: `component`, `attempt`
+- **Dimensions**: `component` (currently only `connection`). Deliberately not dimensioned by attempt
+  number, which would add one time series per attempt value.
 - **Purpose**: Track retry behavior
 
 **Expected Behavior**: Should converge to 0 after connection established
 
 ### Storage Performance Metrics
 
-#### `ais.storage.operations` (Counter)
+#### `ais.storage.write.operations` (Counter)
 - **Type**: Counter
-- **Dimensions**: `operation` (append, create_blob, rotate)
-- **Purpose**: Track storage operation counts
+- **Dimensions**: none
+- **Purpose**: Track storage batch write counts
 
-#### `ais.storage.operation.duration` (Histogram)
+#### `ais.storage.write.duration` (Histogram)
 - **Type**: Histogram
-- **Unit**: seconds
-- **Buckets**: 0.01, 0.05, 0.1, 0.5, 1.0, 5.0, 10.0
+- **Unit**: milliseconds
+- **Buckets**: 10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000, 30000
 - **Purpose**: Measure storage latency
 
 **Healthy Percentiles**:
 - P50: <100ms
 - P95: <500ms
-- P99: <1s
+- P99: <1000ms
 
 **Query Example**:
 ```promql
-# P95 storage latency
-histogram_quantile(0.95, sum(rate(ais_storage_operation_duration_bucket[5m])) by (le))
+# P95 storage latency, in milliseconds
+histogram_quantile(0.95, sum(rate(ais_storage_write_duration_bucket[5m])) by (le))
 ```
 
-#### `ais.storage.batches_pending` (ObservableGauge)
+#### `ais.storage.bytes.written` (Counter)
+- **Type**: Counter
+- **Unit**: bytes (`By`)
+- **Purpose**: Total bytes appended to storage
+
+#### `ais.receiver.batch.size` (Histogram)
+- **Type**: Histogram
+- **Unit**: messages
+- **Buckets**: 1, 10, 50, 100, 250, 500, 1000, 2500, 5000, 10000
+- **Purpose**: Distribution of batch sizes handed to storage
+
+#### `ais.storage.batches.pending` (ObservableGauge)
 - **Type**: Gauge
 - **Purpose**: Number of batches waiting to be written
 
 **Healthy Range**: 0-5
 **Alert Threshold**: >20 (indicates storage falling behind)
 
+#### `ais.storage.batches.failed` (Counter)
+- **Type**: Counter
+- **Purpose**: Batches abandoned or dead-lettered after write retries were exhausted
+
+**Alert Threshold**: >0 (data is being written to the dead-letter path, not storage)
+
+#### `ais.storage.batches.replayed` (Counter)
+- **Type**: Counter
+- **Purpose**: Dead-lettered batches successfully replayed after the backend recovered
+
+### Backpressure
+
+#### `ais.receiver.sentences.dropped` (Counter)
+- **Type**: Counter
+- **Unit**: sentences
+- **Purpose**: Sentences shed because the storage batch buffer was full. This is the real
+  backpressure signal — there is no queue-depth gauge for buffered messages.
+
+**Healthy Range**: 0
+**Alert Threshold**: >0 (capture is losing data)
+
+#### `ais.receiver.message.processing.duration` (Histogram)
+- **Type**: Histogram
+- **Unit**: milliseconds
+- **Buckets**: 0.1, 0.5, 1, 2.5, 5, 10, 25, 50, 100
+- **Purpose**: Per-message decode cost
+
 ### Resource Utilization
-
-#### `ais.messages_queued` (ObservableGauge)
-- **Type**: Gauge
-- **Purpose**: Messages buffered in dataflow pipeline
-
-**Healthy Range**: 0-1000
-**Alert Threshold**: >10000 (backpressure building)
 
 #### `process.runtime.dotnet.gc.allocations.size` (Counter)
 - **Type**: Counter (from Runtime Instrumentation)
@@ -171,27 +203,27 @@ histogram_quantile(0.95, sum(rate(ais_storage_operation_duration_bucket[5m])) by
 #### Current Message Throughput
 ```promql
 # Messages per second
-sum(rate(ais_messages_received_total[1m]))
+sum(rate(ais_receiver_messages_received_total[1m]))
 
 # By message type
-sum(rate(ais_messages_received_total[1m])) by (ais_message_type)
+sum(rate(ais_receiver_messages_received_total[1m])) by (ais_message_type)
 ```
 
 #### Message Type Distribution
 ```promql
 # Percentage by type
-(sum(rate(ais_messages_received_total[5m])) by (ais_message_type)
- / sum(rate(ais_messages_received_total[5m]))) * 100
+(sum(rate(ais_receiver_messages_received_total[5m])) by (ais_message_type)
+ / sum(rate(ais_receiver_messages_received_total[5m]))) * 100
 ```
 
 #### Error Rate Trending
 ```promql
 # Errors as percentage of total messages
-(sum(rate(ais_errors_received_total[5m]))
- / sum(rate(ais_messages_received_total[5m]))) * 100
+(sum(rate(ais_receiver_errors_total[5m]))
+ / sum(rate(ais_receiver_messages_received_total[5m]))) * 100
 
 # By error type
-sum(rate(ais_errors_received_total[5m])) by (error_type)
+sum(rate(ais_receiver_errors_total[5m])) by (error_type)
 ```
 
 ### Connection Health
@@ -199,13 +231,13 @@ sum(rate(ais_errors_received_total[5m])) by (error_type)
 #### Connection Uptime
 ```promql
 # Time since last connection failure (in minutes)
-(time() - max(ais_connection_failures_total)) / 60
+(time() - max(ais_receiver_connection_failures_total)) / 60
 ```
 
 #### Retry Rate
 ```promql
 # Retries per minute
-sum(rate(ais_connection_retry_attempts_total[1m]))
+sum(rate(ais_receiver_retry_attempts_total[1m]))
 ```
 
 ### Storage Performance
@@ -213,18 +245,18 @@ sum(rate(ais_connection_retry_attempts_total[1m]))
 #### Storage Latency Percentiles
 ```promql
 # P50, P95, P99
-histogram_quantile(0.50, sum(rate(ais_storage_operation_duration_bucket[5m])) by (le))
-histogram_quantile(0.95, sum(rate(ais_storage_operation_duration_bucket[5m])) by (le))
-histogram_quantile(0.99, sum(rate(ais_storage_operation_duration_bucket[5m])) by (le))
+histogram_quantile(0.50, sum(rate(ais_storage_write_duration_bucket[5m])) by (le))
+histogram_quantile(0.95, sum(rate(ais_storage_write_duration_bucket[5m])) by (le))
+histogram_quantile(0.99, sum(rate(ais_storage_write_duration_bucket[5m])) by (le))
 ```
 
 #### Storage Throughput
 ```promql
 # Operations per second
-sum(rate(ais_storage_operations_total[1m])) by (operation)
+sum(rate(ais_storage_write_operations_total[1m]))
 
 # Bytes written per second (approximate: messages * avg_size)
-sum(rate(ais_storage_operations_total{operation="append"}[1m])) * 150
+sum(rate(ais_storage_bytes_written_total[1m]))
 ```
 
 ### Resource Utilization
@@ -258,15 +290,15 @@ rate(process_cpu_seconds_total[1m])
    - Storage Lag (batches pending)
 
 2. **Message Throughput** (Time Series)
-   - `sum(rate(ais_messages_received_total[1m]))`
+   - `sum(rate(ais_receiver_messages_received_total[1m]))`
    - 15-minute window
 
 3. **Error Rate** (Time Series)
-   - `(sum(rate(ais_errors_received_total[1m])) / sum(rate(ais_messages_received_total[1m]))) * 100`
+   - `(sum(rate(ais_receiver_errors_total[1m])) / sum(rate(ais_receiver_messages_received_total[1m]))) * 100`
    - Alert threshold line at 1%
 
 4. **Connection Health** (Status History)
-   - `ais_connection_consecutive_failures`
+   - `ais_receiver_connection_consecutive_failures`
    - Show disconnections as spikes
 
 ### Message Processing Dashboard
@@ -275,13 +307,13 @@ rate(process_cpu_seconds_total[1m])
 
 **Panels**:
 1. **Message Type Distribution** (Pie Chart)
-   - `sum(rate(ais_messages_received_total[5m])) by (ais_message_type)`
+   - `sum(rate(ais_receiver_messages_received_total[5m])) by (ais_message_type)`
 
 2. **Messages by Type Over Time** (Stacked Area)
    - Individual series for types 1-3, 5, 18-19, 24
 
 3. **Parse Error Breakdown** (Bar Chart)
-   - `sum(rate(ais_errors_received_total[5m])) by (error_type)`
+   - `sum(rate(ais_receiver_errors_total[5m])) by (error_type)`
 
 4. **Top Vessels by Traffic** (Table)
    - Query traces for unique MMSIs (requires trace backend)
@@ -292,7 +324,7 @@ rate(process_cpu_seconds_total[1m])
 
 **Panels**:
 1. **Storage Latency Heatmap**
-   - `ais_storage_operation_duration_bucket`
+   - `ais_storage_write_duration_bucket`
    - Show P50, P95, P99 lines
 
 2. **Batch Processing** (Time Series)
@@ -300,7 +332,7 @@ rate(process_cpu_seconds_total[1m])
    - Batch completion rate
 
 3. **Storage Operations** (Counter)
-   - `sum(rate(ais_storage_operations_total[1m])) by (operation)`
+   - `sum(rate(ais_storage_write_operations_total[1m]))`
 
 4. **Blob Rotations** (Events)
    - Query traces for `storage.blob.rotated` events
@@ -329,7 +361,7 @@ rate(process_cpu_seconds_total[1m])
 #### Connection Down
 ```yaml
 alert: AISConnectionDown
-expr: ais_connection_consecutive_failures > 5
+expr: ais_receiver_connection_consecutive_failures > 5
 for: 1m
 severity: critical
 summary: "AIS stream connection failed"
@@ -339,7 +371,7 @@ description: "{{ $value }} consecutive connection failures detected"
 #### High Error Rate
 ```yaml
 alert: AISHighErrorRate
-expr: (sum(rate(ais_errors_received_total[5m])) / sum(rate(ais_messages_received_total[5m]))) * 100 > 1
+expr: (sum(rate(ais_receiver_errors_total[5m])) / sum(rate(ais_receiver_messages_received_total[5m]))) * 100 > 1
 for: 5m
 severity: critical
 summary: "High AIS message error rate"
@@ -361,7 +393,7 @@ description: "{{ $value }} batches pending (threshold: 20)"
 #### Elevated Error Rate
 ```yaml
 alert: AISElevatedErrorRate
-expr: (sum(rate(ais_errors_received_total[5m])) / sum(rate(ais_messages_received_total[5m]))) * 100 > 0.5
+expr: (sum(rate(ais_receiver_errors_total[5m])) / sum(rate(ais_receiver_messages_received_total[5m]))) * 100 > 0.5
 for: 10m
 severity: warning
 summary: "Elevated AIS error rate detected"
@@ -370,7 +402,7 @@ summary: "Elevated AIS error rate detected"
 #### Slow Storage Operations
 ```yaml
 alert: AISSlowStorage
-expr: histogram_quantile(0.95, sum(rate(ais_storage_operation_duration_bucket[5m])) by (le)) > 1.0
+expr: histogram_quantile(0.95, sum(rate(ais_storage_write_duration_bucket[5m])) by (le)) > 1.0
 for: 5m
 severity: warning
 summary: "Storage operations are slow"
@@ -391,7 +423,7 @@ summary: "High memory usage detected"
 #### Connection Restored
 ```yaml
 alert: AISConnectionRestored
-expr: ais_connection_consecutive_failures == 0 and ais_connection_consecutive_failures offset 1m > 0
+expr: ais_receiver_connection_consecutive_failures == 0 and ais_receiver_connection_consecutive_failures offset 1m > 0
 for: 0m
 severity: info
 summary: "AIS connection restored"
@@ -402,21 +434,21 @@ summary: "AIS connection restored"
 ### Scenario 1: No Messages Received
 
 **Symptoms**:
-- `ais_messages_received_total` not incrementing
-- `ais_connection_consecutive_failures` increasing
+- `ais_receiver_messages_received_total` not incrementing
+- `ais_receiver_connection_consecutive_failures` increasing
 
 **Diagnosis**:
-1. Check connection status: `ais_connection_consecutive_failures`
+1. Check connection status: `ais_receiver_connection_consecutive_failures`
 2. View connection events: filter logs to event ids 4000-4005 (stream connect/retry/idle/error) and 4010-4024 (TCP-level detail, including the classified socket errors)
 3. Check network connectivity to AIS host
 
 **Queries**:
 ```promql
 # Connection attempts in last hour
-increase(ais_connection_attempts_total[1h])
+increase(ais_receiver_connection_attempts_total[1h])
 
 # Current consecutive failures
-ais_connection_consecutive_failures
+ais_receiver_connection_consecutive_failures
 ```
 
 **Common Causes**:
@@ -434,13 +466,13 @@ ais_connection_consecutive_failures
 ### Scenario 2: High Error Rate
 
 **Symptoms**:
-- `ais_errors_received_total` increasing rapidly
+- `ais_receiver_errors_total` increasing rapidly
 - Error rate >1%
 
 **Diagnosis**:
 1. Check error type distribution:
    ```promql
-   sum(rate(ais_errors_received_total[5m])) by (error_type)
+   sum(rate(ais_receiver_errors_total[5m])) by (error_type)
    ```
 
 2. View error traces: Filter by `ActivityStatusCode == Error`
@@ -464,12 +496,12 @@ ais_connection_consecutive_failures
 
 **Symptoms**:
 - `ais_storage_batches_pending` >20
-- `ais_messages_queued` increasing
+- `ais_receiver_sentences_dropped_total` increasing (batch buffer shedding load)
 
 **Diagnosis**:
 1. Check storage latency:
    ```promql
-   histogram_quantile(0.95, rate(ais_storage_operation_duration_bucket[5m]))
+   histogram_quantile(0.95, rate(ais_storage_write_duration_bucket[5m]))
    ```
 
 2. View storage traces: Filter activities by `ProcessBatch`

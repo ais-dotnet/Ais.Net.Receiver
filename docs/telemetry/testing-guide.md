@@ -257,8 +257,8 @@ public void MessagesReceived_IncrementsCounter()
     this.metrics.MessagesReceived.Add(1, tags);
 
     // Assert
-    this.longMeasurements["ais.messages.received"].Count.ShouldBe(2);
-    this.longMeasurements["ais.messages.received"].Sum(m => m.Value).ShouldBe(2);
+    this.longMeasurements["ais.receiver.messages.received"].Count.ShouldBe(2);
+    this.longMeasurements["ais.receiver.messages.received"].Sum(m => m.Value).ShouldBe(2);
 }
 ```
 
@@ -274,7 +274,7 @@ public void ConsecutiveConnectionFailures_TracksCurrentValue()
     this.metrics.ConsecutiveConnectionFailures.Add(-2); // Reset
 
     // Assert
-    long currentValue = this.longMeasurements["ais.connection.consecutive_failures"].Last().Value;
+    long currentValue = this.longMeasurements["ais.receiver.connection.consecutive_failures"].Last().Value;
     currentValue.ShouldBe(0);
 }
 ```
@@ -295,7 +295,7 @@ public void MessagesReceived_BoundedCardinality()
     }
 
     // Assert - Should have exactly 27 unique tag combinations
-    var uniqueTags = this.longMeasurements["ais.messages.received"]
+    var uniqueTags = this.longMeasurements["ais.receiver.messages.received"]
         .Select(m => m.Tags.First().Value)
         .Distinct()
         .Count();
@@ -410,26 +410,42 @@ Follow the pattern: `MethodName_Scenario_ExpectedBehavior`
 
 Ensure performance guards work correctly:
 
+Use `ActivitySamplingResult.PropagationData`, **not** `None`. With `None` no listener records the
+source, `StartActivity` returns `null`, and a null-conditional assertion (`activity?.Something
+.ShouldBe(...)`) is silently skipped — the test passes without testing anything. `PropagationData`
+creates a real activity that carries trace context but has `IsAllDataRequested == false`, which is the
+branch the guard actually takes.
+
+Assert on a non-nullable reference so the assertion cannot be skipped, and assert the premise
+(`IsAllDataRequested` is false) so the test fails loudly if that ever changes.
+
 ```csharp
 [TestMethod]
 public void ActivityEnrichment_WhenNotRequested_SkipsExpensiveOperations()
 {
-    // Create activity with sampling decision = Drop
-    using var listener = new ActivityListener
+    // Arrange - unique source name, so a process-global listener cannot pick up other tests'
+    // activities when the suite runs in parallel.
+    using ActivitySource source = new($"Test.{Guid.NewGuid():N}");
+
+    using ActivityListener listener = new()
     {
-        ShouldListenTo = _ => true,
+        ShouldListenTo = candidate => ReferenceEquals(candidate, source),
         Sample = (ref ActivityCreationOptions<ActivityContext> _) =>
-            ActivitySamplingResult.None // Not recording
+            ActivitySamplingResult.PropagationData, // created, but not recording full data
     };
+
     ActivitySource.AddActivityListener(listener);
 
-    using Activity? activity = new ActivitySource("Test").StartActivity("Test");
+    using Activity? activity = source.StartActivity("Test");
+
+    activity.ShouldNotBeNull();
+    activity.IsAllDataRequested.ShouldBeFalse();
 
     // Act
-    activity?.SetVesselPosition(51.5, -0.1);
+    activity.SetVesselPosition(51.5, -0.1);
 
-    // Assert - should not have created event when not requested
-    activity?.Events.Count().ShouldBe(0);
+    // Assert - the guard short-circuited, so nothing was written
+    activity.GetTagItem("ais.position.latitude").ShouldBeNull();
 }
 ```
 
