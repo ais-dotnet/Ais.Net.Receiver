@@ -99,7 +99,7 @@ internal static partial class Log
 
     [LoggerMessage(
         EventId = 4004,
-        Level = LogLevel.Debug,
+        Level = LogLevel.Warning,
         Message = "Idle timeout after {TimeoutSeconds}s, reconnecting to {Host}:{Port}")]
     public static partial void StreamIdleTimeout(this ILogger logger, double timeoutSeconds, string host, int port);
 

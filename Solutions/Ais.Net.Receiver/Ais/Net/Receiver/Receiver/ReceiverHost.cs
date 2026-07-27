@@ -8,6 +8,7 @@ using System.Reactive.Subjects;
 using System.Runtime.CompilerServices;
 using System.Text;
 
+using Ais.Net.Models;
 using Ais.Net.Models.Abstractions;
 using Ais.Net.Receiver.Parser;
 using Ais.Net.Receiver.Resilience;
@@ -105,6 +106,26 @@ public class ReceiverHost : IAsyncDisposable
 
         methodSubscriptions.Add(processor.Messages.Subscribe(message =>
         {
+            // Enrich the in-flight ProcessMessage span with what the line turned out to contain.
+            // The helpers decide tag-versus-event per field to keep span cardinality bounded.
+            if (Activity.Current is { } activity)
+            {
+                activity.SetAisMessageContext(message.MessageType, message.Mmsi);
+
+                // Vessel identity arrives on static messages (types 5 and 24).
+                if (message is IVesselName vesselName)
+                {
+                    int? shipType = message is IShipType shipTypeMessage ? (int?)shipTypeMessage.ShipType : null;
+                    activity.SetVesselIdentity(vesselName.VesselName.CleanVesselName(), callSign: null, shipType);
+                }
+
+                // Position arrives on navigation messages (types 1, 2, 3, 18 and 19).
+                if (message is IVesselNavigation { Position: { } position })
+                {
+                    activity.SetVesselPosition(position.Latitude, position.Longitude);
+                }
+            }
+
             this.messages.OnNext(message);
 
             if (this.metadata.HasObservers)

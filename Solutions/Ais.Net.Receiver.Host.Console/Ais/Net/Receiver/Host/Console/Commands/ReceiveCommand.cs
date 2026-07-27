@@ -85,7 +85,7 @@ public class ReceiveCommand : AsyncCommand<ReceiveCommand.Settings>
                 metrics.ErrorsReceived.Add(1, new KeyValuePair<string, object?>("error.type", ReceiverPipeline.ClassifyError(error.Exception)))));
         }
 
-        if (this.aisConfig.Telemetry.Verbosity == LogLevel.Warning)
+        if (this.aisConfig.Telemetry.Verbosity <= LogLevel.Warning)
         {
             subscriptions.Add(
                 receiverHost.GetStreamStatistics(this.aisConfig.Telemetry.StatisticsPeriodicity)
@@ -95,7 +95,7 @@ public class ReceiveCommand : AsyncCommand<ReceiveCommand.Settings>
                         error => AnsiConsole.MarkupLine($"[red]Error in statistics stream: {Markup.Escape(error.Message)}[/]")));
         }
 
-        if (this.aisConfig.Telemetry.Verbosity == LogLevel.Information)
+        if (this.aisConfig.Telemetry.Verbosity <= LogLevel.Information)
         {
             subscriptions.Add(
                 receiverHost.Messages.VesselNavigationWithNameStream(this.aisConfig.Telemetry.VesselInactivityTimeout).Subscribe(navigationWithName =>
@@ -107,12 +107,12 @@ public class ReceiveCommand : AsyncCommand<ReceiveCommand.Settings>
                 }));
         }
 
-        if (this.aisConfig.Telemetry.Verbosity == LogLevel.Debug)
+        if (this.aisConfig.Telemetry.Verbosity <= LogLevel.Debug)
         {
             subscriptions.Add(receiverHost.Sentences.Subscribe(AnsiConsole.WriteLine));
         }
 
-        if (this.aisConfig.Telemetry.Verbosity == LogLevel.Trace)
+        if (this.aisConfig.Telemetry.Verbosity <= LogLevel.Trace)
         {
             subscriptions.Add(receiverHost.Messages.Subscribe(message => AnsiConsole.WriteLine(message.ToString() ?? string.Empty)));
 
