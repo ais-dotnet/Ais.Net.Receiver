@@ -1,0 +1,29 @@
+<Project>
+
+  <!--
+    Analysis settings for every project in the solution. Deliberately limited to these: the rest of the
+    conventions in Endjin.Conventions.props stay opt-in per project, because turning
+    warnings-as-errors on for the test, benchmark, AppHost and ServiceDefaults projects would be a
+    behaviour change unrelated to removing the Endjin package.
+  -->
+
+  <PropertyGroup>
+    <!--
+      EnableNETAnalyzers is already the default for net5.0 and later; stated explicitly so the intent
+      survives a future retarget. EnforceCodeStyleInBuild is not a default - it promotes the IDE* code
+      style rules from IDE-only suggestions to build diagnostics, with severities taken from
+      Solutions/.editorconfig (four are set to warning, including IDE0005).
+    -->
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+
+    <!--
+      IDE0005 (remove unnecessary usings) is skipped on build unless the documentation file is
+      generated - the compiler reports EnableGenerateDocumentationFile instead, which becomes an error
+      wherever warnings are errors. Generating the file is the documented way to enable the rule; for
+      projects that publish no API the file is simply an unused artefact in bin.
+    -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+</Project>

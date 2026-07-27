@@ -2,9 +2,7 @@
 // Copyright (c) Endjin Limited. All rights reserved.
 // </copyright>
 
-using System.Reactive.Linq;
 using System.Reactive.Subjects;
-using System.Text;
 
 using Ais.Net.Models.Abstractions;
 using Ais.Net.Receiver.Hosting;

@@ -1,14 +1,13 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <Import Project="$(EndjinProjectPropsPath)" Condition="$(EndjinProjectPropsPath) != ''" />
-  
+  <Import Project="$(MSBuildThisFileDirectory)..\Endjin.Conventions.props" />
+
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <LangVersion>14.0</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <TreatWarningsAsErrors Condition="'$(Configuration)' == 'Release'">true</TreatWarningsAsErrors>
-    <EndjinDisableCodeAnalysis>True</EndjinDisableCodeAnalysis>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>RCS1029;SA1313;SA1009;SA1600;SA1591;CS1591;</NoWarn>
     <RootNamespace> </RootNamespace>
@@ -24,10 +23,6 @@
   <ItemGroup>
     <PackageReference Include="Ais.Net.Models" />
     <PackageReference Include="Polly.Core" />
-    <PackageReference Include="Endjin.RecommendedPractices.GitHub">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
     <PackageReference Include="OpenTelemetry.Api" />
