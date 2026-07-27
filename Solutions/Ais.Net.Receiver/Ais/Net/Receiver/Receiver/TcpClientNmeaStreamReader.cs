@@ -20,6 +20,10 @@ public class TcpClientNmeaStreamReader : INmeaStreamReader
     // without limit.
     private const int MaxLineLength = 8192;
 
+    // Bounds how long a connect attempt may hang before we give up and let the caller's retry
+    // loop schedule another. A blocked SYN can otherwise stall well past any useful timeout.
+    private static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(30);
+
     private readonly ILogger logger;
     private byte[] lineBuffer = new byte[512];
     private TcpClient? tcpClient;
@@ -27,6 +31,11 @@ public class TcpClientNmeaStreamReader : INmeaStreamReader
     private PipeReader? reader;
     private string? currentHost;
     private int currentPort;
+
+    // Diagnostic: logs the shape of the first read after each connect, so a feed that accepts the
+    // connection but never sends is distinguishable from one that was never reachable. Reset on
+    // connect rather than per ReadLineAsync call, which would log on every line.
+    private bool firstReadPending;
 
     public TcpClientNmeaStreamReader(ILogger<TcpClientNmeaStreamReader>? logger = null)
     {
@@ -44,17 +53,88 @@ public class TcpClientNmeaStreamReader : INmeaStreamReader
 
         this.tcpClient = new TcpClient
         {
-            ReceiveBufferSize = 65_536, // 64KB buffer for bursty traffic
-            NoDelay = true // Disable Nagle's algorithm for lower latency
+            ReceiveBufferSize = 65_536,             // 64KB buffer for bursty traffic
+            SendBufferSize = 8_192,                 // We send nothing of consequence; keep it small
+            ReceiveTimeout = 120_000,               // Socket-level safety net beneath the idle timeout
+            SendTimeout = 30_000,
+            NoDelay = true,                         // Disable Nagle's algorithm for lower latency
+            LingerState = new LingerOption(true, 5) // Allow up to 5s to flush on close
         };
+
+        // Keepalive is what actually detects a half-open connection: an AIS feed that silently
+        // disappears leaves the socket readable-but-idle, and without probes we would wait for the
+        // idle timeout on every drop.
+        Socket socket = this.tcpClient.Client;
+        socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
+        socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveTime, 60);
+        socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveInterval, 10);
+
+        // Retry count is settable on Linux and macOS only; Windows fixes it at 10.
+        if (!OperatingSystem.IsWindows())
+        {
+            socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveRetryCount, 3);
+        }
+
+        this.logger.TcpSocketConfigured(host, port);
 
         try
         {
             this.logger.TcpConnecting(host, port);
-            await this.tcpClient.ConnectAsync(host, port, cancellationToken).ConfigureAwait(false);
+
+            using CancellationTokenSource connectCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            connectCts.CancelAfter(ConnectTimeout);
+
+            await this.tcpClient.ConnectAsync(host, port, connectCts.Token).ConfigureAwait(false);
             this.stream = this.tcpClient.GetStream();
-            this.reader = PipeReader.Create(this.stream);
+
+            // leaveOpen: this type disposes the stream itself in DisposeAsync, after completing the
+            // reader; letting the PipeReader also own it would double-dispose.
+            this.reader = PipeReader.Create(
+                this.stream,
+                new StreamPipeReaderOptions(bufferSize: 4096, minimumReadSize: 512, leaveOpen: true));
+
+            this.firstReadPending = true;
             this.logger.TcpConnected(host, port);
+        }
+        catch (SocketException ex)
+        {
+            // Classify the common failures so operators can tell "feed is down" from "DNS is wrong"
+            // from "we cannot route there" without reading stack traces.
+            switch (ex.SocketErrorCode)
+            {
+                case SocketError.ConnectionRefused:
+                    this.logger.TcpConnectionRefused(host, port);
+                    break;
+                case SocketError.HostNotFound:
+                    this.logger.TcpHostNotFound(host, port);
+                    break;
+                case SocketError.TimedOut:
+                    this.logger.TcpConnectionTimedOut(host, port);
+                    break;
+                case SocketError.NetworkUnreachable:
+                    this.logger.TcpNetworkUnreachable(host, port);
+                    break;
+                case SocketError.ConnectionReset:
+                    this.logger.TcpConnectionReset(host, port);
+                    break;
+                case SocketError.ConnectionAborted:
+                    this.logger.TcpConnectionAborted(host, port);
+                    break;
+                default:
+                    this.logger.TcpConnectionFailed(ex, host, port);
+                    break;
+            }
+
+            await this.DisposeAsync().ConfigureAwait(false);
+            throw;
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            // The connect timeout elapsed rather than the caller cancelling. Surface it as a
+            // timeout so the retry loop treats it like any other connection failure.
+            this.logger.TcpConnectionTimedOut(host, port);
+            await this.DisposeAsync().ConfigureAwait(false);
+            throw new SocketException((int)SocketError.TimedOut);
         }
         catch (Exception ex)
         {
@@ -76,6 +156,13 @@ public class TcpClientNmeaStreamReader : INmeaStreamReader
         {
             ReadResult result = await this.reader.ReadAsync(cancellationToken).ConfigureAwait(false);
             ReadOnlySequence<byte> buffer = result.Buffer;
+
+            if (this.firstReadPending)
+            {
+                this.firstReadPending = false;
+                this.logger.TcpFirstRead(this.currentHost ?? "unknown", this.currentPort, buffer.Length, result.IsCompleted);
+            }
+
             SequencePosition? position = buffer.PositionOf((byte)'\n');
 
             if (position != null)
@@ -132,6 +219,7 @@ public class TcpClientNmeaStreamReader : INmeaStreamReader
             this.reader.AdvanceTo(buffer.Start, buffer.End);
         }
 
+        this.logger.TcpStreamEof(this.currentHost ?? "unknown", this.currentPort);
         return null;
     }
 
@@ -160,6 +248,20 @@ public class TcpClientNmeaStreamReader : INmeaStreamReader
     public async ValueTask DisposeAsync()
     {
         bool wasConnected = this.tcpClient?.Connected == true;
+
+        this.firstReadPending = false;
+
+        // Send FIN before tearing the stream down, so the peer sees an orderly close rather than a
+        // reset. Must happen while the socket is still open, hence before the stream is disposed.
+        if (wasConnected && this.tcpClient?.Client is { } socket)
+        {
+            try
+            {
+                this.logger.TcpGracefulShutdown(this.currentHost ?? "unknown", this.currentPort);
+                socket.Shutdown(SocketShutdown.Both);
+            }
+            catch { /* Ignore shutdown errors - the peer may already be gone */ }
+        }
 
         if (this.reader is not null)
         {

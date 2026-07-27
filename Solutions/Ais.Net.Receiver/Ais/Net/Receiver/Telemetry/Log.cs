@@ -109,7 +109,7 @@ internal static partial class Log
         Message = "Stream connection error to {Host}:{Port}")]
     public static partial void StreamConnectionError(this ILogger logger, Exception exception, string host, int port);
 
-    // TCP client stream reader events (4010-4019)
+    // TCP client stream reader events (4010-4029)
     [LoggerMessage(
         EventId = 4010,
         Level = LogLevel.Debug,
@@ -139,4 +139,65 @@ internal static partial class Log
         Level = LogLevel.Warning,
         Message = "Discarded an over-long NMEA line ({Length} bytes with no newline, limit {Limit}); resyncing on the next newline")]
     public static partial void NmeaLineDiscarded(this ILogger logger, int length, int limit);
+
+    [LoggerMessage(
+        EventId = 4015,
+        Level = LogLevel.Debug,
+        Message = "TCP socket configured for {Host}:{Port}: KeepAlive=60s/10s/3, ReceiveTimeout=120s, LingerState=5s")]
+    public static partial void TcpSocketConfigured(this ILogger logger, string host, int port);
+
+    [LoggerMessage(
+        EventId = 4016,
+        Level = LogLevel.Debug,
+        Message = "TCP first read from {Host}:{Port}: BufferLength={BufferLength}, IsCompleted={IsCompleted}")]
+    public static partial void TcpFirstRead(this ILogger logger, string host, int port, long bufferLength, bool isCompleted);
+
+    [LoggerMessage(
+        EventId = 4017,
+        Level = LogLevel.Information,
+        Message = "TCP stream EOF from {Host}:{Port} - no more data available")]
+    public static partial void TcpStreamEof(this ILogger logger, string host, int port);
+
+    // Specific socket error events (4018-4024)
+    [LoggerMessage(
+        EventId = 4018,
+        Level = LogLevel.Warning,
+        Message = "TCP connection refused by {Host}:{Port} - server not listening")]
+    public static partial void TcpConnectionRefused(this ILogger logger, string host, int port);
+
+    [LoggerMessage(
+        EventId = 4019,
+        Level = LogLevel.Warning,
+        Message = "TCP host not found: {Host}:{Port} - DNS resolution failed")]
+    public static partial void TcpHostNotFound(this ILogger logger, string host, int port);
+
+    [LoggerMessage(
+        EventId = 4020,
+        Level = LogLevel.Warning,
+        Message = "TCP connection timed out to {Host}:{Port}")]
+    public static partial void TcpConnectionTimedOut(this ILogger logger, string host, int port);
+
+    [LoggerMessage(
+        EventId = 4021,
+        Level = LogLevel.Warning,
+        Message = "TCP network unreachable for {Host}:{Port} - no route to host")]
+    public static partial void TcpNetworkUnreachable(this ILogger logger, string host, int port);
+
+    [LoggerMessage(
+        EventId = 4022,
+        Level = LogLevel.Warning,
+        Message = "TCP connection reset by {Host}:{Port} - remote host forcibly closed")]
+    public static partial void TcpConnectionReset(this ILogger logger, string host, int port);
+
+    [LoggerMessage(
+        EventId = 4023,
+        Level = LogLevel.Warning,
+        Message = "TCP connection aborted to {Host}:{Port} - local software aborted")]
+    public static partial void TcpConnectionAborted(this ILogger logger, string host, int port);
+
+    [LoggerMessage(
+        EventId = 4024,
+        Level = LogLevel.Debug,
+        Message = "TCP graceful shutdown initiated for {Host}:{Port}")]
+    public static partial void TcpGracefulShutdown(this ILogger logger, string host, int port);
 }
