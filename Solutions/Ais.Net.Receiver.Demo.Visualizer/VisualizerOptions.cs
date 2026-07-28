@@ -22,12 +22,6 @@ public sealed class VisualizerOptions
     public ReplayOptions Replay { get; set; } = new();
 
     /// <summary>
-    /// Gets or sets the NATS subject the receiver publishes decoded messages on, and which the page
-    /// subscribes to directly.
-    /// </summary>
-    public string MessageSubject { get; set; } = "ais.messages";
-
-    /// <summary>
     /// Gets or sets the websocket URL the browser connects to. The AppHost supplies this because the
     /// port is assigned at run time.
     /// </summary>

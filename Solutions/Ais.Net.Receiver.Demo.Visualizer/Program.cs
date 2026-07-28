@@ -7,6 +7,7 @@ using Ais.Net.Receiver.Demo.Tracks.Output;
 using Ais.Net.Receiver.Demo.Tracks.Processing;
 using Ais.Net.Receiver.Demo.Visualizer;
 using Ais.Net.Receiver.Demo.Visualizer.Replay;
+using Ais.Net.Receiver.Hosting;
 
 using Microsoft.Extensions.Options;
 
@@ -26,11 +27,6 @@ builder.Services.AddOptions<VisualizerOptions>()
         // Replaying a captured blob should need nothing beyond the blob path: fall back to the
         // receiver's own storage connection string, which under the AppHost already points at Azurite.
         options.Replay.ConnectionString ??= builder.Configuration["Storage:ConnectionString"];
-
-        if (string.IsNullOrWhiteSpace(options.Replay.ContainerName))
-        {
-            options.Replay.ContainerName = builder.Configuration["Storage:ContainerName"] ?? "nmea-ais-dev";
-        }
     });
 
 builder.Services.AddSingleton<ReplayTrackSource>();
@@ -62,10 +58,9 @@ app.MapGet("/api/config", (IOptions<VisualizerOptions> options, IConfiguration c
         nats = value.Source == VisualizerSource.Live
             ? new
             {
-                // Aspire describes the endpoint as HTTP, because that is what it is until the upgrade
-                // handshake; the browser client needs it addressed as a websocket.
-                url = ToWebSocketUrl(value.NatsWebSocketUrl),
-                subject = value.MessageSubject,
+                // Already a ws:// URL: the AppHost declares the endpoint with the ws scheme.
+                url = value.NatsWebSocketUrl,
+                subject = AisNats.MessagesSubject,
 
                 // Local demo credentials, generated per run by the AppHost. They are handed to the
                 // page because the browser connects to the broker itself; that is only acceptable
@@ -100,14 +95,6 @@ app.MapGet("/api/tracks", async (
 });
 
 await app.RunAsync();
-
-static string? ToWebSocketUrl(string? url) => url switch
-{
-    null or "" => url,
-    _ when url.StartsWith("https://", StringComparison.OrdinalIgnoreCase) => "wss://" + url[8..],
-    _ when url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) => "ws://" + url[7..],
-    _ => url,
-};
 
 /// <summary>
 /// The user and password out of a NATS connection string, so the page can authenticate its own

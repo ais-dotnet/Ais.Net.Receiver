@@ -23,7 +23,10 @@ IResourceBuilder<AzureBlobStorageResource> blobs = builder.AddAzureStorage("stor
 IResourceBuilder<NatsServerResource> nats = builder.AddNats("nats")
     .WithBindMount("nats/nats.conf", "/etc/nats/nats.conf", isReadOnly: true)
     .WithArgs("-c", "/etc/nats/nats.conf")
-    .WithEndpoint(targetPort: 8080, scheme: "http", name: "ws");
+
+    // Declared with the ws scheme so GetEndpoint("ws") yields a browser-ready ws:// URL - the
+    // visualiser hands it to the page verbatim, with no scheme rewriting anywhere.
+    .WithEndpoint(targetPort: 8080, scheme: "ws", name: "ws");
 
 // builder.AddProject<Projects.Ais_Net_Receiver_Host_Console>("console");
 builder.AddProject<Projects.Ais_Net_Receiver_Host_Worker>("worker")

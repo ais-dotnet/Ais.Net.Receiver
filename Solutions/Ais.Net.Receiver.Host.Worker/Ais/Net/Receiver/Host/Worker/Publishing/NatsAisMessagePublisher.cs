@@ -7,6 +7,7 @@ using System.Threading.Channels;
 using Ais.Net.Models;
 using Ais.Net.Models.Abstractions;
 using Ais.Net.Models.Json.Nats;
+using Ais.Net.Receiver.Hosting;
 
 using NATS.Client.Core;
 
@@ -51,7 +52,7 @@ public sealed class NatsAisMessagePublisher : IAisMessagePublisher, IHostedServi
     public NatsAisMessagePublisher(
         INatsConnection connection,
         ILogger<NatsAisMessagePublisher> logger,
-        string subject = "ais.messages",
+        string subject = AisNats.MessagesSubject,
         int capacity = 10_000)
     {
         ArgumentNullException.ThrowIfNull(connection);
