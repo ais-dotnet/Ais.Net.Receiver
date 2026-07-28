@@ -46,10 +46,4 @@ public class GeofenceFilter
     {
         return points.Where(p => Contains(p.Longitude, p.Latitude)).ToList();
     }
-
-    public double[][] GetPolygonCoordinates()
-    {
-        var coords = _polygon.Coordinates;
-        return coords.Select(c => new[] { c.X, c.Y }).ToArray();
-    }
 }

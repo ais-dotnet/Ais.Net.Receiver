@@ -36,13 +36,7 @@ public class VesselTrackBuilder
 
         lock (_lock)
         {
-            if (!_tracks.TryGetValue(mmsi, out var track))
-            {
-                track = new VesselTrack { Mmsi = mmsi };
-                _tracks[mmsi] = track;
-            }
-
-            track.Positions.Add(point);
+            GetOrCreate(mmsi).Positions.Add(point);
         }
     }
 
@@ -54,11 +48,7 @@ public class VesselTrackBuilder
 
         lock (_lock)
         {
-            if (!_tracks.TryGetValue(mmsi, out var track))
-            {
-                track = new VesselTrack { Mmsi = mmsi };
-                _tracks[mmsi] = track;
-            }
+            VesselTrack track = GetOrCreate(mmsi);
 
             if (string.IsNullOrEmpty(track.Metadata.Name))
             {
@@ -73,11 +63,7 @@ public class VesselTrackBuilder
 
         lock (_lock)
         {
-            if (!_tracks.TryGetValue(mmsi, out var track))
-            {
-                track = new VesselTrack { Mmsi = mmsi };
-                _tracks[mmsi] = track;
-            }
+            VesselTrack track = GetOrCreate(mmsi);
 
             if (string.IsNullOrEmpty(track.Metadata.ShipType))
             {
@@ -89,4 +75,17 @@ public class VesselTrackBuilder
     }
 
     public IReadOnlyCollection<VesselTrack> GetTracks() => _tracks.Values;
+
+    // Callers hold _lock; AIS splits a vessel across message types, so whichever arrives first
+    // creates the track the rest enrich.
+    private VesselTrack GetOrCreate(uint mmsi)
+    {
+        if (!_tracks.TryGetValue(mmsi, out VesselTrack? track))
+        {
+            track = new VesselTrack { Mmsi = mmsi };
+            _tracks[mmsi] = track;
+        }
+
+        return track;
+    }
 }

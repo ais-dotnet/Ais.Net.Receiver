@@ -43,24 +43,6 @@ public static class DeckGlJsonWriter
         return JsonSerializer.SerializeAsync(destination, Build(sourceFile, tracks), SerializerOptions, cancellationToken);
     }
 
-    /// <summary>
-    /// Writes tracks to a file on disk.
-    /// </summary>
-    /// <param name="outputPath">The file to write.</param>
-    /// <param name="sourceFile">A label for the source, echoed in the output metadata.</param>
-    /// <param name="tracks">The tracks to write.</param>
-    /// <returns>A task that completes when the file has been written.</returns>
-    public static async Task WriteAsync(
-        string outputPath,
-        string sourceFile,
-        IReadOnlyCollection<VesselTrack> tracks)
-    {
-        Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
-
-        await using FileStream stream = File.Create(outputPath);
-        await SerializeAsync(stream, sourceFile, tracks).ConfigureAwait(false);
-    }
-
     private static OutputRoot Build(string sourceFile, IReadOnlyCollection<VesselTrack> tracks)
     {
         long minEpoch = long.MaxValue;

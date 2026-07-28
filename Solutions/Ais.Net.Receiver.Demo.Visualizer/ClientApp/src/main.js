@@ -183,16 +183,6 @@ async function initLive(config) {
   requestAnimationFrame(frame);
 }
 
-function getLayersForTime(t) {
-  const {layer: posLayer, activeVessels} = createPositionLayer(vesselData, t, true);
-  return [
-    createTrackLayer(vesselData, true),
-    createTripsLayer(vesselData, t, true),
-    posLayer,
-    createLabelLayer(activeVessels, true)
-  ];
-}
-
 /**
  * Creates a layer factory optimised for export: the static track layer is
  * built once and reused for every frame instead of being recreated.
