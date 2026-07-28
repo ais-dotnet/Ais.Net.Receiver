@@ -38,6 +38,10 @@ several defaults behave differently.
   running the receiver as a long-lived service. The published container image is still built from the
   console host; `Solutions/docker-compose.yml` additionally defines worker services, including a
   dead-letter-enabled variant.
+* `ReceiverHost` gained a `Metadata` stream pairing each decoded message with the station id and Unix
+  timestamp parsed from its NMEA tag block (requested in #149), and `FileStreamNmeaReceiver` gained a
+  stream-agnostic base class, `StreamNmeaReceiver`, so recordings can be replayed from any `Stream` —
+  the visualizer demo's blob replay reads captures through it.
 * Replaced `Corvus.Retry` with [Polly](https://github.com/App-vNext/Polly) for retry policies.
 * Upgraded to `Ais.Net.Models` 1.0.1.
 * Added a BenchmarkDotNet project for NMEA parsing operations.
