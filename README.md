@@ -160,7 +160,8 @@ injects continues to win.
 
 ### AIS Visualizer
 
-`Solutions/Demos/` holds an AIS Visualizer: a [deck.gl](https://deck.gl) + [MapLibre](https://maplibre.org)
+`Ais.Net.Receiver.Demo.Visualizer` (with its `Ais.Net.Receiver.Demo.Tracks` pipeline) is an AIS
+Visualizer: a [deck.gl](https://deck.gl) + [MapLibre](https://maplibre.org)
 map of vessel movement, served by ASP.NET Core and orchestrated by the same AppHost. It is a demo, so
 neither project ships in the container images or as a package.
 
@@ -186,7 +187,7 @@ coloured identically.
 original proof of concept. Point it at a local file:
 
 ```bash
-dotnet run --project Solutions/Demos/Ais.Net.Receiver.Demo.Visualizer
+dotnet run --project Solutions/Ais.Net.Receiver.Demo.Visualizer
 # with Visualizer:Source=Replay and Visualizer:Replay:FilePath=<path to .nm4>
 ```
 

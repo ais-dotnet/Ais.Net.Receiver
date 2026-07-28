@@ -26,7 +26,7 @@
       The POC referenced Ais.Net.Receiver from NuGet, which is how it drifted from the current
       FileStreamNmeaReceiver signature. Project references keep the demo honest against this branch.
     -->
-    <ProjectReference Include="..\..\Ais.Net.Receiver\Ais.Net.Receiver.csproj" />
+    <ProjectReference Include="..\Ais.Net.Receiver\Ais.Net.Receiver.csproj" />
   </ItemGroup>
 
   <ItemGroup>

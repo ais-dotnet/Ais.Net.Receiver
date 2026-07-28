@@ -20,7 +20,8 @@ several defaults behave differently.
   `Ais.Net.Receiver.ServiceDefaults` project carrying telemetry, health checks and service discovery.
   The AppHost also runs an Azurite container and points the worker at it, so `dotnet run` on the
   AppHost captures NMEA locally with no Azure account and no secrets (Docker required).
-* Added an **AIS Visualizer demo** under `Solutions/Demos/`: a deck.gl and MapLibre map served by
+* Added an **AIS Visualizer demo** (`Ais.Net.Receiver.Demo.Visualizer` and its
+  `Ais.Net.Receiver.Demo.Tracks` pipeline): a deck.gl and MapLibre map served by
   ASP.NET Core, orchestrated by the AppHost alongside a NATS broker. It shows live vessels by default:
   the worker publishes decoded messages to NATS as JSON and the page subscribes to that subject
   directly from the browser with `nats.ws`, so the web host relays no vessel data. It can instead

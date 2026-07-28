@@ -20,7 +20,7 @@
   -->
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Ais.Net.Receiver.ServiceDefaults\Ais.Net.Receiver.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\Ais.Net.Receiver.ServiceDefaults\Ais.Net.Receiver.ServiceDefaults.csproj" />
     <ProjectReference Include="..\Ais.Net.Receiver.Demo.Tracks\Ais.Net.Receiver.Demo.Tracks.csproj" />
   </ItemGroup>
 

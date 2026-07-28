@@ -4,8 +4,8 @@
     <File Path=".editorconfig" />
   </Folder>
   <Folder Name="/Demos/">
-    <Project Path="Demos/Ais.Net.Receiver.Demo.Tracks/Ais.Net.Receiver.Demo.Tracks.csproj" />
-    <Project Path="Demos/Ais.Net.Receiver.Demo.Visualizer/Ais.Net.Receiver.Demo.Visualizer.csproj" />
+    <Project Path="Ais.Net.Receiver.Demo.Tracks/Ais.Net.Receiver.Demo.Tracks.csproj" />
+    <Project Path="Ais.Net.Receiver.Demo.Visualizer/Ais.Net.Receiver.Demo.Visualizer.csproj" />
   </Folder>
   <Project Path="Ais.Net.Receiver.AppHost/Ais.Net.Receiver.AppHost.csproj" />
   <Project Path="Ais.Net.Receiver.ServiceDefaults/Ais.Net.Receiver.ServiceDefaults.csproj" />
