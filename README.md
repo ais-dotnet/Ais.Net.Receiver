@@ -521,6 +521,13 @@ ConnectionStrings__nats="nats://localhost:4222" \
   ./Ais.Net.Receiver.Host.Worker
 ```
 
+Two connection-string conventions appear here, deliberately. `Storage:ConnectionString` is part of
+the receiver's own `Storage` section — one property of the validated capture feature, alongside
+`EnableCapture` and the batching settings — and is the stable contract existing deployments
+(docker-compose, systemd) already use. `ConnectionStrings:nats` is the standard .NET slot that
+Aspire's `WithReference` injects and the NATS client integration reads by convention; using the
+platform's name is what lets its mere presence switch publishing on with no bespoke wiring.
+
 The full schema, with every optional section present:
 
 ```json
