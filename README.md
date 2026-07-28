@@ -52,6 +52,107 @@ The Norwegian Coastal Administration TCP endpoint produces:
 - ~7 GB per month
 - ~81.4 GB per year
 
+## Architecture
+
+The solution has grown from a library plus a console host into a small system, built around one rule:
+**there is a single decode path, and everything else subscribes to it**. A source produces NMEA
+sentences, `ReceiverHost` decodes them, and every capability — capture, telemetry, publishing,
+visualisation — is a subscriber to its streams.
+
+### The receive pipeline
+
+Any `INmeaReceiver` can feed the decoder: the live TCP feed, a recorded `.nm4` file, or (in the
+demos) an hour the receiver previously captured to blob storage. `ReceiverHost` wraps the source in
+retry ([Polly](https://github.com/App-vNext/Polly)), decodes each sentence with
+[Ais.Net](https://github.com/ais-dotnet/Ais.Net), and exposes the results as Rx streams:
+`RawSentences` (bytes), `Sentences` (text), `Messages` (`IAisMessage`), `Metadata` (each message
+paired with the station id and Unix timestamp parsed from its NMEA tag block), and `Errors`.
+
+```mermaid
+flowchart LR
+    TCP["Live TCP feed<br/>NetworkStreamNmeaReceiver"] --> RH
+    FILE["Recorded .nm4 file<br/>FileStreamNmeaReceiver"] --> RH
+    BLOB["Captured blob<br/>BlobNmeaReceiver (demo)"] --> RH
+
+    RH["ReceiverHost<br/>Ais.Net decode + retry"] --> STREAMS["Rx streams<br/>RawSentences · Sentences · Messages<br/>Metadata · Errors"]
+
+    STREAMS --> STORE["Storage capture<br/>batch → retry → hourly append blob<br/>+ dead-letter and replay"]
+    STREAMS --> TEL["OpenTelemetry<br/>metrics · logs · traces"]
+    STREAMS --> PUB["NATS publisher (opt-in)<br/>subject: ais.messages"]
+    STREAMS --> TRK["TrackPipeline (demo)<br/>recording → vessel tracks"]
+```
+
+Subscribers never gate each other or the receive loop: storage runs on bounded dataflow blocks that
+shed load rather than grow without limit, and NATS publishing hands messages to a bounded queue
+instead of awaiting the broker on the receive path.
+
+### Runtime topology
+
+`dotnet run` on the AppHost starts the whole local system — no Azure account, no secrets; Docker
+required:
+
+```mermaid
+flowchart LR
+    FEED["Norwegian Coastal Administration<br/>tcp 153.44.253.27:5631"] --> W
+
+    subgraph Aspire["Aspire AppHost"]
+        W["worker"]
+        N[("NATS<br/>tcp 4222 · ws 8080")]
+        A[("Azurite<br/>blob emulator")]
+        V["visualizer<br/>ASP.NET Core"]
+    end
+
+    W -- "capture: hourly .nm4 blobs" --> A
+    W -- "publish: ais.messages (JSON)" --> N
+    A -. "replay source" .-> V
+    N == "websocket (nats.ws)" ==> B["browser<br/>deck.gl + MapLibre"]
+    V -- "bundle · /api/config · /api/tracks" --> B
+```
+
+The visualizer's two modes differ only in where vessels come from:
+
+- **Live** (default): the worker publishes every decoded message to NATS as polymorphic JSON
+  (`Ais.Net.Models.Json.Nats`), and the page subscribes straight from the browser over the websocket
+  listener, correlating positions to names by MMSI as they arrive. The web host relays no vessel
+  data — it serves the bundle and tells the page where the broker is.
+- **Replay**: the visualizer runs the same decode over a recording (a local file or a captured
+  blob), builds geofenced, downsampled per-vessel tracks once, caches them, and serves one JSON
+  document the page can scrub, play at up to 600×, and export to WebM.
+
+Live is *push* over an unbounded stream — a rolling window in the browser. Replay is *random access*
+over a bounded recording — a tracks document with a timeline. That difference in access pattern, not
+a second decode path, is why `Ais.Net.Receiver.Demo.Tracks` exists.
+
+### Projects
+
+| Project | Role |
+| --- | --- |
+| `Ais.Net.Receiver` | Core library: `INmeaReceiver` sources, `ReceiverHost` decode, resilience |
+| `Ais.Net.Receiver.Storage.Azure.Blob` | Hourly append-blob capture for Azure Storage |
+| `Ais.Net.Receiver.ServiceDefaults` | Shared hosting: OpenTelemetry, health checks, receive/storage pipeline wiring, shared NATS names |
+| `Ais.Net.Receiver.Host.Console` | Interactive Spectre.Console host |
+| `Ais.Net.Receiver.Host.Worker` | Long-running service host (systemd / Docker), with opt-in NATS publishing |
+| `Ais.Net.Receiver.AppHost` | .NET Aspire orchestration for local development |
+| `Ais.Net.Receiver.Demo.Tracks` | Demo library: recording → vessel tracks (geofence, downsample, deck.gl JSON) |
+| `Ais.Net.Receiver.Demo.Visualizer` | Demo web host: serves the deck.gl page, `/api/config`, `/api/tracks` |
+
+### Design rules
+
+- **Sources are pluggable; decode is single.** Everything that reads NMEA implements `INmeaReceiver`;
+  nothing decodes except `ReceiverHost`.
+- **Capabilities are opt-in by configuration.** Storage capture activates when a storage connection
+  string is present; NATS publishing when a `nats` connection string is. A standalone worker on a
+  Raspberry Pi behaves exactly as it always has.
+- **Shared rules live in C#, once.** The ship-type → category and colour mapping colours replayed
+  tracks at build time and is served to the live page via `/api/config`, so the two views cannot
+  drift apart.
+- **Demos depend on the product, never the reverse.** The `Demo.*` projects are not packaged and do
+  not ship in the container images.
+
+The reliability behaviour of the storage path is documented in
+[docs/production-reliability-plan.md](docs/production-reliability-plan.md), and the full metric and
+alert catalogue in [docs/telemetry/observability-playbook.md](docs/telemetry/observability-playbook.md).
+
 ## Azure Blob Storage Taxonomy
 
 The AIS data is stored using the following taxonomy
