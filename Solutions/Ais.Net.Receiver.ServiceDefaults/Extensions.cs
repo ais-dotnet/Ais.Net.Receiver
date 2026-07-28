@@ -6,6 +6,8 @@ using Ais.Net.Receiver.Health;
 using Ais.Net.Receiver.Storage.Azure.Blob.Health;
 using Ais.Net.Receiver.Telemetry;
 
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -34,10 +36,39 @@ public static class Extensions
         this IHostApplicationBuilder builder,
         string serviceName,
         params string[] additionalSources)
+        => builder.AddServiceDefaults(serviceName, includeAisHealthChecks: true, additionalSources);
+
+    /// <summary>
+    /// Adds default service configuration, optionally without the AIS-specific health checks.
+    /// </summary>
+    /// <param name="builder">The host application builder.</param>
+    /// <param name="serviceName">The primary service name for telemetry.</param>
+    /// <param name="includeAisHealthChecks">
+    /// Whether to register the receiver's own health checks. A host that does not run a receiver - the
+    /// visualiser demo, which only renders what the receiver publishes - must pass <see langword="false"/>:
+    /// the connection check reports unhealthy whenever no receiver has connected, which for such a host
+    /// is its normal state rather than a fault.
+    /// </param>
+    /// <param name="additionalSources">Additional activity sources and meters to register.</param>
+    /// <returns>The builder for chaining.</returns>
+    public static IHostApplicationBuilder AddServiceDefaults(
+        this IHostApplicationBuilder builder,
+        string serviceName,
+        bool includeAisHealthChecks,
+        params string[] additionalSources)
     {
         builder.ConfigureOpenTelemetry(serviceName, additionalSources);
         builder.AddAisInstrumentation();
-        builder.AddAisHealthChecks();
+
+        // Register the health-check services unconditionally, so MapDefaultEndpoints can map the
+        // endpoints whatever else is configured. Without this a host that adds no checks of its own
+        // throws at startup rather than reporting healthy with nothing to check.
+        builder.Services.AddHealthChecks();
+
+        if (includeAisHealthChecks)
+        {
+            builder.AddAisHealthChecks();
+        }
         builder.Services.AddServiceDiscovery();
         builder.Services.ConfigureHttpClientDefaults(http =>
         {
@@ -46,6 +77,33 @@ public static class Extensions
         });
 
         return builder;
+    }
+
+    /// <summary>
+    /// Maps the health endpoints. The checks themselves are registered by
+    /// <see cref="AddAisHealthChecks"/>; until the visualiser demo there was no ASP.NET Core host in
+    /// the solution to expose them over HTTP.
+    /// </summary>
+    /// <param name="app">The web application.</param>
+    /// <returns>The application for chaining.</returns>
+    /// <remarks>
+    /// Split into readiness and liveness deliberately: <c>/health</c> runs every check, so a degraded
+    /// storage backend shows up there, while <c>/alive</c> runs only the checks tagged <c>live</c>, so
+    /// an orchestrator does not restart a process that is running perfectly well but cannot reach
+    /// storage.
+    /// </remarks>
+    public static WebApplication MapDefaultEndpoints(this WebApplication app)
+    {
+        ArgumentNullException.ThrowIfNull(app);
+
+        app.MapHealthChecks("/health");
+
+        app.MapHealthChecks("/alive", new HealthCheckOptions
+        {
+            Predicate = registration => registration.Tags.Contains("live"),
+        });
+
+        return app;
     }
 
     /// <summary>
