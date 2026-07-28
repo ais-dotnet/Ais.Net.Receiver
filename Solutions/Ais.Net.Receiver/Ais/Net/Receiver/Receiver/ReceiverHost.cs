@@ -193,7 +193,7 @@ public class ReceiverHost : IAsyncDisposable
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            // A single malformed sentence must not propagate out of the receive loop: that would
+            // A single malformed sentence must not propagate out of the "receive loop": that would
             // fault StartAsyncInternal and trigger a full reconnect plus retry backoff - a long stall
             // caused by one bad line. Instead, categorise the failure, surface it as a per-message
             // error, and carry on with the next line. Known-shaped failures keep their existing error
