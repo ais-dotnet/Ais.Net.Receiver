@@ -8,8 +8,11 @@
 
   <ItemGroup>
     <PackageVersion Include="Ais.Net.Models" Version="1.0.1" />
+    <PackageVersion Include="Ais.Net.Models.Json.Nats" Version="1.0.0" />
+    <PackageVersion Include="Aspire.NATS.Net" Version="13.4.6" />
     <PackageVersion Include="Aspire.Hosting.AppHost" Version="13.4.6" />
     <PackageVersion Include="Aspire.Hosting.Azure.Storage" Version="13.4.6" />
+    <PackageVersion Include="Aspire.Hosting.Nats" Version="13.4.6" />
     <PackageVersion Include="Azure.Storage.Blobs" Version="12.29.1" />
     <PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
     <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.10" />
@@ -19,6 +22,8 @@
     <PackageVersion Include="Microsoft.Extensions.Configuration.Json" Version="10.0.10" />
     <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions" Version="10.0.10" />
     <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.10" />
+    <PackageVersion Include="NetTopologySuite" Version="2.6.0" />
+    <PackageVersion Include="NetTopologySuite.IO.GeoJSON4STJ" Version="4.0.0" />
     <PackageVersion Include="Microsoft.Extensions.Hosting.Systemd" Version="10.0.10" />
     <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.8.0" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.10" />

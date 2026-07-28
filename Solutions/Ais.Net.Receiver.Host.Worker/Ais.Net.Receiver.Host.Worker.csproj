@@ -30,6 +30,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Ais.Net.Models.Json.Nats" />
+    <PackageReference Include="Aspire.NATS.Net" />
     <PackageReference Include="Microsoft.Extensions.Hosting" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" />
     <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" />

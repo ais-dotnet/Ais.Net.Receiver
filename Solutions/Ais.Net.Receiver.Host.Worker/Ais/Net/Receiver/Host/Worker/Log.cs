@@ -152,4 +152,22 @@ internal static partial class Log
         Level = LogLevel.Error,
         Message = "The NMEA sentence stream faulted; buffered batches are being flushed and capture has stopped")]
     public static partial void SentenceStreamFaulted(this ILogger logger, Exception exception);
+
+    [LoggerMessage(
+        EventId = 1310,
+        Level = LogLevel.Information,
+        Message = "Publishing decoded AIS messages to NATS subject {Subject}")]
+    public static partial void NatsPublishingStarted(this ILogger logger, string subject);
+
+    [LoggerMessage(
+        EventId = 1311,
+        Level = LogLevel.Error,
+        Message = "Failed to publish an AIS message to NATS")]
+    public static partial void NatsPublishFailed(this ILogger logger, Exception exception);
+
+    [LoggerMessage(
+        EventId = 1312,
+        Level = LogLevel.Warning,
+        Message = "NATS publish backpressure: {TotalDropped} AIS messages dropped (publish queue full)")]
+    public static partial void NatsMessagesDropped(this ILogger logger, long totalDropped);
 }

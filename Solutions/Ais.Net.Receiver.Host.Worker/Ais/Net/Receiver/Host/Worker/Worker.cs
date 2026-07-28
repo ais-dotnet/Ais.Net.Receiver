@@ -9,6 +9,7 @@ using Ais.Net.Models;
 using Ais.Net.Models.Abstractions;
 using Ais.Net.Receiver.Configuration;
 using Ais.Net.Receiver.Health;
+using Ais.Net.Receiver.Host.Worker.Publishing;
 using Ais.Net.Receiver.Hosting;
 using Ais.Net.Receiver.Receiver;
 using Ais.Net.Receiver.Storage.Azure.Blob.Configuration;
@@ -33,6 +34,7 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
     private readonly ApplicationMetrics metrics;
     private readonly ApplicationInstrumentation instrumentation;
     private readonly IAisConnectionMonitor connectionMonitor;
+    private readonly IAisMessagePublisher messagePublisher;
 
     private ReceiverHost? receiverHost;
     private CompositeDisposable? subscriptions;
@@ -46,7 +48,8 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
         TimeProvider timeProvider,
         ApplicationMetrics metrics,
         ApplicationInstrumentation instrumentation,
-        IAisConnectionMonitor connectionMonitor)
+        IAisConnectionMonitor connectionMonitor,
+        IAisMessagePublisher messagePublisher)
     {
         this.logger = logger;
         this.loggerFactory = loggerFactory;
@@ -56,6 +59,7 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
         this.metrics = metrics;
         this.instrumentation = instrumentation;
         this.connectionMonitor = connectionMonitor;
+        this.messagePublisher = messagePublisher;
     }
 
     public Task StartingAsync(CancellationToken cancellationToken)
@@ -199,6 +203,11 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
             {
                 this.metrics.MessagesReceived.Add(1, MessageTypeTagsFor(msg.MessageType));
                 this.connectionMonitor.RecordMessageReceived();
+
+                // Offer the message to whatever is publishing off-box. This is a queue write, not a
+                // network call, so it does not slow the receive path; with nothing configured it is
+                // the no-op publisher.
+                this.messagePublisher.Publish(msg);
             }));
 
         // Subscribe to sentences for metrics
