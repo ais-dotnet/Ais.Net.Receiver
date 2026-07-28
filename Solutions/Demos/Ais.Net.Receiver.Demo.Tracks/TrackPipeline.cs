@@ -37,41 +37,33 @@ public static class TrackPipeline
         ArgumentNullException.ThrowIfNull(source);
 
         // retryAttempts: 1 disables the retry pipeline. ReceiverHost defaults to 100 attempts because
-        // it is built for a live TCP feed that should reconnect; a recorded source is finite and
-        // signals its end by faulting, so the default would replay the whole file 100 more times.
+        // it is built for a live TCP feed that should reconnect; a recorded source is finite, so the
+        // default would replay the whole recording up to 100 more times.
         ReceiverHost receiverHost = new(
             source,
             TimeProvider.System,
             retryPeriodicity: TimeSpan.Zero,
             retryAttempts: 1);
         VesselTrackBuilder trackBuilder = new();
-        long currentEpoch = 0;
         int messageCount = 0;
 
-        // The position itself carries no timestamp: it comes from the tag block on the sentence that
-        // produced the message. Sentences and messages arrive on the same sequence, so the latest
-        // sentence epoch is the one the next message belongs to.
-        using IDisposable sentences = receiverHost.Sentences.Subscribe(sentence =>
+        // The receiver already parses each sentence's tag block and pairs the result with the decoded
+        // message on the Metadata stream, so the position's time comes from there rather than this
+        // pipeline re-parsing tag blocks out of the sentence text itself.
+        using IDisposable subscription = receiverHost.Metadata.Subscribe(item =>
         {
-            long epoch = TagBlockParser.ExtractEpoch(sentence);
-            if (epoch > 0)
-            {
-                Interlocked.Exchange(ref currentEpoch, epoch);
-            }
-        });
+            messageCount++;
 
-        using IDisposable messages = receiverHost.Messages.Subscribe(message =>
-        {
-            long epoch = Interlocked.Read(ref currentEpoch);
-
-            if (progress is not null && ++messageCount % 100_000 == 0)
+            if (progress is not null && messageCount % 100_000 == 0)
             {
                 progress.Report(messageCount);
             }
 
+            IAisMessage message = item.Message;
+
             if (message is IVesselNavigation navigation)
             {
-                trackBuilder.AddNavigation(message.Mmsi, navigation, epoch);
+                trackBuilder.AddNavigation(message.Mmsi, navigation, item.UnixTimestamp);
             }
 
             if (message is IVesselName vesselName)
@@ -89,10 +81,12 @@ public static class TrackPipeline
         {
             await receiverHost.StartAsync(cancellationToken).ConfigureAwait(false);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex) when (ex is not OperationCanceledException && messageCount > 0)
         {
-            // A finite source signals the end of the recording by faulting rather than completing, so
-            // this is the normal path for a file or blob replay, not a failure.
+            // A network-style source signals the end of a finite recording by faulting once the far
+            // end goes away, which is normal completion here. A fault before any message decoded is
+            // different - a missing blob, a bad connection string - and swallowing it would quietly
+            // produce (and let the caller cache) an empty replay, so that one propagates.
         }
 
         List<VesselTrack> tracks = [.. trackBuilder.GetTracks()];

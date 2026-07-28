@@ -75,7 +75,7 @@ public sealed class ReplayTrackSource
 
             this.logger.LogInformation("Building replay tracks from {Source}", label);
 
-            await using (source as IAsyncDisposable ?? new NoopAsyncDisposable())
+            await using (source.ConfigureAwait(false))
             {
                 this.cached = await TrackPipeline.BuildAsync(
                     source,
@@ -129,10 +129,5 @@ public sealed class ReplayTrackSource
 
         throw new InvalidOperationException(
             "Replay needs either Visualizer:Replay:FilePath or Visualizer:Replay:BlobPath.");
-    }
-
-    private sealed class NoopAsyncDisposable : IAsyncDisposable
-    {
-        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 }

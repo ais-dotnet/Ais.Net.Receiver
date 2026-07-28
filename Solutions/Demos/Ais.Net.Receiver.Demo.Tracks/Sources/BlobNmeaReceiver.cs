@@ -2,9 +2,6 @@
 // Copyright (c) Endjin Limited. All rights reserved.
 // </copyright>
 
-using System.Runtime.CompilerServices;
-using System.Text;
-
 using Ais.Net.Receiver.Receiver;
 
 using Azure.Storage.Blobs;
@@ -17,17 +14,12 @@ namespace Ais.Net.Receiver.Demo.Tracks.Sources;
 /// <c>AzureAppendBlobStorageClient</c> writes: <c>raw/yyyy/MM/dd/yyyyMMddTHH.nm4</c>.
 /// </summary>
 /// <remarks>
-/// This mirrors <see cref="FileStreamNmeaReceiver"/> deliberately, including its Latin1 handling: that
-/// encoding maps each byte 0-255 to the same-valued char and back, so reading lines as text and
-/// re-encoding them round-trips the original bytes. ASCII would corrupt any byte above 0x7F - which
-/// includes tag-block content the pipeline parses timestamps out of - into '?'.
+/// The line handling - including the Latin1 round-tripping that keeps tag-block bytes intact - lives
+/// in <see cref="StreamNmeaReceiver"/>; this class only knows how to open the blob.
 /// </remarks>
-public sealed class BlobNmeaReceiver : INmeaReceiver
+public sealed class BlobNmeaReceiver : StreamNmeaReceiver
 {
     private readonly BlobClient blobClient;
-
-    private Stream? blobStream;
-    private StreamReader? streamReader;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="BlobNmeaReceiver"/> class.
@@ -45,52 +37,6 @@ public sealed class BlobNmeaReceiver : INmeaReceiver
     }
 
     /// <inheritdoc/>
-    public async IAsyncEnumerable<ReadOnlyMemory<byte>> GetAsync(
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
-    {
-        this.blobStream = await this.blobClient.OpenReadAsync(cancellationToken: cancellationToken)
-            .ConfigureAwait(false);
-        this.streamReader = new StreamReader(this.blobStream, Encoding.Latin1);
-
-        try
-        {
-            while (!cancellationToken.IsCancellationRequested)
-            {
-                string? line = await this.streamReader.ReadLineAsync(cancellationToken).ConfigureAwait(false);
-
-                if (line is null)
-                {
-                    break;
-                }
-
-                yield return Encoding.Latin1.GetBytes(line);
-            }
-        }
-        finally
-        {
-            await this.CleanupAsync().ConfigureAwait(false);
-        }
-    }
-
-    /// <inheritdoc/>
-    public async ValueTask DisposeAsync()
-    {
-        await this.CleanupAsync().ConfigureAwait(false);
-        GC.SuppressFinalize(this);
-    }
-
-    private async ValueTask CleanupAsync()
-    {
-        if (this.streamReader is not null)
-        {
-            this.streamReader.Dispose();
-            this.streamReader = null;
-        }
-
-        if (this.blobStream is not null)
-        {
-            await this.blobStream.DisposeAsync().ConfigureAwait(false);
-            this.blobStream = null;
-        }
-    }
+    protected override async ValueTask<Stream> OpenStreamAsync(CancellationToken cancellationToken) =>
+        await this.blobClient.OpenReadAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
 }

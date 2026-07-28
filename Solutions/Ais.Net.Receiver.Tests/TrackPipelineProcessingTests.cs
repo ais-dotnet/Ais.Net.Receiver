@@ -12,33 +12,12 @@ namespace Ais.Net.Receiver.Tests;
 /// <summary>
 /// Covers the pure functions the visualiser demo's track pipeline is built from. They arrived with
 /// the proof of concept untested, and they decide what the map actually shows: which points survive
-/// downsampling, which fall outside the geofence, and what time each position is stamped with.
+/// downsampling and which fall outside the geofence. (Position timestamps come from the receiver's
+/// own tag-block parsing, covered by <see cref="TrackPipelineTests"/>.)
 /// </summary>
 [TestClass]
 public class TrackPipelineProcessingTests
 {
-    [TestMethod]
-    public void ExtractEpoch_ReadsTheTimestampFromATagBlock()
-    {
-        const string sentence = @"\s:2573210,c:1614556795*03\!BSVDM,1,1,,A,13n4kG0000PiodPQp>v;GQgW08Nc,0*4F";
-
-        TagBlockParser.ExtractEpoch(sentence).ShouldBe(1614556795);
-    }
-
-    [TestMethod]
-    public void ExtractEpoch_ReturnsZero_WhenTheSentenceHasNoTagBlock()
-    {
-        // Without a tag block there is no time source, and the builder drops the position rather than
-        // placing it at the epoch.
-        TagBlockParser.ExtractEpoch("!BSVDM,1,1,,A,13n4kG0000PiodPQp>v;GQgW08Nc,0*4F").ShouldBe(0);
-    }
-
-    [TestMethod]
-    public void ExtractEpoch_ReturnsZero_WhenTheTimestampIsNotNumeric()
-    {
-        TagBlockParser.ExtractEpoch(@"\s:2573210,c:notanumber*03\!BSVDM,1,1,,A,x,0*00").ShouldBe(0);
-    }
-
     [TestMethod]
     public void Downsample_KeepsPointsThatMovedFarEnough()
     {
