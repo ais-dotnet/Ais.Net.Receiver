@@ -164,35 +164,35 @@ An example directory listing, with a user defined container name of `nmea-ais` w
 ```
 \---nmea-ais
     \---raw
-        \---2021
+        \---2026
             \---07
                 +---12
-                | 20210712T00.nm4 |
-                | 20210712T01.mm4 |
-                | 20210712T02.nm4 |
-                | 20210712T03.nm4 |
-                | 20210712T04.nm4 |
-                | 20210712T05.nm4 |
-                | 20210712T06.nm4 |
-                | 20210712T07.nm4 |
-                | 20210712T08.nm4 |
-                | 20210712T09.nm4 |
-                | 20210712T10.nm4 |
-                | 20210712T11.nm4 |
-                | 20210712T12.nm4 |
-                | 20210712T13.nm4 |
-                | 20210712T14.nm4 |
-                | 20210712T15.nm4 |
-                | 20210712T16.nm4 |
-                | 20210712T17.nm4 |
-                | 20210712T18.nm4 |
-                | 20210712T19.nm4 |
-                | 20210712T20.nm4 |
-                | 20210712T21.nm4 |
-                | 20210712T22.nm4 |
-                | 20210712T23.nm4 |
-                +---20210713
-                | 20210713T00.nm4 |
+                | 20260712T00.nm4 |
+                | 20260712T01.mm4 |
+                | 20260712T02.nm4 |
+                | 20260712T03.nm4 |
+                | 20260712T04.nm4 |
+                | 20260712T05.nm4 |
+                | 20260712T06.nm4 |
+                | 20260712T07.nm4 |
+                | 20260712T08.nm4 |
+                | 20260712T09.nm4 |
+                | 20260712T10.nm4 |
+                | 20260712T11.nm4 |
+                | 20260712T12.nm4 |
+                | 20260712T13.nm4 |
+                | 20260712T14.nm4 |
+                | 20260712T15.nm4 |
+                | 20260712T16.nm4 |
+                | 20260712T17.nm4 |
+                | 20260712T18.nm4 |
+                | 20260712T19.nm4 |
+                | 20260712T20.nm4 |
+                | 20260712T21.nm4 |
+                | 20260712T22.nm4 |
+                | 20260712T23.nm4 |
+                +---20260713
+                | 20260713T00.nm4 |
 ```
 
 ## To Run
@@ -300,7 +300,8 @@ Visualizer:Source=Replay
 Visualizer:Replay:BlobPath=raw/2026/07/28/20260728T06.nm4
 ```
 
-An optional `Visualizer:Replay:GeofencePath` clips positions to a GeoJSON polygon.
+An optional `Visualizer:Replay:GeofencePath` clips positions to a GeoJSON polygon. The visualizer's
+full settings are documented under [Configuration](#configuration).
 
 Two things to know before running it:
 
@@ -504,10 +505,10 @@ Use [Azure Storage Explorer](https://azure.microsoft.com/en-us/features/storage-
 
 #### Configuration
 
-Configuration is read from `appsettings.json`. Both hosts use the standard .NET host configuration
+Configuration is read from `appsettings.json`. The hosts use the standard .NET host configuration
 pipeline, so values can be overridden — in increasing order of precedence — by
 `appsettings.{Environment}.json` (selected by `DOTNET_ENVIRONMENT`, e.g. `appsettings.Development.json`),
-environment variables, and command-line arguments.
+user secrets (Development only), environment variables, and command-line arguments.
 
 Environment variables use `__` as the section separator, which is the most practical way to override
 settings in a container without rebuilding the image:
@@ -516,8 +517,11 @@ settings in a container without rebuilding the image:
 Ais__Connection__Host=153.44.253.27 \
 Storage__EnableCapture=true \
 Storage__ConnectionString="UseDevelopmentStorage=true" \
+ConnectionStrings__nats="nats://localhost:4222" \
   ./Ais.Net.Receiver.Host.Worker
 ```
+
+The full schema, with every optional section present:
 
 ```json
 {
@@ -550,7 +554,15 @@ Storage__ConnectionString="UseDevelopmentStorage=true" \
     "batchTimeoutSeconds": 10,
     "boundedCapacity": 10000,
     "maxDegreeOfParallelism": 1,
-    "writeRetryAttempts": 3
+    "writeRetryAttempts": 3,
+    "deadLetterPath": "/var/aisr/dead-letter",
+    "deadLetterReplayIntervalSeconds": 60
+  },
+  "ConnectionStrings": {
+    "nats": "nats://localhost:4222"
+  },
+  "OpenTelemetry": {
+    "TraceSamplingRatio": 1.0
   }
 }
 ```
@@ -607,6 +619,68 @@ These settings control the capturing of NMEA sentences to Azure Blob Storage.
   here instead of being lost, and a background replayer returns it to storage once the backend
   recovers. When unset, an exhausted batch surfaces as an error instead.
 - `deadLetterReplayIntervalSeconds`: how often to attempt replaying dead-lettered batches (default 60)
+
+##### NATS publishing (worker only)
+
+The worker can publish every decoded message to a [NATS](https://nats.io) subject, which is how the
+[AIS Visualizer demo](#ais-visualizer) gets its live feed. There is exactly one setting:
+
+- `ConnectionStrings:nats`: the broker to publish to, e.g. `nats://localhost:4222` (or
+  `nats://user:pass@host:4222` with credentials). **Its presence is the switch**: when set, the
+  publisher runs; when absent, publishing is disabled and the worker behaves exactly as it always
+  has — the same convention storage capture uses. Under the Aspire AppHost this is injected
+  automatically.
+
+What it publishes is not configurable by design. Messages go to the `ais.messages` subject as
+polymorphic JSON ([Ais.Net.Models.Json](https://github.com/ais-dotnet/Ais.Net.Models.Json), with a
+`$type` discriminator naming the concrete message type). The subject name is a shared constant
+(`AisNats.MessagesSubject`) rather than a setting, because publisher and subscribers live in
+different processes: a knob on one side could do nothing but silently break the other.
+
+Publishing never slows the receive path: messages are handed to a bounded queue (10,000 entries)
+and a stalled broker causes the *oldest* queued messages to be dropped — the right ones to lose for
+a position feed — with the drops counted and logged rather than hidden.
+
+##### Visualizer (demo)
+
+The [AIS Visualizer](#ais-visualizer) binds the `Visualizer` section. Live mode is the default and
+needs no configuration under the AppHost; replay mode is selected like this:
+
+```json
+{
+  "Visualizer": {
+    "Source": "Replay",
+    "Replay": {
+      "BlobPath": "raw/2026/07/12/20260712T00.nm4",
+      "GeofencePath": "/data/skagerrak.json"
+    }
+  }
+}
+```
+
+- `Source`: `Live` (default) or `Replay`
+- `Replay:FilePath`: a local `.nm4` file to replay. Replay mode requires `FilePath` or `BlobPath`;
+  when both are set, `BlobPath` wins.
+- `Replay:BlobPath`: a captured blob to replay, in the layout the receiver writes
+  (`raw/yyyy/MM/dd/yyyyMMddTHH.nm4`)
+- `Replay:ConnectionString`: storage connection string for `BlobPath`. Defaults to
+  `Storage:ConnectionString`, so replaying what the AppHost's Azurite captured needs nothing extra.
+- `Replay:ContainerName`: the container holding the capture (default `nmea-ais-dev`)
+- `Replay:GeofencePath`: optional GeoJSON polygon; positions outside it are discarded
+- `NatsWebSocketUrl`: the `ws://` URL the page's own NATS connection uses in live mode. The AppHost
+  supplies this (the port is assigned at run time); set it manually only when running live mode
+  outside the AppHost.
+- `BasemapStyle`: the MapLibre style URL (defaults to a CARTO dark style; the map needs internet
+  access to fetch it)
+- `VesselInactivityTimeout`: how long a vessel may go unheard before the live view drops it
+  (default 15 minutes)
+- `ConnectionStrings:nats`: used only to extract the credentials `/api/config` hands to the page;
+  injected by the AppHost
+
+##### OpenTelemetry
+
+`OpenTelemetry:TraceSamplingRatio` and the `OTEL_*` environment variables are documented in
+[Telemetry](#telemetry).
 
 ## Running as WASM
 
