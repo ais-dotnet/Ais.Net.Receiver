@@ -156,6 +156,56 @@ dotnet user-secrets set "Storage:ConnectionString" "<connection string>" --proje
 Environment variables still take precedence over user secrets, so what a container or systemd unit
 injects continues to win.
 
+## Demos
+
+### AIS Visualizer
+
+`Solutions/Demos/` holds an AIS Visualizer: a [deck.gl](https://deck.gl) + [MapLibre](https://maplibre.org)
+map of vessel movement, served by ASP.NET Core and orchestrated by the same AppHost. It is a demo, so
+neither project ships in the container images or as a package.
+
+Running the AppHost starts it alongside the worker, Azurite and a [NATS](https://nats.io) broker; the
+dashboard prints the URL.
+
+```bash
+dotnet run --project Solutions/Ais.Net.Receiver.AppHost
+```
+
+**Live is the default.** The worker publishes every decoded message to NATS, the visualiser subscribes
+and turns those into map-ready vessel updates (correlating each position with the vessel's name and
+ship type so the colours match the recorded view), and the page subscribes to *those* directly from
+the browser using [nats.ws](https://github.com/nats-io/nats.ws) over a websocket. Vessels appear as
+they report, under `MMSI …` until a static message supplies a real name.
+
+**Replay** plays a recorded day on a timeline, with the playback controls and WebM export from the
+original proof of concept. Point it at a local file:
+
+```bash
+dotnet run --project Solutions/Demos/Ais.Net.Receiver.Demo.Visualizer
+# with Visualizer:Source=Replay and Visualizer:Replay:FilePath=<path to .nm4>
+```
+
+…or at an hour the receiver already captured, which needs nothing but the blob path because the
+storage connection string is already configured:
+
+```
+Visualizer:Source=Replay
+Visualizer:Replay:BlobPath=raw/2026/07/28/20260728T06.nm4
+```
+
+An optional `Visualizer:Replay:GeofencePath` clips positions to a GeoJSON polygon.
+
+Two things to know before running it:
+
+- **Node is needed to build, not to run.** An msbuild target runs `npm ci` and `vite build` for
+  `ClientApp`, emitting the bundle into the (git-ignored) `wwwroot`. Build with
+  `-p:SkipFrontendBuild=true` where Node is unavailable and the bundle is already present.
+- **The demo is loopback-only.** The NATS websocket carries no TLS, and `/api/config` hands the
+  browser the broker credentials so it can connect for itself. That is fine on `localhost`; anything
+  shared needs real credentials and `wss://`.
+
+The basemap style is fetched from `basemaps.cartocdn.com`, so the map needs internet access.
+
 ## Running Tests
 
 To run the tests, use the following command:

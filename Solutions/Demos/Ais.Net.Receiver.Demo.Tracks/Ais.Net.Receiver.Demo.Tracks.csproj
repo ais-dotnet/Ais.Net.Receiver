@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Demo code, so Endjin.Conventions.props is deliberately not imported - the same choice the AppHost,
+    ServiceDefaults and test projects make. That import turns on warnings-as-errors and required XML
+    documentation, which are conventions for the shipped libraries rather than for a sample.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>14.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Azure.Storage.Blobs" />
+    <PackageReference Include="NetTopologySuite" />
+    <PackageReference Include="NetTopologySuite.IO.GeoJSON4STJ" />
+    <PackageReference Include="System.Reactive" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      The POC referenced Ais.Net.Receiver from NuGet, which is how it drifted from the current
+      FileStreamNmeaReceiver signature. Project references keep the demo honest against this branch.
+    -->
+    <ProjectReference Include="..\..\Ais.Net.Receiver\Ais.Net.Receiver.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Ais.Net.Receiver.Tests" />
+  </ItemGroup>
+
+</Project>

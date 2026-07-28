@@ -10,10 +10,12 @@
   <ItemGroup>
     <PackageReference Include="Aspire.Hosting.AppHost" />
     <PackageReference Include="Aspire.Hosting.Azure.Storage" />
+    <PackageReference Include="Aspire.Hosting.Nats" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Ais.Net.Receiver.Host.Console\Ais.Net.Receiver.Host.Console.csproj" />
     <ProjectReference Include="..\Ais.Net.Receiver.Host.Worker\Ais.Net.Receiver.Host.Worker.csproj" />
+    <ProjectReference Include="..\Demos\Ais.Net.Receiver.Demo.Visualizer\Ais.Net.Receiver.Demo.Visualizer.csproj" />
   </ItemGroup>
 </Project>

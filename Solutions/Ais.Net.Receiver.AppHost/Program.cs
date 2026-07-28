@@ -16,8 +16,19 @@ IResourceBuilder<AzureBlobStorageResource> blobs = builder.AddAzureStorage("stor
         .WithArgs("--skipApiVersionCheck"))
     .AddBlobs("blobs");
 
+// NATS carries decoded vessel positions from the worker to the visualiser. The websocket listener is
+// what makes that reach the browser directly: the visualiser page subscribes with nats.ws rather than
+// the ASP.NET Core host relaying the stream. nats-server has no command-line switch for websockets -
+// it is configuration-file only - hence the bind-mounted nats.conf.
+IResourceBuilder<NatsServerResource> nats = builder.AddNats("nats")
+    .WithBindMount("nats/nats.conf", "/etc/nats/nats.conf", isReadOnly: true)
+    .WithArgs("-c", "/etc/nats/nats.conf")
+    .WithEndpoint(targetPort: 8080, scheme: "http", name: "ws");
+
 // builder.AddProject<Projects.Ais_Net_Receiver_Host_Console>("console");
 builder.AddProject<Projects.Ais_Net_Receiver_Host_Worker>("worker")
+    .WithReference(nats)
+    .WaitFor(nats)
 
     // The receiver reads its own Storage section rather than a ConnectionStrings entry, so the
     // emulator's connection string is mapped onto that key instead of using WithReference. Capture is
@@ -26,5 +37,19 @@ builder.AddProject<Projects.Ais_Net_Receiver_Host_Worker>("worker")
     .WithEnvironment("Storage__EnableCapture", "true")
     .WithEnvironment("Storage__ConnectionString", blobs)
     .WaitFor(blobs);
+
+// The AIS Visualizer demo. It subscribes to the worker's decoded messages, enriches them into
+// map-ready vessel updates, and serves the deck.gl page that renders them.
+builder.AddProject<Projects.Ais_Net_Receiver_Demo_Visualizer>("visualizer")
+    .WithReference(nats)
+    .WaitFor(nats)
+
+    // The browser opens its own NATS connection, so it needs the websocket endpoint as seen from the
+    // host rather than from inside the container network.
+    .WithEnvironment("Visualizer__NatsWebSocketUrl", nats.GetEndpoint("ws"))
+
+    // Lets a replay read the hourly blobs the worker captures, without any extra configuration.
+    .WithEnvironment("Storage__ConnectionString", blobs)
+    .WithHttpHealthCheck("/health");
 
 builder.Build().Run();

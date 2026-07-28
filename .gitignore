@@ -429,3 +429,7 @@ Endjin.FreeAgent.sbom.json
 .devcontainer/
 kb/
 .endjin/
+.poc/
+
+# AIS Visualizer demo: wwwroot is produced by the Vite build in ClientApp
+Solutions/Demos/Ais.Net.Receiver.Demo.Visualizer/wwwroot/

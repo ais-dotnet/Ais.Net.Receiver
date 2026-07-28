@@ -20,6 +20,16 @@ several defaults behave differently.
   `Ais.Net.Receiver.ServiceDefaults` project carrying telemetry, health checks and service discovery.
   The AppHost also runs an Azurite container and points the worker at it, so `dotnet run` on the
   AppHost captures NMEA locally with no Azure account and no secrets (Docker required).
+* Added an **AIS Visualizer demo** under `Solutions/Demos/`: a deck.gl and MapLibre map served by
+  ASP.NET Core, orchestrated by the AppHost alongside a NATS broker. It shows live vessels by default
+  — the worker publishes decoded messages to NATS, the visualiser enriches them into map-ready
+  updates, and the browser subscribes to those directly over a websocket with `nats.ws` — and can
+  instead replay a recorded day from a local `.nm4` file or straight from an hour the receiver
+  captured to blob storage. Neither demo project ships in the container images or as a package.
+* The worker can publish decoded AIS messages to a NATS subject (`ais.messages`) as polymorphic JSON,
+  using `Ais.Net.Models.Json.Nats`. This is opt-in: it activates only when a `nats` connection string
+  is configured, so a standalone worker is unaffected. Publishing runs off a bounded queue that sheds
+  the oldest messages rather than stalling the receive path.
 * `Storage:EnableCapture` now defaults to `false` in the tracked `appsettings.json` files. Previously
   they shipped `true` with an empty connection string, which made `ValidateOnStart` throw before the
   host started. Supply a connection string via user secrets, the environment, or the AppHost's
