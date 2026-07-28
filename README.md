@@ -171,11 +171,16 @@ dashboard prints the URL.
 dotnet run --project Solutions/Ais.Net.Receiver.AppHost
 ```
 
-**Live is the default.** The worker publishes every decoded message to NATS, the visualiser subscribes
-and turns those into map-ready vessel updates (correlating each position with the vessel's name and
-ship type so the colours match the recorded view), and the page subscribes to *those* directly from
-the browser using [nats.ws](https://github.com/nats-io/nats.ws) over a websocket. Vessels appear as
-they report, under `MMSI …` until a static message supplies a real name.
+**Live is the default.** The worker publishes every decoded message to NATS as JSON
+(`Ais.Net.Models.Json`), and the page subscribes to that subject directly from the browser with
+[nats.ws](https://github.com/nats-io/nats.ws) and decodes it. The ASP.NET Core host relays no vessel
+data at all — it serves the bundle and tells the page where the broker is.
+
+AIS splits a vessel across messages, so the page correlates them by MMSI: a vessel appears as soon as
+it reports a position, labelled `MMSI …`, and gains its name and colour when its static message
+arrives. The ship-type-to-colour mapping is *not* reimplemented in JavaScript — `/api/config` serves
+the table generated from the same C# the replay pipeline uses, so live and recorded vessels are
+coloured identically.
 
 **Replay** plays a recorded day on a timeline, with the playback controls and WebM export from the
 original proof of concept. Point it at a local file:

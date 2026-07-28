@@ -14,10 +14,10 @@
     <SkipFrontendBuild Condition="'$(SkipFrontendBuild)' == ''">false</SkipFrontendBuild>
   </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Ais.Net.Models.Json.Nats" />
-    <PackageReference Include="Aspire.NATS.Net" />
-  </ItemGroup>
+  <!--
+    No NATS client here on purpose: the browser subscribes to the receiver's messages itself, so this
+    host only needs to tell the page where the broker is. It serves static files and two endpoints.
+  -->
 
   <ItemGroup>
     <ProjectReference Include="..\..\Ais.Net.Receiver.ServiceDefaults\Ais.Net.Receiver.ServiceDefaults.csproj" />

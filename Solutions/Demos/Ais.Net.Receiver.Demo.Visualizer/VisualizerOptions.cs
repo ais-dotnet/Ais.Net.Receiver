@@ -21,10 +21,10 @@ public sealed class VisualizerOptions
     /// <summary>Gets or sets the replay settings, used when <see cref="Source"/> is Replay.</summary>
     public ReplayOptions Replay { get; set; } = new();
 
-    /// <summary>Gets or sets the NATS subject carrying enriched vessel positions for the browser.</summary>
-    public string VesselSubject { get; set; } = "ais.vessels.positions";
-
-    /// <summary>Gets or sets the NATS subject carrying raw decoded messages from the receiver.</summary>
+    /// <summary>
+    /// Gets or sets the NATS subject the receiver publishes decoded messages on, and which the page
+    /// subscribes to directly.
+    /// </summary>
     public string MessageSubject { get; set; } = "ais.messages";
 
     /// <summary>

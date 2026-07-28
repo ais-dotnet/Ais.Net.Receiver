@@ -1,20 +1,30 @@
 import {connect, StringCodec} from 'nats.ws';
 import {TRAIL_LENGTH_SECONDS} from '../config.js';
+import {isPositionReport, readName, readPosition, readShipType} from './ais-messages.js';
+
+const DEFAULT_COLOR = [150, 249, 161];
 
 /**
- * Subscribes to live vessel positions straight from NATS over a websocket and maintains them in the
- * same shape the replay path produces, so every deck.gl layer works unchanged for both modes.
+ * Subscribes to the receiver's decoded AIS messages straight from NATS over a websocket, and builds
+ * vessels from them in the same shape the replay path produces, so every deck.gl layer works
+ * unchanged for both modes.
+ *
+ * Correlation happens here because AIS splits a vessel across messages: position reports carry no
+ * name, and the name and ship type arrive on static messages every few minutes. A vessel therefore
+ * appears as soon as it reports a position, under a placeholder name, and gains its real name and
+ * colour when its static message turns up - rather than staying invisible until then.
  *
  * Positions carry a timestamp in seconds relative to the moment the page connected, mirroring how the
  * pipeline rebases a recording's epochs. That is what lets TripsLayer's trail and the interpolation in
  * data-loader.js behave identically whether the data is live or recorded.
  */
 export class LiveVesselSource {
-  constructor({url, subject, user, pass, inactivitySeconds = 900}) {
+  constructor({url, subject, user, pass, shipTypeStyles, inactivitySeconds = 900}) {
     this.url = url;
     this.subject = subject;
     this.user = user;
     this.pass = pass;
+    this.shipTypeStyles = shipTypeStyles ?? {};
     this.inactivitySeconds = inactivitySeconds;
 
     this.baseEpoch = Math.floor(Date.now() / 1000);
@@ -60,7 +70,7 @@ export class LiveVesselSource {
           this.#apply(JSON.parse(codec.decode(message.data)));
         } catch (err) {
           // One malformed message must not end the subscription and freeze the map.
-          console.warn('Dropped an unreadable vessel update', err);
+          console.warn('Dropped an unreadable AIS message', err);
         }
       }
     })().catch(onError);
@@ -75,37 +85,63 @@ export class LiveVesselSource {
     }
   }
 
-  #apply(update) {
-    const timestamp = update.timestamp - this.baseEpoch;
-    let vessel = this.vessels.get(update.mmsi);
+  #vesselFor(mmsi) {
+    let vessel = this.vessels.get(mmsi);
 
     if (!vessel) {
       vessel = {
-        mmsi: update.mmsi,
-        name: update.name,
-        shipType: update.shipType,
-        shipTypeCategory: update.shipTypeCategory,
-        color: update.color,
+        mmsi,
+        name: `MMSI ${mmsi}`,
+        shipType: '',
+        shipTypeCategory: '',
+        color: DEFAULT_COLOR,
         path: [],
         timestamps: [],
         positions: []
       };
-      this.vessels.set(update.mmsi, vessel);
-    } else {
-      // Identity arrives on separate, less frequent messages, so it can improve after first sighting.
-      vessel.name = update.name;
-      vessel.shipType = update.shipType;
-      vessel.shipTypeCategory = update.shipTypeCategory;
-      vessel.color = update.color;
+      this.vessels.set(mmsi, vessel);
     }
 
-    vessel.path.push(update.coordinates);
+    return vessel;
+  }
+
+  #apply(message) {
+    const mmsi = message.Mmsi;
+    if (mmsi == null) return;
+
+    const name = readName(message);
+    const shipType = readShipType(message);
+
+    if (name || shipType !== null) {
+      const vessel = this.#vesselFor(mmsi);
+
+      if (name) {
+        vessel.name = name;
+      }
+
+      if (shipType !== null) {
+        const style = this.shipTypeStyles[shipType];
+        vessel.shipType = String(shipType);
+        vessel.shipTypeCategory = style?.category ?? '';
+        vessel.color = style?.color ?? DEFAULT_COLOR;
+      }
+    }
+
+    if (!isPositionReport(message)) return;
+
+    const position = readPosition(message);
+    if (!position) return;
+
+    const vessel = this.#vesselFor(mmsi);
+    const timestamp = this.currentTime;
+
+    vessel.path.push(position.coordinates);
     vessel.timestamps.push(timestamp);
     vessel.positions.push({
-      coordinates: update.coordinates,
+      coordinates: position.coordinates,
       timestamp,
-      speed: update.speed,
-      course: update.course
+      speed: position.speed,
+      course: position.course
     });
 
     this.#trim(vessel, timestamp);
@@ -133,7 +169,10 @@ export class LiveVesselSource {
 
     for (const [mmsi, vessel] of this.vessels) {
       const last = vessel.positions.at(-1);
-      if (!last || last.timestamp < cutoff) {
+
+      // A vessel seen only through a static message has no positions yet; keep it, since its
+      // position report may still arrive.
+      if (last && last.timestamp < cutoff) {
         this.vessels.delete(mmsi);
       }
     }

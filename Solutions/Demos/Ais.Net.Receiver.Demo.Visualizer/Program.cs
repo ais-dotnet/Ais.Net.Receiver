@@ -4,8 +4,8 @@
 
 using Ais.Net.Receiver.Demo.Tracks.Models;
 using Ais.Net.Receiver.Demo.Tracks.Output;
+using Ais.Net.Receiver.Demo.Tracks.Processing;
 using Ais.Net.Receiver.Demo.Visualizer;
-using Ais.Net.Receiver.Demo.Visualizer.Live;
 using Ais.Net.Receiver.Demo.Visualizer.Replay;
 
 using Microsoft.Extensions.Options;
@@ -35,16 +35,6 @@ builder.Services.AddOptions<VisualizerOptions>()
 
 builder.Services.AddSingleton<ReplayTrackSource>();
 
-// Live mode needs the broker; replay does not, so a replay-only run works with no NATS at all.
-bool live = builder.Configuration.GetValue($"{VisualizerOptions.SectionName}:Source", VisualizerSource.Live)
-    == VisualizerSource.Live;
-
-if (live && !string.IsNullOrWhiteSpace(builder.Configuration.GetConnectionString("nats")))
-{
-    builder.AddNatsClient("nats");
-    builder.Services.AddHostedService<LiveVesselPublisher>();
-}
-
 WebApplication app = builder.Build();
 
 app.MapDefaultEndpoints();
@@ -64,13 +54,18 @@ app.MapGet("/api/config", (IOptions<VisualizerOptions> options, IConfiguration c
         source = value.Source.ToString().ToLowerInvariant(),
         basemapStyle = value.BasemapStyle,
         vesselInactivitySeconds = (int)value.VesselInactivityTimeout.TotalSeconds,
+
+        // The page decodes raw AIS messages itself, so it needs the ship-type mapping the replay
+        // pipeline uses. Serving it keeps the categories and palette defined once, in C#, instead of
+        // a second copy in JavaScript that can drift from the recorded view.
+        shipTypeStyles = ShipTypeColors.GetStyleTable(),
         nats = value.Source == VisualizerSource.Live
             ? new
             {
                 // Aspire describes the endpoint as HTTP, because that is what it is until the upgrade
                 // handshake; the browser client needs it addressed as a websocket.
                 url = ToWebSocketUrl(value.NatsWebSocketUrl),
-                subject = value.VesselSubject,
+                subject = value.MessageSubject,
 
                 // Local demo credentials, generated per run by the AppHost. They are handed to the
                 // page because the browser connects to the broker itself; that is only acceptable

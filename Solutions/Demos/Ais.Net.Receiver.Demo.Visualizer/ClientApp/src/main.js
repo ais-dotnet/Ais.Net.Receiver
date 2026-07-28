@@ -149,6 +149,7 @@ async function initLive(config) {
     subject: config.nats.subject,
     user: config.nats.user,
     pass: config.nats.pass,
+    shipTypeStyles: config.shipTypeStyles,
     inactivitySeconds: config.vesselInactivitySeconds
   });
 

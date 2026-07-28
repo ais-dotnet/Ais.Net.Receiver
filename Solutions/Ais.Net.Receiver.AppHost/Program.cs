@@ -38,14 +38,17 @@ builder.AddProject<Projects.Ais_Net_Receiver_Host_Worker>("worker")
     .WithEnvironment("Storage__ConnectionString", blobs)
     .WaitFor(blobs);
 
-// The AIS Visualizer demo. It subscribes to the worker's decoded messages, enriches them into
-// map-ready vessel updates, and serves the deck.gl page that renders them.
+// The AIS Visualizer demo. It serves the deck.gl page; the page itself subscribes to the messages the
+// worker publishes, so this host relays no vessel data.
 builder.AddProject<Projects.Ais_Net_Receiver_Demo_Visualizer>("visualizer")
+
+    // Referenced for the connection string alone - the credentials in it are handed to the page so it
+    // can open its own connection. Waiting for the broker keeps the first page load from racing it.
     .WithReference(nats)
     .WaitFor(nats)
 
-    // The browser opens its own NATS connection, so it needs the websocket endpoint as seen from the
-    // host rather than from inside the container network.
+    // The browser opens that connection, so it needs the websocket endpoint as seen from the host
+    // rather than from inside the container network.
     .WithEnvironment("Visualizer__NatsWebSocketUrl", nats.GetEndpoint("ws"))
 
     // Lets a replay read the hourly blobs the worker captures, without any extra configuration.

@@ -44,4 +44,37 @@ public static class ShipTypeColors
 
         return (categoryName, color);
     }
+
+    /// <summary>
+    /// Builds the whole ship type to category-and-colour mapping as a table, keyed by the numeric AIS
+    /// ship type that appears on the wire.
+    /// </summary>
+    /// <returns>An entry for every ship type value AIS defines.</returns>
+    /// <remarks>
+    /// This exists so the live view can colour vessels without the browser knowing anything about AIS.
+    /// The page decodes raw messages itself and reads <c>ShipType</c> as a number; handing it this
+    /// table means the ship-type-to-category rules and the palette stay here, in one place, shared
+    /// with the replay pipeline, rather than being reimplemented in JavaScript and drifting.
+    /// </remarks>
+    public static IReadOnlyDictionary<int, ShipTypeStyle> GetStyleTable()
+    {
+        // AIS ship type is a two-digit code, so 0-99 covers every value a message can carry.
+        Dictionary<int, ShipTypeStyle> table = new(100);
+
+        for (int shipType = 0; shipType <= 99; shipType++)
+        {
+            (string category, int[] color) = GetCategoryAndColor((ShipType)shipType);
+            table[shipType] = new ShipTypeStyle(category, color);
+        }
+
+        return table;
+    }
 }
+
+/// <summary>
+/// How one ship type is presented: the category shown in labels and tooltips, and the colour its
+/// vessels are drawn in.
+/// </summary>
+/// <param name="Category">The human-readable category name.</param>
+/// <param name="Color">The RGB triple.</param>
+public readonly record struct ShipTypeStyle(string Category, int[] Color);
