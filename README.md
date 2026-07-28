@@ -212,10 +212,10 @@ Update the values in the `appsettings.json` file:
     }
   },
   "Storage": {
-    "enableCapture": true,
-    "connectionString": "<YOUR AZURE STORAGE CONNECTION STRING>",
-    "containerName": "nmea-ais",
-    "writeBatchSize": 500
+    "EnableCapture": true,
+    "ConnectionString": "<YOUR AZURE STORAGE CONNECTION STRING>",
+    "ContainerName": "nmea-ais",
+    "WriteBatchSize": 500
   }
 }
 ```
@@ -245,7 +245,7 @@ into the worker, and waits for Azurite to be ready first. Captured NMEA lands in
 container and persists across restarts in the `ais-azurite-data` volume. Traces, metrics and logs
 appear in the Aspire dashboard, whose login link the AppHost prints on startup.
 
-`enableCapture` is `false` in the tracked `appsettings.json`, because capture needs a connection
+`EnableCapture` is `false` in the tracked `appsettings.json`, because capture needs a connection
 string to go with it. To capture against a real storage account outside the AppHost, keep that
 connection string out of source control with user secrets rather than editing `appsettings.json`:
 
@@ -554,16 +554,16 @@ The full schema, with every optional section present:
     }
   },
   "Storage": {
-    "enableCapture": true,
-    "connectionString": "DefaultEndpointsProtocol=https;AccountName=<ACCOUNT_NAME>;AccountKey=<ACCOUNT_KEY>",
-    "containerName": "nmea-ais-dev",
-    "writeBatchSize": 500,
-    "batchTimeoutSeconds": 10,
-    "boundedCapacity": 10000,
-    "maxDegreeOfParallelism": 1,
-    "writeRetryAttempts": 3,
-    "deadLetterPath": "/var/aisr/dead-letter",
-    "deadLetterReplayIntervalSeconds": 60
+    "EnableCapture": true,
+    "ConnectionString": "DefaultEndpointsProtocol=https;AccountName=<ACCOUNT_NAME>;AccountKey=<ACCOUNT_KEY>",
+    "ContainerName": "nmea-ais-dev",
+    "WriteBatchSize": 500,
+    "BatchTimeoutSeconds": 10,
+    "BoundedCapacity": 10000,
+    "MaxDegreeOfParallelism": 1,
+    "WriteRetryAttempts": 3,
+    "DeadLetterPath": "/var/aisr/dead-letter",
+    "DeadLetterReplayIntervalSeconds": 60
   },
   "ConnectionStrings": {
     "nats": "nats://localhost:4222"
@@ -609,23 +609,23 @@ The full schema, with every optional section present:
 
 These settings control the capturing of NMEA sentences to Azure Blob Storage.
 
-- `enableCapture`: whether to capture NMEA sentences and write them to Azure Blob Storage
-- `connectionString`: Azure Storage account connection string
-- `containerName`: container to capture the NMEA sentences into. Useful for separating a local dev
+- `EnableCapture`: whether to capture NMEA sentences and write them to Azure Blob Storage
+- `ConnectionString`: Azure Storage account connection string
+- `ContainerName`: container to capture the NMEA sentences into. Useful for separating a local dev
   container from production within the same storage account.
-- `writeBatchSize`: how many sentences to batch before writing (default 500)
-- `batchTimeoutSeconds`: flush a partial batch after this long, so a quiet feed still gets persisted
+- `WriteBatchSize`: how many sentences to batch before writing (default 500)
+- `BatchTimeoutSeconds`: flush a partial batch after this long, so a quiet feed still gets persisted
   (default 10)
-- `boundedCapacity`: how many sentences may be buffered awaiting a write (default 10000). When the
+- `BoundedCapacity`: how many sentences may be buffered awaiting a write (default 10000). When the
   buffer fills, sentences are shed rather than allowed to grow memory without limit, and the drops are
   counted by `ais.receiver.sentences.dropped`.
-- `maxDegreeOfParallelism`: concurrent storage writes (default 1). Appends to a single blob are
+- `MaxDegreeOfParallelism`: concurrent storage writes (default 1). Appends to a single blob are
   serialized regardless, so raising this only helps if writes are the bottleneck.
-- `writeRetryAttempts`: total attempts per batch, including the first (default 3)
-- `deadLetterPath`: optional local directory. When set, a batch that exhausts its retries is written
+- `WriteRetryAttempts`: total attempts per batch, including the first (default 3)
+- `DeadLetterPath`: optional local directory. When set, a batch that exhausts its retries is written
   here instead of being lost, and a background replayer returns it to storage once the backend
   recovers. When unset, an exhausted batch surfaces as an error instead.
-- `deadLetterReplayIntervalSeconds`: how often to attempt replaying dead-lettered batches (default 60)
+- `DeadLetterReplayIntervalSeconds`: how often to attempt replaying dead-lettered batches (default 60)
 
 ##### NATS publishing (worker only)
 

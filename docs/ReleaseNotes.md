@@ -110,6 +110,11 @@ several defaults behave differently.
    | `Ais:loggerVerbosity` | `Ais:Telemetry:Verbosity` |
    | `Ais:statisticsPeriodicity` | `Ais:Telemetry:StatisticsPeriodicity` |
 
+   The `Storage` section's keys keep their names but are documented PascalCase from this release
+   (`Storage:EnableCapture` rather than `Storage:enableCapture`), matching every other section.
+   Configuration binding is case-insensitive, so existing lower-cased keys and environment variables
+   (`Storage__enableCapture`) continue to bind unchanged.
+
 2. **`Verbosity` uses `LogLevel` names and is cumulative.** The old values map as follows:
 
    | Before | After |

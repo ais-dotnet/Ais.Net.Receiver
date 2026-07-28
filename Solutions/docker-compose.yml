@@ -14,7 +14,7 @@ services:
       - Ais__Connection__Retry__Periodicity=00:00:00:01
       - Ais__Telemetry__Verbosity=Information
       - Ais__Telemetry__StatisticsPeriodicity=00:00:01:00
-      - Storage__enableCapture=false
+      - Storage__EnableCapture=false
   ais.net.receiver.host.worker:
     image: ${DOCKER_REGISTRY-}aisnetreceiverhostworker
     build:
@@ -27,12 +27,12 @@ services:
       - Ais__Connection__Retry__Periodicity=00:00:00:01
       - Ais__Telemetry__Verbosity=Warning
       - Ais__Telemetry__StatisticsPeriodicity=00:00:01:00
-      - Storage__enableCapture=true
-      - Storage__connectionString=${AIS_NET_RECEIVER_AZURE_CONNECTION_STRING}
-      - Storage__containerName=nmea-ais-dev
-      - Storage__writeBatchSize=500
+      - Storage__EnableCapture=true
+      - Storage__ConnectionString=${AIS_NET_RECEIVER_AZURE_CONNECTION_STRING}
+      - Storage__ContainerName=nmea-ais-dev
+      - Storage__WriteBatchSize=500
       # Persist batches that still fail after retries, then replay them when storage recovers.
-      - Storage__deadLetterPath=/data/deadletter
+      - Storage__DeadLetterPath=/data/deadletter
     volumes:
       - worker-deadletter:/data/deadletter
 
