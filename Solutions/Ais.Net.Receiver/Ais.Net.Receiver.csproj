@@ -1,38 +1,38 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <Import Project="$(EndjinProjectPropsPath)" Condition="$(EndjinProjectPropsPath) != ''" />
-  
+  <Import Project="$(MSBuildThisFileDirectory)..\Endjin.Conventions.props" />
+
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <LangVersion>latest</LangVersion>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>14.0</LangVersion>
     <Nullable>enable</Nullable>
-    <EndjinDisableCodeAnalysis>True</EndjinDisableCodeAnalysis>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors Condition="'$(Configuration)' == 'Release'">true</TreatWarningsAsErrors>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <RootNamespace> </RootNamespace>
   </PropertyGroup>
   
   <PropertyGroup>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <PackageDescription>Recieves Network streams of NMEA sentences and can decode AIS message types 1,2,3,5,18,19,24 Part 0, and 24 Part 1 into an IObservable of IAisMessage (See Ais.Net.Models). Sponsored by endjin.</PackageDescription>
-    <PackageTags>ais;aisvdm;aivdo;nmea;marine;gis;iot;aiforearth;endjin</PackageTags>
+    <PackageTags>ais;aisvdm;aivdo;nmea;marine;gis;iot;endjin</PackageTags>
     <PackageReleaseNotes></PackageReleaseNotes>
   </PropertyGroup>
 
-  <PropertyGroup>
-    <NoWarn>RCS1029;SA1313;SA1009;SA1600;SA1591;CS1591;</NoWarn>
-  </PropertyGroup>
-
   <ItemGroup>
-    <PackageReference Include="Ais.Net.Models" Version="0.3.1" />
-    <PackageReference Include="Corvus.Retry" Version="1.0.7" />
-    <PackageReference Include="Endjin.RecommendedPractices.GitHub" Version="2.1.18">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-    <PackageReference Include="System.Linq.Async" Version="[6.0.*,)" />
-    <PackageReference Include="System.Reactive" Version="6.0.1" />
+    <PackageReference Include="Ais.Net.Models" />
+    <PackageReference Include="Polly.Core" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="OpenTelemetry.Api" />
+    <PackageReference Include="Spectre.IO" />
+    <PackageReference Include="System.Linq.Async" />
+    <PackageReference Include="System.Reactive" />
   </ItemGroup>
 
+
   <ItemGroup>
-    <PackageReference Update="StyleCop.Analyzers" Version="1.2.0-beta.321" />
+    <InternalsVisibleTo Include="Ais.Net.Receiver.Tests" />
   </ItemGroup>
 
 </Project>

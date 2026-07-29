@@ -13,3 +13,18 @@ updates:
       patterns:
       - Microsoft.Extensions.*
 
+# Workflow actions were previously unwatched, which is how they came to sit two and three majors
+# behind and still declaring Node 20 - GitHub now runs those on Node 24 and warns that Node 20 is
+# deprecated, and will eventually stop running them at all. Grouped into a single PR because the
+# runtime bumps arrive across all of them together and reviewing eight separate PRs for the same
+# change is busywork.
+- package-ecosystem: github-actions
+  directory: /
+  schedule:
+    interval: weekly
+  open-pull-requests-limit: 5
+  groups:
+    actions:
+      patterns:
+      - '*'
+

@@ -1,0 +1,102 @@
+<Project>
+
+  <!--
+    Conventions that used to arrive via the Endjin.RecommendedPractices.GitHub NuGet package (and its
+    Endjin.RecommendedPractices dependency).
+
+    That package was removed because it injects StyleCop.Analyzers and Roslynator.Analyzers as
+    PackageReference items carrying hardcoded Version attributes, which Central Package Management
+    rejects with NU1008 - so it cannot be used by a CPM solution without disabling the analyzers that
+    are its main reason for existing.
+
+    This is imported explicitly near the top of each project that previously referenced the package,
+    which reproduces two things about how it worked:
+
+      - It is opt-in per project. A Directory.Build.props would apply to every project in the
+        solution, silently turning on warnings-as-errors and XML documentation for the AppHost,
+        Benchmarks, ServiceDefaults and test projects, which never had them.
+      - It is imported after the .NET SDK's own props, which matters for RootNamespace: the SDK
+        defaults it to the project name, so clearing it from a Directory.Build.props (imported before
+        the SDK) would have no effect. The package used the same trick, via $(EndjinProjectPropsPath).
+
+    The files the package would also have supplied and that are still needed - .editorconfig and
+    PackageIcon.png - are checked in alongside this file. Its stylecop.json went with the package: no
+    analyzer reads it now, and the StyleCop suppressions that accompanied it (in .editorconfig and in
+    each project's NoWarn) referred to rules nothing raises any more.
+  -->
+
+  <PropertyGroup>
+    <Authors>Endjin Limited</Authors>
+
+    <!--
+      Preserved verbatim from the package rather than updated to the current year: a copyright notice
+      is not ours to silently change, and computing the year at build time would make the output
+      non-reproducible.
+    -->
+    <Copyright>Copyright (c) Endjin Limited 2023. All rights reserved.</Copyright>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <!-- Packaging conventions. The license is declared per project; see Ais.Net.Receiver.csproj. -->
+    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+    <PackageProjectUrl>https://github.com/ais-dotnet/Ais.Net.Receiver</PackageProjectUrl>
+    <RepositoryType>git</RepositoryType>
+
+    <!--
+      Source Link. RepositoryUrl is filled in from the git remote by the SDK, which has bundled Source
+      Link since .NET 8 - so unlike when the Endjin package supplied it, no Microsoft.SourceLink.GitHub
+      reference is needed.
+    -->
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <!--
+      Marks the build as CI so the compiler normalises embedded paths, which is what makes a
+      deterministic build reproducible. The package only checked TF_BUILD (Azure Pipelines); this repo
+      builds on GitHub Actions, so both are honoured. An explicit -p:ContinuousIntegrationBuild=true
+      still wins, because these only apply when it has not already been set.
+    -->
+    <ContinuousIntegrationBuild Condition="'$(ContinuousIntegrationBuild)' == '' and '$(TF_BUILD)' == 'true'">true</ContinuousIntegrationBuild>
+    <ContinuousIntegrationBuild Condition="'$(ContinuousIntegrationBuild)' == '' and '$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <!--
+      Warnings are errors in every configuration, not only Release. Projects also set this for Release
+      themselves, which is now redundant but harmless. Suppressions live in each project's NoWarn.
+    -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <TreatSpecificWarningsAsErrors />
+    <WarningsAsErrors />
+
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <!--
+      Analysis, replacing what the removed package's StyleCop and Roslynator references provided.
+
+      EnableNETAnalyzers is already the default for net5.0 and later; it is stated explicitly so the
+      intent survives a future retarget. EnforceCodeStyleInBuild is not a default - it promotes the
+      IDE* code-style rules from IDE-only suggestions to build diagnostics, governed by the severities
+      in Solutions/.editorconfig.
+    -->
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <!--
+      endjin's folder layout spells the full namespace out in the directory structure, so there is no
+      single shared root namespace to derive from the project name; every file declares its namespace
+      explicitly.
+    -->
+    <RootNamespace />
+  </PropertyGroup>
+
+</Project>

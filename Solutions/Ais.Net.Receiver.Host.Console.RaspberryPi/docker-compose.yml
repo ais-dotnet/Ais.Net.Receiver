@@ -3,16 +3,39 @@ services:
     container_name: ais-dotnet-receiver
     image: endjin/ais-dotnet-receiver:0.3.8-dockerize.1
     environment:
-      - Ais__host=153.44.253.27
-      - Ais__port=5631
-      - Ais__loggerVerbosity=Minimal
-      - Ais__statisticsPeriodicity=00:00:01:00
-      - Ais__retryAttempts=5
-      - Ais__retryPeriodicity=00:00:00:01
-      - Storage__enableCapture=true
-      - Storage__connectionString=${AIS_NET_RECEIVER_AZURE_CONNECTION_STRING}
-      - Storage__containerName=nmea-ais-dev
-      - Storage__writeBatchSize=500
+      - Ais__Connection__Host=153.44.253.27
+      - Ais__Connection__Port=5631
+      - Ais__Connection__Retry__Attempts=5
+      - Ais__Connection__Retry__Periodicity=00:00:00:01
+      - Ais__Telemetry__Verbosity=Warning
+      - Ais__Telemetry__StatisticsPeriodicity=00:00:01:00
+      - Storage__EnableCapture=true
+      - Storage__ConnectionString=${AIS_NET_RECEIVER_AZURE_CONNECTION_STRING}
+      - Storage__ContainerName=nmea-ais-dev
+      - Storage__WriteBatchSize=500
+      # Persist batches that still fail after retries, then replay them once storage recovers - the
+      # exact case a Pi hits when its uplink drops. Requires an image built from the updated
+      # Dockerfile, which creates /data/deadletter owned by the non-root app user.
+      - Storage__DeadLetterPath=/data/deadletter
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
     dns:
       - 8.8.8.8 # Required if you're running on a Raspberry Pi which also hosts pi-hole
     restart: unless-stopped
+    volumes:
+      - deadletter:/data/deadletter
+    depends_on:
+      - otel-collector
+
+  otel-collector:
+    image: otel/opentelemetry-collector:latest
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    ports:
+      - "4317:4317"   # OTLP gRPC receiver
+      - "4318:4318"   # OTLP http receiver
+
+# The named volume inherits the /data/deadletter directory's app-user ownership from the image, so the
+# non-root container process can write dead-letter files that survive restarts.
+volumes:
+  deadletter:

@@ -1,0 +1,31 @@
+{
+  "version": "0.2",
+  "words": [
+    "AIVDM",
+    "Analyzers",
+    "appsettings",
+    "Azurite",
+    "backpressure",
+    "behavior",
+    "BSVDM",
+    "BSVDO",
+    "CARTO",
+    "downsample",
+    "downsampled",
+    "Endjin",
+    "flowchart",
+    "gcdump",
+    "geofence",
+    "libclrjit",
+    "libcoreclr",
+    "Mmsi",
+    "Nmea",
+    "nologo",
+    "Polly",
+    "Shouldly",
+    "subgraph",
+    "Testcontainers",
+    "threadpool",
+    "undecoded"
+  ]
+}

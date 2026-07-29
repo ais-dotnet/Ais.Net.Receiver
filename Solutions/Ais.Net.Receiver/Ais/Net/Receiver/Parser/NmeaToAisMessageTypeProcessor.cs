@@ -1,10 +1,9 @@
-﻿// <copyright file="NmeaToAisMessageTypeProcessor.cs" company="Endjin Limited">
+// <copyright file="NmeaToAisMessageTypeProcessor.cs" company="Endjin Limited">
 // Copyright (c) Endjin Limited. All rights reserved.
 // </copyright>
 
-using System;
 using System.Reactive.Subjects;
-
+using System.Text;
 using Ais.Net.Models;
 using Ais.Net.Models.Abstractions;
 
@@ -14,18 +13,20 @@ namespace Ais.Net.Receiver.Parser;
 /// Receives AIS messages parsed from an NMEA sentence and converts it into an
 /// <see cref="System.IObservable{T}"/> stream of <see cref="IAisMessage"/> based types.
 /// </summary>
-public class NmeaToAisMessageTypeProcessor : INmeaAisMessageStreamProcessor
+public class NmeaToAisMessageTypeProcessor : INmeaAisMessageStreamProcessor, IDisposable
 {
     private readonly Subject<IAisMessage> messages = new();
+    private readonly Subject<(Exception Exception, string Line)> parseErrors = new();
 
     public IObservable<IAisMessage> Messages => this.messages;
+    public IObservable<(Exception Exception, string Line)> ParseErrors => this.parseErrors;
 
     public void OnNext(in NmeaLineParser parsedLine, in ReadOnlySpan<byte> asciiPayload, uint padding)
     {
-        int messageType = NmeaPayloadParser.PeekMessageType(asciiPayload, padding);
-
         try
         {
+            int messageType = NmeaPayloadParser.PeekMessageType(asciiPayload, padding);
+
             switch (messageType)
             {
                 case >= 1 and <= 3:
@@ -67,18 +68,16 @@ public class NmeaToAisMessageTypeProcessor : INmeaAisMessageStreamProcessor
         }
         catch (Exception e)
         {
-            Console.WriteLine($"[{messageType}] {e.Message}");
+            this.parseErrors.OnNext((e, Encoding.ASCII.GetString(asciiPayload)));
         }
     }
 
-    public void OnError(in ReadOnlySpan<byte> line, Exception error, int lineNumber)
-    {
-        throw new NotImplementedException();
-    }
+    public void OnError(in ReadOnlySpan<byte> line, Exception error, int lineNumber) => this.parseErrors.OnNext((error, Encoding.ASCII.GetString(line)));
 
     public void OnCompleted()
     {
-        throw new NotImplementedException();
+        this.messages.OnCompleted();
+        this.parseErrors.OnCompleted();
     }
 
     public void Progress(
@@ -88,10 +87,8 @@ public class NmeaToAisMessageTypeProcessor : INmeaAisMessageStreamProcessor
         int totalTicks,
         int nmeaLinesSinceLastUpdate,
         int aisMessagesSinceLastUpdate,
-        int ticksSinceLastUpdate)
-    {
+        int ticksSinceLastUpdate) =>
         throw new NotImplementedException();
-    }
 
     private void ParseMessageTypes1Through3(ReadOnlySpan<byte> asciiPayload, uint padding, int messageType)
     {
@@ -243,7 +240,7 @@ public class NmeaToAisMessageTypeProcessor : INmeaAisMessageStreamProcessor
                 parser.VendorIdRev3.WriteAsAscii(vendorIdRev3Ascii);
 
                 Span<byte> vendorIdRev4Ascii = stackalloc byte[(int)parser.VendorIdRev4.CharacterCount];
-                parser.VendorIdRev3.WriteAsAscii(vendorIdRev4Ascii);
+                parser.VendorIdRev4.WriteAsAscii(vendorIdRev4Ascii);
 
                 AisMessageType24Part1 message = new(
                     Mmsi: parser.Mmsi,
@@ -265,6 +262,10 @@ public class NmeaToAisMessageTypeProcessor : INmeaAisMessageStreamProcessor
                 this.messages.OnNext(message);
                 break;
             }
+            default:
+            {
+                throw new ArgumentOutOfRangeException(nameof(asciiPayload), part, $"Unknown part number for Message Type 24: {part}");
+            }
         }
     }
 
@@ -284,5 +285,12 @@ public class NmeaToAisMessageTypeProcessor : INmeaAisMessageStreamProcessor
             NavigationStatus: parser.NavigationStatus);
 
         this.messages.OnNext(message);
+    }
+
+    public void Dispose()
+    {
+        this.messages.Dispose();
+        this.parseErrors.Dispose();
+        GC.SuppressFinalize(this);
     }
 }

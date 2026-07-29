@@ -1,12 +1,8 @@
-﻿// <copyright file="INmeaStreamReader.cs" company="Endjin Limited">
+// <copyright file="INmeaStreamReader.cs" company="Endjin Limited">
 // Copyright (c) Endjin Limited. All rights reserved.
 // </copyright>
 
 namespace Ais.Net.Receiver.Receiver;
-
-using System;
-using System.Threading;
-using System.Threading.Tasks;
 
 /// <summary>
 /// Abstracts network stream reading operations for NMEA messages
@@ -19,14 +15,12 @@ public interface INmeaStreamReader : IAsyncDisposable
     Task ConnectAsync(string host, int port, CancellationToken cancellationToken);
     
     /// <summary>
-    /// Reads a line of text asynchronously
+    /// Reads a line of text asynchronously. The returned memory is only guaranteed to remain valid
+    /// until the next call to <see cref="ReadLineAsync"/> or <see cref="IAsyncDisposable.DisposeAsync"/>
+    /// on this reader, as implementations may reuse a single read buffer; callers that need the data
+    /// beyond that must copy it.
     /// </summary>
-    Task<string?> ReadLineAsync(CancellationToken cancellationToken);
-    
-    /// <summary>
-    /// Gets whether data is available to be read
-    /// </summary>
-    bool DataAvailable { get; }
+    ValueTask<ReadOnlyMemory<byte>?> ReadLineAsync(CancellationToken cancellationToken);
     
     /// <summary>
     /// Gets whether the connection is established

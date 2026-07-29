@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <Import Project="$(MSBuildThisFileDirectory)..\Endjin.Conventions.props" />
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>14.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors Condition="'$(Configuration)' == 'Release'">true</TreatWarningsAsErrors>
+    <EnableConfigurationBindingGenerator>true</EnableConfigurationBindingGenerator>
+    <IsPackable>false</IsPackable>
+    <UserSecretsId>dotnet-Ais.Net.Receiver.Host.Worker-53bc9b9d-9d6a-45d4-8429-2a2761773502</UserSecretsId>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <RestoreLockedMode Condition="$(ContinuousIntegrationBuild) == 'true'">true</RestoreLockedMode>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+    <ContainerRegistry>docker.io/endjin/ais-dotnet-receiver</ContainerRegistry>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Ais.Net.Receiver.ServiceDefaults\Ais.Net.Receiver.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\Ais.Net.Receiver.Storage.Azure.Blob/Ais.Net.Receiver.Storage.Azure.Blob.csproj" />
+    <ProjectReference Include="..\Ais.Net.Receiver/Ais.Net.Receiver.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Ais.Net.Models.Json.Nats" />
+    <PackageReference Include="Aspire.NATS.Net" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" />
+    <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" />
+    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" />
+    <PackageReference Include="OpenTelemetry.Exporter.Console" />
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" />
+  </ItemGroup>
+
+</Project>

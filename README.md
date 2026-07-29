@@ -52,6 +52,107 @@ The Norwegian Coastal Administration TCP endpoint produces:
 - ~7 GB per month
 - ~81.4 GB per year
 
+## Architecture
+
+The solution has grown from a library plus a console host into a small system, built around one rule:
+**there is a single decode path, and everything else subscribes to it**. A source produces NMEA
+sentences, `ReceiverHost` decodes them, and every capability — capture, telemetry, publishing,
+visualisation — is a subscriber to its streams.
+
+### The receive pipeline
+
+Any `INmeaReceiver` can feed the decoder: the live TCP feed, a recorded `.nm4` file, or (in the
+demos) an hour the receiver previously captured to blob storage. `ReceiverHost` wraps the source in
+retry ([Polly](https://github.com/App-vNext/Polly)), decodes each sentence with
+[Ais.Net](https://github.com/ais-dotnet/Ais.Net), and exposes the results as Rx streams:
+`RawSentences` (bytes), `Sentences` (text), `Messages` (`IAisMessage`), `Metadata` (each message
+paired with the station id and Unix timestamp parsed from its NMEA tag block), and `Errors`.
+
+```mermaid
+flowchart LR
+    TCP["Live TCP feed<br/>NetworkStreamNmeaReceiver"] --> RH
+    FILE["Recorded .nm4 file<br/>FileStreamNmeaReceiver"] --> RH
+    BLOB["Captured blob<br/>BlobNmeaReceiver (demo)"] --> RH
+
+    RH["ReceiverHost<br/>Ais.Net decode + retry"] --> STREAMS["Rx streams<br/>RawSentences · Sentences · Messages<br/>Metadata · Errors"]
+
+    STREAMS --> STORE["Storage capture<br/>batch → retry → hourly append blob<br/>+ dead-letter and replay"]
+    STREAMS --> TEL["OpenTelemetry<br/>metrics · logs · traces"]
+    STREAMS --> PUB["NATS publisher (opt-in)<br/>subject: ais.messages"]
+    STREAMS --> TRK["TrackPipeline (demo)<br/>recording → vessel tracks"]
+```
+
+Subscribers never gate each other or the receive loop: storage runs on bounded dataflow blocks that
+shed load rather than grow without limit, and NATS publishing hands messages to a bounded queue
+instead of awaiting the broker on the receive path.
+
+### Runtime topology
+
+`dotnet run` on the AppHost starts the whole local system — no Azure account, no secrets; Docker
+required:
+
+```mermaid
+flowchart LR
+    FEED["Norwegian Coastal Administration<br/>tcp 153.44.253.27:5631"] --> W
+
+    subgraph Aspire["Aspire AppHost"]
+        W["worker"]
+        N[("NATS<br/>tcp 4222 · ws 8080")]
+        A[("Azurite<br/>blob emulator")]
+        V["visualizer<br/>ASP.NET Core"]
+    end
+
+    W -- "capture: hourly .nm4 blobs" --> A
+    W -- "publish: ais.messages (JSON)" --> N
+    A -. "replay source" .-> V
+    N == "websocket (nats.ws)" ==> B["browser<br/>deck.gl + MapLibre"]
+    V -- "bundle · /api/config · /api/tracks" --> B
+```
+
+The visualizer's two modes differ only in where vessels come from:
+
+- **Live** (default): the worker publishes every decoded message to NATS as polymorphic JSON
+  (`Ais.Net.Models.Json.Nats`), and the page subscribes straight from the browser over the websocket
+  listener, correlating positions to names by MMSI as they arrive. The web host relays no vessel
+  data — it serves the bundle and tells the page where the broker is.
+- **Replay**: the visualizer runs the same decode over a recording (a local file or a captured
+  blob), builds geofenced, downsampled per-vessel tracks once, caches them, and serves one JSON
+  document the page can scrub, play at up to 600×, and export to WebM.
+
+Live is *push* over an unbounded stream — a rolling window in the browser. Replay is *random access*
+over a bounded recording — a tracks document with a timeline. That difference in access pattern, not
+a second decode path, is why `Ais.Net.Receiver.Demo.Tracks` exists.
+
+### Projects
+
+| Project | Role |
+| --- | --- |
+| `Ais.Net.Receiver` | Core library: `INmeaReceiver` sources, `ReceiverHost` decode, resilience |
+| `Ais.Net.Receiver.Storage.Azure.Blob` | Hourly append-blob capture for Azure Storage |
+| `Ais.Net.Receiver.ServiceDefaults` | Shared hosting: OpenTelemetry, health checks, receive/storage pipeline wiring, shared NATS names |
+| `Ais.Net.Receiver.Host.Console` | Interactive Spectre.Console host |
+| `Ais.Net.Receiver.Host.Worker` | Long-running service host (systemd / Docker), with opt-in NATS publishing |
+| `Ais.Net.Receiver.AppHost` | .NET Aspire orchestration for local development |
+| `Ais.Net.Receiver.Demo.Tracks` | Demo library: recording → vessel tracks (geofence, downsample, deck.gl JSON) |
+| `Ais.Net.Receiver.Demo.Visualizer` | Demo web host: serves the deck.gl page, `/api/config`, `/api/tracks` |
+
+### Design rules
+
+- **Sources are pluggable; decode is single.** Everything that reads NMEA implements `INmeaReceiver`;
+  nothing decodes except `ReceiverHost`.
+- **Capabilities are opt-in by configuration.** Storage capture activates when a storage connection
+  string is present; NATS publishing when a `nats` connection string is. A standalone worker on a
+  Raspberry Pi behaves exactly as it always has.
+- **Shared rules live in C#, once.** The ship-type → category and colour mapping colours replayed
+  tracks at build time and is served to the live page via `/api/config`, so the two views cannot
+  drift apart.
+- **Demos depend on the product, never the reverse.** The `Demo.*` projects are not packaged and do
+  not ship in the container images.
+
+The reliability behaviour of the storage path is documented in
+[docs/production-reliability-plan.md](docs/production-reliability-plan.md), and the full metric and
+alert catalogue in [docs/telemetry/observability-playbook.md](docs/telemetry/observability-playbook.md).
+
 ## Azure Blob Storage Taxonomy
 
 The AIS data is stored using the following taxonomy
@@ -63,58 +164,245 @@ An example directory listing, with a user defined container name of `nmea-ais` w
 ```
 \---nmea-ais
     \---raw
-        \---2021
+        \---2026
             \---07
                 +---12
-                | 20210712T00.nm4 |
-                | 20210712T01.mm4 |
-                | 20210712T02.nm4 |
-                | 20210712T03.nm4 |
-                | 20210712T04.nm4 |
-                | 20210712T05.nm4 |
-                | 20210712T06.nm4 |
-                | 20210712T07.nm4 |
-                | 20210712T08.nm4 |
-                | 20210712T09.nm4 |
-                | 20210712T10.nm4 |
-                | 20210712T11.nm4 |
-                | 20210712T12.nm4 |
-                | 20210712T13.nm4 |
-                | 20210712T14.nm4 |
-                | 20210712T15.nm4 |
-                | 20210712T16.nm4 |
-                | 20210712T17.nm4 |
-                | 20210712T18.nm4 |
-                | 20210712T19.nm4 |
-                | 20210712T20.nm4 |
-                | 20210712T21.nm4 |
-                | 20210712T22.nm4 |
-                | 20210712T23.nm4 |
-                +---20210713
-                | 20210713T00.nm4 |
+                | 20260712T00.nm4 |
+                | 20260712T01.mm4 |
+                | 20260712T02.nm4 |
+                | 20260712T03.nm4 |
+                | 20260712T04.nm4 |
+                | 20260712T05.nm4 |
+                | 20260712T06.nm4 |
+                | 20260712T07.nm4 |
+                | 20260712T08.nm4 |
+                | 20260712T09.nm4 |
+                | 20260712T10.nm4 |
+                | 20260712T11.nm4 |
+                | 20260712T12.nm4 |
+                | 20260712T13.nm4 |
+                | 20260712T14.nm4 |
+                | 20260712T15.nm4 |
+                | 20260712T16.nm4 |
+                | 20260712T17.nm4 |
+                | 20260712T18.nm4 |
+                | 20260712T19.nm4 |
+                | 20260712T20.nm4 |
+                | 20260712T21.nm4 |
+                | 20260712T22.nm4 |
+                | 20260712T23.nm4 |
+                +---20260713
+                | 20260713T00.nm4 |
 ```
 
 ## To Run
 
-Update the values in the `settings.json` file:
+Update the values in the `appsettings.json` file:
 
 ```json
 {
   "Ais": {
-    "host": "153.44.253.27",
-    "port": "5631",
-    "retryAttempts": 5,
-    "retryPeriodicity": "00:00:00:00.500"
+    "Connection": {
+      "Host": "153.44.253.27",
+      "Port": 5631,
+      "Retry": {
+        "Attempts": 5,
+        "Periodicity": "00:00:00:01"
+      }
+    }
   },
   "Storage": {
-    "connectionString": "<YOUR AZURE STORAGE CONNECTION STRING>",
-    "containerName": "nmea-ais",
-    "writeBatchSize": 500
+    "EnableCapture": true,
+    "ConnectionString": "<YOUR AZURE STORAGE CONNECTION STRING>",
+    "ContainerName": "nmea-ais",
+    "WriteBatchSize": 500
   }
 }
 ```
 
-From the command line: `dotnet Ais.Net.Receiver.Host.Console.exe`
+See [Configuration](#configuration) for the full schema and every available setting.
+
+From the command line, either host will do — the console host for interactive use, the worker for
+running as a service:
+
+```bash
+dotnet Ais.Net.Receiver.Host.Console.dll
+dotnet Ais.Net.Receiver.Host.Worker.dll
+```
+
+### Local development with the Aspire AppHost
+
+The AppHost runs the worker alongside an [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite)
+container, so capture works on a fresh clone with no Azure account and no secrets. Docker must be
+running.
+
+```bash
+dotnet run --project Solutions/Ais.Net.Receiver.AppHost
+```
+
+It injects `Storage__ConnectionString` (pointing at the emulator) and `Storage__EnableCapture=true`
+into the worker, and waits for Azurite to be ready first. Captured NMEA lands in the `nmea-ais-dev`
+container and persists across restarts in the `ais-azurite-data` volume. Traces, metrics and logs
+appear in the Aspire dashboard, whose login link the AppHost prints on startup.
+
+`EnableCapture` is `false` in the tracked `appsettings.json`, because capture needs a connection
+string to go with it. To capture against a real storage account outside the AppHost, keep that
+connection string out of source control with user secrets rather than editing `appsettings.json`:
+
+```bash
+dotnet user-secrets set "Storage:EnableCapture" "true" --project Solutions/Ais.Net.Receiver.Host.Worker
+dotnet user-secrets set "Storage:ConnectionString" "<connection string>" --project Solutions/Ais.Net.Receiver.Host.Worker
+DOTNET_ENVIRONMENT=Development dotnet run --project Solutions/Ais.Net.Receiver.Host.Worker
+```
+
+User secrets are only loaded in the **Development** environment, so run the host with
+`DOTNET_ENVIRONMENT=Development` as shown (the AppHost sets this for you). Without it the secrets
+are silently ignored and capture stays off. For a production deployment use environment variables
+instead — they take precedence over user secrets, so what a container or systemd unit injects
+continues to win.
+
+## Demos
+
+### AIS Visualizer
+
+`Ais.Net.Receiver.Demo.Visualizer` (with its `Ais.Net.Receiver.Demo.Tracks` pipeline) is an AIS
+Visualizer: a [deck.gl](https://deck.gl) + [MapLibre](https://maplibre.org)
+map of vessel movement, served by ASP.NET Core and orchestrated by the same AppHost. It is a demo, so
+neither project ships in the container images or as a package.
+
+Running the AppHost starts it alongside the worker, Azurite and a [NATS](https://nats.io) broker; the
+dashboard prints the URL.
+
+```bash
+dotnet run --project Solutions/Ais.Net.Receiver.AppHost
+```
+
+**Live is the default.** The worker publishes every decoded message to NATS as JSON
+(`Ais.Net.Models.Json`), and the page subscribes to that subject directly from the browser with
+[nats.ws](https://github.com/nats-io/nats.ws) and decodes it. The ASP.NET Core host relays no vessel
+data at all — it serves the bundle and tells the page where the broker is.
+
+AIS splits a vessel across messages, so the page correlates them by MMSI: a vessel appears as soon as
+it reports a position, labelled `MMSI …`, and gains its name and colour when its static message
+arrives. The ship-type-to-colour mapping is *not* reimplemented in JavaScript — `/api/config` serves
+the table generated from the same C# the replay pipeline uses, so live and recorded vessels are
+coloured identically.
+
+**Replay** plays a recorded day on a timeline, with the playback controls and WebM export from the
+original proof of concept. Point it at a local file:
+
+```bash
+dotnet run --project Solutions/Ais.Net.Receiver.Demo.Visualizer
+# with Visualizer:Source=Replay and Visualizer:Replay:FilePath=<path to .nm4>
+```
+
+…or at an hour the receiver already captured, which needs nothing but the blob path because the
+storage connection string is already configured:
+
+```
+Visualizer:Source=Replay
+Visualizer:Replay:BlobPath=raw/2026/07/28/20260728T06.nm4
+```
+
+An optional `Visualizer:Replay:GeofencePath` clips positions to a GeoJSON polygon. The visualizer's
+full settings are documented under [Configuration](#configuration).
+
+Two things to know before running it:
+
+- **Node is needed to build, not to run.** An msbuild target runs `npm ci` and `vite build` for
+  `ClientApp`, emitting the bundle into the (git-ignored) `wwwroot`. Build with
+  `-p:SkipFrontendBuild=true` where Node is unavailable and the bundle is already present.
+- **The demo is loopback-only.** The NATS websocket carries no TLS, and `/api/config` hands the
+  browser the broker credentials so it can connect for itself. That is fine on `localhost`; anything
+  shared needs real credentials and `wss://`.
+
+The basemap style is fetched from `basemaps.cartocdn.com`, so the map needs internet access.
+
+## Running Tests
+
+To run the tests, use the following command:
+
+```bash
+dotnet test --solution Solutions/Ais.Net.Receiver.slnx
+```
+
+The test project is configured to use the `Microsoft.Testing.Platform` runner. Note that MTP does not
+accept the older VSTest-era switches — passing `--nologo`, `--logger` or `--test-adapter-path` makes
+the run report `Zero tests ran` rather than an unrecognised-argument error.
+
+### Integration tests
+
+Tests categorised `Integration` run against a real Azure Blob Storage endpoint, provided by an
+[Azurite](https://github.com/Azure/Azurite) container started through
+[Testcontainers](https://dotnet.testcontainers.org/). **They need a working Docker daemon.** One
+container is shared by the whole test process and started only on demand, so a unit-only run costs
+nothing:
+
+```bash
+cd Solutions/Ais.Net.Receiver.Tests
+
+dotnet run -f net10.0                                                  # everything
+dotnet run -f net10.0 -- --filter "TestCategory=Integration"           # integration only
+dotnet run -f net10.0 -- --filter "TestCategory!=Integration"          # unit only, no container
+```
+
+When Docker is unavailable these tests report as inconclusive rather than failing. Any *other*
+startup problem — an unresolvable image tag, a failed pull, a port conflict — fails the build, because
+a broken container reported as a skip is indistinguishable from having no coverage at all.
+
+The following environment variables tune this:
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `AIS_TEST_REQUIRE_INTEGRATION` | unset | Truthy: never skip, so missing Docker fails. Set in CI. |
+| `AIS_TEST_AZURITE_IMAGE` | `mcr.microsoft.com/azure-storage/azurite:latest` | Pin the image, e.g. to work around a bad release. |
+| `AIS_TEST_AZURITE_SKIP_API_VERSION_CHECK` | `true` | Falsy: drop `--skipApiVersionCheck` (see below). |
+| `AIS_TEST_AZURITE_STARTUP_TIMEOUT_SECONDS` | `120` | Bound a hung image pull. |
+
+Azurite trails the newest storage service API version that the Azure SDK sends, and rejects otherwise
+valid requests with `400 InvalidHeaderValue` when it does. The container is therefore started with
+`--skipApiVersionCheck` by default. Setting `AIS_TEST_AZURITE_SKIP_API_VERSION_CHECK=false` re-enables
+the check, which is how you deliberately confirm whether a skew exists between the SDK version in
+`Directory.Packages.props` and the Azurite image in use:
+
+```bash
+AIS_TEST_AZURITE_SKIP_API_VERSION_CHECK=false dotnet run -f net10.0 -- --filter "TestCategory=Integration"
+```
+
+## Telemetry
+
+The receiver is instrumented with OpenTelemetry — traces for the connection lifecycle, message
+processing and storage operations; metrics for throughput, errors, connection health and storage
+performance; and logs that carry trace context so a log line can be pivoted to the trace it belongs to.
+
+`docs/telemetry/observability-playbook.md` is the operational reference: every metric with its unit and
+histogram buckets, example queries, alert definitions, and troubleshooting runbooks. It records measured
+baselines rather than estimates, including the ~3–4% sentence error rate a live coastal feed produces
+(the parser rejects `!B1VDM`/`!B2VDM` talker ids), so alert thresholds can be set above a feed's own
+noise floor rather than permanently firing. `docs/telemetry/testing-guide.md` covers testing
+instrumented code.
+
+### Exporting
+
+Nothing is exported unless an endpoint is configured. Set `OTEL_EXPORTER_OTLP_ENDPOINT` to enable the
+OTLP exporters for logs, metrics and traces; without it the exporters are left unregistered rather than
+defaulting to `localhost:4317` and logging periodic connection failures into a deployment that has no
+collector.
+
+| Setting | Purpose |
+| --- | --- |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | Enables the OTLP exporters. Unset means no export. |
+| `OTEL_TRACES_SAMPLER`, `OTEL_TRACES_SAMPLER_ARG` | Standard sampler selection. **Takes precedence** — when set, no sampler is configured in code, so this is the knob to reach for during an ingest-cost or backend-overload incident. |
+| `OpenTelemetry:TraceSamplingRatio` | Ratio (0.0–1.0) used when the environment variables above are not set. Applied `ParentBased`, so a sampled upstream trace stays intact end to end. Ignored in Development, which always samples everything for the Aspire dashboard. |
+| `OTEL_SERVICE_INSTANCE_ID` | Sets `service.instance.id`. Defaults to the machine name, which under Docker or Kubernetes is unique per replica and stable for that replica's life. |
+
+### Health
+
+Two health checks are registered: AIS connection state and storage accessibility. Connection health
+reflects the live TCP state and, importantly, whether the feed is actually *delivering* — a server that
+accepts a connection and then goes silent reconnects cleanly forever, so connect success alone is not
+treated as healthy. `ais.receiver.connection.consecutive_failures` resets on the first delivered
+sentence rather than on connect.
 
 # Raspberry Pi
 
@@ -203,9 +491,9 @@ use the command `pwsh` to enter the PowerShell session.
 
 #### Install Ais.Net.Receiver.Host.Console
 
-2. From the solution root, open a command prompt and type `dotnet publish -c Release .\Solutions\Ais.Net.Receiver.sln`
-3. Add your Azure Blob Storage Account connection string to `settings.json`
-4. Transfer (I use [Beyond Compare](https://www.scootersoftware.com/) as it has native SSH support) the contents of `.\Solutions\Ais.Net.Receiver.Host.Console\bin\Release\net5.0\publish` to a folder called `aisr` in the `home/pi` directory on your Raspberry Pi (assuming you still have the default set up.) 
+2. From the solution root, open a command prompt and type `dotnet publish -c Release .\Solutions\Ais.Net.Receiver.slnx`
+3. Add your Azure Blob Storage Account connection string to `appsettings.json`
+4. Transfer (I use [Beyond Compare](https://www.scootersoftware.com/) as it has native SSH support) the contents of `.\Solutions\Ais.Net.Receiver.Host.Console\bin\Release\net10.0\publish` to a folder called `aisr` in the `home/pi` directory on your Raspberry Pi (assuming you still have the default set up.) 
 5. Copy `Solutions\Ais.Net.Receiver.Host.Console.RaspberryPi\aisr.service` to `/lib/systemd/system/aisr.service`
 6. run `sudo chmod 644 /lib/systemd/system/aisr.service`
 7. run `sudo systemctl enable aisr.service`
@@ -221,51 +509,189 @@ Use [Azure Storage Explorer](https://azure.microsoft.com/en-us/features/storage-
 
 #### Configuration
 
-Configuration is read from `settings.json` and can also be overridden for local development by using a `settings.local.json` file.
+Configuration is read from `appsettings.json`. The hosts use the standard .NET host configuration
+pipeline, so values can be overridden — in increasing order of precedence — by
+`appsettings.{Environment}.json` (selected by `DOTNET_ENVIRONMENT`, e.g. `appsettings.Development.json`),
+user secrets (Development only), environment variables, and command-line arguments.
+
+Environment variables use `__` as the section separator, which is the most practical way to override
+settings in a container without rebuilding the image:
+
+```bash
+Ais__Connection__Host=153.44.253.27 \
+Storage__EnableCapture=true \
+Storage__ConnectionString="UseDevelopmentStorage=true" \
+ConnectionStrings__nats="nats://localhost:4222" \
+  ./Ais.Net.Receiver.Host.Worker
+```
+
+Two connection-string conventions appear here, deliberately. `Storage:ConnectionString` is part of
+the receiver's own `Storage` section — one property of the validated capture feature, alongside
+`EnableCapture` and the batching settings — and is the stable contract existing deployments
+(docker-compose, systemd) already use. `ConnectionStrings:nats` is the standard .NET slot that
+Aspire's `WithReference` injects and the NATS client integration reads by convention; using the
+platform's name is what lets its mere presence switch publishing on with no bespoke wiring.
+
+The full schema, with every optional section present:
 
 ```json
 {
   "Ais": {
-    "host": "153.44.253.27",
-    "port": "5631",
-    "loggerVerbosity": "Minimal", 
-    "statisticsPeriodicity": "00:01:00",
-    "retryAttempts": 5,
-    "retryPeriodicity": "00:00:00:00.500"
+    "Connection": {
+      "Host": "153.44.253.27",
+      "Port": 5631,
+      "Retry": {
+        "Attempts": 5,
+        "Periodicity": "00:00:00:01"
+      }
+    },
+    "Receiver": {
+      "Retry": {
+        "Attempts": 5,
+        "Periodicity": "00:00:00:01"
+      }
+    },
+    "Telemetry": {
+      "Verbosity": "Warning",
+      "StatisticsPeriodicity": "00:00:01:00",
+      "VesselInactivityTimeout": "00:30:00"
+    }
   },
   "Storage": {
-    "enableCapture": true,
-    "connectionString": "DefaultEndpointsProtocol=https;AccountName=<ACCOUNT_NAME>;AccountKey=<ACCOUNT_KEY>",
-    "containerName": "nmea-ais-dev",
-    "writeBatchSize": 500
+    "EnableCapture": true,
+    "ConnectionString": "DefaultEndpointsProtocol=https;AccountName=<ACCOUNT_NAME>;AccountKey=<ACCOUNT_KEY>",
+    "ContainerName": "nmea-ais-dev",
+    "WriteBatchSize": 500,
+    "BatchTimeoutSeconds": 10,
+    "BoundedCapacity": 10000,
+    "MaxDegreeOfParallelism": 1,
+    "WriteRetryAttempts": 3,
+    "DeadLetterPath": "/var/aisr/dead-letter",
+    "DeadLetterReplayIntervalSeconds": 60
+  },
+  "ConnectionStrings": {
+    "nats": "nats://localhost:4222"
+  },
+  "OpenTelemetry": {
+    "TraceSamplingRatio": 1.0
   }
 }
 ```
 
 ##### AIS
 
-These settings control the `ReceiverHost` and its behaviour.
+`Ais:Connection` controls the TCP connection to the feed.
 
-- `host`: IP Address or FQDN of the AIS Source
-- `port`: Port number for the AIS Source
-- `loggerVerbosity`: Controls the output to the console.
-  - `Quiet` = Essential only,
-  - `Minimal` = Statistics only. Sample rate of statistics controlled by `statisticsPeriodicity`,
-  - `Normal` = Vessel Names and Positions,
-  - `Detailed` = NMEA Sentences,
-  - `Diagnostic` = Messages and Errors
-- `statisticsPeriodicity`: TimeSpan defining the sample rate of statistics to display
-- `retryAttempts`: Number of retry attempts when a connection error occurs
-- `retryPeriodicity`: How long to wait before a retry attempt.
-  
+- `Host`: IP address or FQDN of the AIS source
+- `Port`: port number for the AIS source
+- `Retry:Periodicity`: base delay between reconnection attempts. Backoff is linear —
+  `Periodicity × attempt`.
+- `Retry:Attempts`: **caps how far the backoff delay grows, and does not limit the number of
+  attempts.** The receiver reconnects indefinitely; with the shipped `Attempts: 5` and
+  `Periodicity: 1s` the delay climbs to 5 seconds and then stays there. A long-running receiver that
+  gave up after N failures would need manual intervention to resume, which is why there is no cap on
+  attempts. The idle-read timeout that detects a silently dropped connection is deliberately separate
+  from these settings and defaults to 60 seconds.
+
+`Ais:Receiver:Retry` controls the receive loop that sits above the connection, using the same shape.
+
+`Ais:Telemetry` controls console output and derived streams.
+
+- `Verbosity`: a standard `LogLevel` (`Trace`, `Debug`, `Information`, `Warning`, `Error`,
+  `Critical`, `None`), and **cumulative** — each level includes everything the less verbose levels
+  emit:
+  - `None` — nothing
+  - `Warning` — periodic statistics, sampled at `StatisticsPeriodicity`
+  - `Information` — the above, plus vessel names and positions
+  - `Debug` — the above, plus raw NMEA sentences
+  - `Trace` — the above, plus decoded messages and parse errors
+- `StatisticsPeriodicity`: how often to emit the statistics line
+- `VesselInactivityTimeout`: how long a vessel may go unheard before its tracking state is released.
+  Defaults to 30 minutes.
+
 ##### Storage
 
-These settings control the capturing NMEA sentences to Azure Blob Storage.
+These settings control the capturing of NMEA sentences to Azure Blob Storage.
 
-- `enableCapture`: Whether you want to capture the NMEA sentences and write them to Azure Blob Storage
-- `connectionString`: Azure Storage Account Connection String
-- `containerName`: Name of the container to capture the NMEA sentences. You can use this to separate a local dev storage container from your production storage container, within the same storage account.
-- `writeBatchSize`: How many NMEA sentences to batch before writing to Azure Blob Storage.
+- `EnableCapture`: whether to capture NMEA sentences and write them to Azure Blob Storage
+- `ConnectionString`: Azure Storage account connection string
+- `ContainerName`: container to capture the NMEA sentences into. Useful for separating a local dev
+  container from production within the same storage account.
+- `WriteBatchSize`: how many sentences to batch before writing (default 500)
+- `BatchTimeoutSeconds`: flush a partial batch after this long, so a quiet feed still gets persisted
+  (default 10)
+- `BoundedCapacity`: how many sentences may be buffered awaiting a write (default 10000). When the
+  buffer fills, sentences are shed rather than allowed to grow memory without limit, and the drops are
+  counted by `ais.receiver.sentences.dropped`.
+- `MaxDegreeOfParallelism`: concurrent storage writes (default 1). Appends to a single blob are
+  serialized regardless, so raising this only helps if writes are the bottleneck.
+- `WriteRetryAttempts`: total attempts per batch, including the first (default 3)
+- `DeadLetterPath`: optional local directory. When set, a batch that exhausts its retries is written
+  here instead of being lost, and a background replayer returns it to storage once the backend
+  recovers. When unset, an exhausted batch surfaces as an error instead.
+- `DeadLetterReplayIntervalSeconds`: how often to attempt replaying dead-lettered batches (default 60)
+
+##### NATS publishing (worker only)
+
+The worker can publish every decoded message to a [NATS](https://nats.io) subject, which is how the
+[AIS Visualizer demo](#ais-visualizer) gets its live feed. There is exactly one setting:
+
+- `ConnectionStrings:nats`: the broker to publish to, e.g. `nats://localhost:4222` (or
+  `nats://user:pass@host:4222` with credentials). **Its presence is the switch**: when set, the
+  publisher runs; when absent, publishing is disabled and the worker behaves exactly as it always
+  has — the same convention storage capture uses. Under the Aspire AppHost this is injected
+  automatically.
+
+What it publishes is not configurable by design. Messages go to the `ais.messages` subject as
+polymorphic JSON ([Ais.Net.Models.Json](https://github.com/ais-dotnet/Ais.Net.Models.Json), with a
+`$type` discriminator naming the concrete message type). The subject name is a shared constant
+(`AisNats.MessagesSubject`) rather than a setting, because publisher and subscribers live in
+different processes: a knob on one side could do nothing but silently break the other.
+
+Publishing never slows the receive path: messages are handed to a bounded queue (10,000 entries)
+and a stalled broker causes the *oldest* queued messages to be dropped — the right ones to lose for
+a position feed — with the drops counted and logged rather than hidden.
+
+##### Visualizer (demo)
+
+The [AIS Visualizer](#ais-visualizer) binds the `Visualizer` section. Live mode is the default and
+needs no configuration under the AppHost; replay mode is selected like this:
+
+```json
+{
+  "Visualizer": {
+    "Source": "Replay",
+    "Replay": {
+      "BlobPath": "raw/2026/07/12/20260712T00.nm4",
+      "GeofencePath": "/data/skagerrak.json"
+    }
+  }
+}
+```
+
+- `Source`: `Live` (default) or `Replay`
+- `Replay:FilePath`: a local `.nm4` file to replay. Replay mode requires `FilePath` or `BlobPath`;
+  when both are set, `BlobPath` wins.
+- `Replay:BlobPath`: a captured blob to replay, in the layout the receiver writes
+  (`raw/yyyy/MM/dd/yyyyMMddTHH.nm4`)
+- `Replay:ConnectionString`: storage connection string for `BlobPath`. Defaults to
+  `Storage:ConnectionString`, so replaying what the AppHost's Azurite captured needs nothing extra.
+- `Replay:ContainerName`: the container holding the capture (default `nmea-ais-dev`)
+- `Replay:GeofencePath`: optional GeoJSON polygon; positions outside it are discarded
+- `NatsWebSocketUrl`: the `ws://` URL the page's own NATS connection uses in live mode. The AppHost
+  supplies this (the port is assigned at run time); set it manually only when running live mode
+  outside the AppHost.
+- `BasemapStyle`: the MapLibre style URL (defaults to a CARTO dark style; the map needs internet
+  access to fetch it)
+- `VesselInactivityTimeout`: how long a vessel may go unheard before the live view drops it
+  (default 15 minutes)
+- `ConnectionStrings:nats`: used only to extract the credentials `/api/config` hands to the page;
+  injected by the AppHost
+
+##### OpenTelemetry
+
+`OpenTelemetry:TraceSamplingRatio` and the `OTEL_*` environment variables are documented in
+[Telemetry](#telemetry).
 
 ## Running as WASM
 

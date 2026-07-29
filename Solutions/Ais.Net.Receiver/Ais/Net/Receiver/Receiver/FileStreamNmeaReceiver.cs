@@ -1,51 +1,34 @@
-﻿// <copyright file="NmeaReceiver.cs" company="Endjin Limited">
+// <copyright file="FileStreamNmeaReceiver.cs" company="Endjin Limited">
 // Copyright (c) Endjin Limited. All rights reserved.
 // </copyright>
 
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Runtime.CompilerServices;
-using System.Threading;
-using System.Threading.Tasks;
+using Spectre.IO;
 
 namespace Ais.Net.Receiver.Receiver;
 
-public class FileStreamNmeaReceiver : INmeaReceiver
+/// <summary>
+/// Reads NMEA sentences from a file, via Spectre.IO's file system abstraction so tests can
+/// substitute an in-memory one.
+/// </summary>
+public class FileStreamNmeaReceiver : StreamNmeaReceiver
 {
-    private readonly string path;
-    private readonly TimeSpan delay = TimeSpan.Zero;
+    private readonly IFileSystem fileSystem;
+    private readonly FilePath path;
 
-    public FileStreamNmeaReceiver(string path)
+    public FileStreamNmeaReceiver(IFileSystem fileSystem, FilePath path)
     {
+        this.fileSystem = fileSystem;
         this.path = path;
     }
-        
-    public FileStreamNmeaReceiver(string path, TimeSpan delay)
+
+    public FileStreamNmeaReceiver(IFileSystem fileSystem, FilePath path, TimeSpan delay)
+        : base(delay)
     {
+        this.fileSystem = fileSystem;
         this.path = path;
-        this.delay = delay;
     }
 
-    public async IAsyncEnumerable<string> GetAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
-    {
-        using StreamReader sr = new(this.path);
-
-        while (sr.Peek() >= 0)
-        {
-            if (cancellationToken.IsCancellationRequested)
-            {
-                break;
-            }
-
-            if (this.delay > TimeSpan.Zero)
-            {
-                await Task.Delay(this.delay, cancellationToken).ConfigureAwait(false);
-            }
-
-            string? line = await sr.ReadLineAsync(cancellationToken).ConfigureAwait(false);
-
-            if (line is not null) { yield return line; }
-        }
-    }
+    /// <inheritdoc/>
+    protected override ValueTask<Stream> OpenStreamAsync(CancellationToken cancellationToken) =>
+        ValueTask.FromResult(this.fileSystem.File.Retrieve(this.path).OpenRead());
 }
