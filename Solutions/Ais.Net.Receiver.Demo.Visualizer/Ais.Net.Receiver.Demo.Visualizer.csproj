@@ -43,13 +43,25 @@
                     Exclude="$(MSBuildThisFileDirectory)ClientApp\node_modules\**" />
   </ItemGroup>
 
+  <!--
+    Restore is keyed on the package manifests rather than node_modules' existence, so pulling a
+    commit that adds or bumps a dependency reinstalls before the Vite build instead of failing with
+    a missing module. npm ci wipes node_modules (including the stamp), and the Touch re-creates it.
+  -->
+  <Target Name="RestoreFrontend"
+          BeforeTargets="BuildFrontend"
+          Condition="'$(SkipFrontendBuild)' != 'true'"
+          Inputs="$(MSBuildThisFileDirectory)ClientApp\package.json;$(MSBuildThisFileDirectory)ClientApp\package-lock.json"
+          Outputs="$(MSBuildThisFileDirectory)ClientApp\node_modules\.msbuild-restore-stamp">
+    <Exec Command="npm ci --no-audit --no-fund" WorkingDirectory="$(MSBuildThisFileDirectory)ClientApp" />
+    <Touch Files="$(MSBuildThisFileDirectory)ClientApp\node_modules\.msbuild-restore-stamp" AlwaysCreate="true" />
+  </Target>
+
   <Target Name="BuildFrontend"
           BeforeTargets="BeforeBuild"
           Condition="'$(SkipFrontendBuild)' != 'true'"
           Inputs="@(FrontendSource)"
           Outputs="$(MSBuildThisFileDirectory)obj\frontend.stamp">
-    <Exec Command="npm ci --no-audit --no-fund" WorkingDirectory="$(MSBuildThisFileDirectory)ClientApp"
-          Condition="!Exists('$(MSBuildThisFileDirectory)ClientApp\node_modules')" />
     <Exec Command="npm run build" WorkingDirectory="$(MSBuildThisFileDirectory)ClientApp" />
 
     <Touch Files="$(MSBuildThisFileDirectory)obj\frontend.stamp" AlwaysCreate="true" />

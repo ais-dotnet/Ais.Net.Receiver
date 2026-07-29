@@ -14,6 +14,10 @@ export function createPositionLayer(vessels, currentTime, visible) {
       // Attach current position as transient property
       v._currentPos = pos;
       activeVessels.push(v);
+    } else if (v._currentPos) {
+      // Clear stale interpolations, or labels and tooltips (which key off _currentPos) would keep
+      // rendering vessels at positions from an earlier frame after their dot has gone.
+      v._currentPos = null;
     }
   }
 

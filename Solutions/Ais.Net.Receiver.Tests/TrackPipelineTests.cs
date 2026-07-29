@@ -56,17 +56,22 @@ public class TrackPipelineTests
     }
 
     [TestMethod]
-    public async Task BuildAsync_FaultAfterMessages_IsTheEndOfTheRecording()
+    public async Task BuildAsync_FaultAfterMessages_IsTheEndOfTheRecordingAndIsReported()
     {
         // A finite network-style source ends by faulting once the far end goes away; after data has
-        // flowed that is completion, not failure.
+        // flowed that is completion, not failure - but the fault is reported so a caller replaying a
+        // file or blob (where a mid-stream fault means truncation) can refuse to cache the result.
         INmeaReceiver receiver = Substitute.For<INmeaReceiver>();
         receiver.GetAsync(Arg.Any<CancellationToken>()).Returns(OneThenFault());
 
-        IReadOnlyList<VesselTrack> tracks = await TrackPipeline.BuildAsync(receiver);
+        Exception? reported = null;
+        IReadOnlyList<VesselTrack> tracks = await TrackPipeline.BuildAsync(
+            receiver,
+            onStreamFault: ex => reported = ex);
 
         // The single position is filtered by the >= 2 rule; the point is that no exception escaped.
         tracks.ShouldBeEmpty();
+        reported.ShouldBeOfType<IOException>();
 
         static async IAsyncEnumerable<ReadOnlyMemory<byte>> OneThenFault()
         {

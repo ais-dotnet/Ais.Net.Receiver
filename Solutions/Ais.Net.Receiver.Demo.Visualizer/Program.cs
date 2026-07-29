@@ -120,6 +120,11 @@ internal sealed record NatsCredentials(string User, string Password)
 
         string[] parts = uri.UserInfo.Split(':', 2);
 
-        return parts.Length == 2 ? new NatsCredentials(parts[0], parts[1]) : null;
+        // UserInfo is returned in its raw escaped form, but the browser client wants the actual
+        // credentials - without unescaping, a percent-encoded password fails NATS authorization in
+        // the page while the worker's .NET client (which does unescape) publishes happily.
+        return parts.Length == 2
+            ? new NatsCredentials(Uri.UnescapeDataString(parts[0]), Uri.UnescapeDataString(parts[1]))
+            : null;
     }
 }

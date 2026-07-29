@@ -102,6 +102,10 @@ export class LiveVesselSource {
       this.vessels.set(mmsi, vessel);
     }
 
+    // Every message counts as a sighting, so pruning can retire vessels that went quiet even if
+    // they only ever sent static messages and never a position.
+    vessel.lastSeen = this.currentTime;
+
     return vessel;
   }
 
@@ -119,7 +123,9 @@ export class LiveVesselSource {
         vessel.name = name;
       }
 
-      if (shipType !== null) {
+      // Ship type 0 means "not available": applying it would overwrite a real type already seen,
+      // and the replay pipeline skips it for the same reason.
+      if (shipType !== null && shipType !== 0) {
         const style = this.shipTypeStyles[shipType];
         vessel.shipType = String(shipType);
         vessel.shipTypeCategory = style?.category ?? '';
@@ -168,11 +174,9 @@ export class LiveVesselSource {
     const cutoff = this.currentTime - this.inactivitySeconds;
 
     for (const [mmsi, vessel] of this.vessels) {
-      const last = vessel.positions.at(-1);
-
-      // A vessel seen only through a static message has no positions yet; keep it, since its
-      // position report may still arrive.
-      if (last && last.timestamp < cutoff) {
+      // lastSeen covers every message type, so vessels heard only through static messages are
+      // retired too - otherwise position-less entries would accumulate without bound.
+      if ((vessel.lastSeen ?? 0) < cutoff) {
         this.vessels.delete(mmsi);
       }
     }

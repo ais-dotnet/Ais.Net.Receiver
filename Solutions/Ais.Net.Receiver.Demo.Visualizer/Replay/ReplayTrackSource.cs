@@ -75,14 +75,29 @@ public sealed class ReplayTrackSource
 
             this.logger.LogInformation("Building replay tracks from {Source}", label);
 
+            Exception? streamFault = null;
+            IReadOnlyList<VesselTrack> tracks;
+
             await using (source.ConfigureAwait(false))
             {
-                this.cached = await TrackPipeline.BuildAsync(
+                tracks = await TrackPipeline.BuildAsync(
                     source,
                     geofence,
+                    onStreamFault: ex => streamFault = ex,
                     cancellationToken: cancellationToken).ConfigureAwait(false);
             }
 
+            if (streamFault is not null)
+            {
+                // A mid-stream fault from a file or blob means the recording was only partially
+                // read. Caching that would present a truncated replay as complete until the process
+                // restarts; failing lets the next request retry against a recovered backend.
+                throw new InvalidOperationException(
+                    $"The replay source '{label}' faulted mid-stream; refusing to serve a truncated replay.",
+                    streamFault);
+            }
+
+            this.cached = tracks;
             this.cachedLabel = label;
 
             this.logger.LogInformation(

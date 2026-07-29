@@ -1,3 +1,18 @@
+/**
+ * Escapes text for interpolation into the tooltip's html property, which deck.gl assigns via
+ * innerHTML. Vessel names arrive over the air from AIS transmitters (6-bit ASCII includes < > = /),
+ * so they are untrusted input and must never reach the DOM unescaped.
+ */
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, c => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  })[c]);
+}
+
 export function getTooltip({object}) {
   if (!object) return null;
 
@@ -7,9 +22,9 @@ export function getTooltip({object}) {
 
   return {
     html: `<div style="line-height:1.5">
-      <strong>${object.name}</strong><br/>
-      <span style="color:#aaa">${object.shipTypeCategory || object.shipType || 'Unknown'}</span><br/>
-      MMSI: ${object.mmsi}<br/>
+      <strong>${escapeHtml(object.name)}</strong><br/>
+      <span style="color:#aaa">${escapeHtml(object.shipTypeCategory || object.shipType || 'Unknown')}</span><br/>
+      MMSI: ${escapeHtml(object.mmsi)}<br/>
       Speed: ${speed} kn &middot; Course: ${course}&deg;
     </div>`,
     style: {

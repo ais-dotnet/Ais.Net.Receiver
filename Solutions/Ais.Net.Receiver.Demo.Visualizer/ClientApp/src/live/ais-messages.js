@@ -26,9 +26,10 @@ export function isPositionReport(message) {
 export function readPosition(message) {
   const {Longitude, Latitude} = message.Position;
 
-  // The feed reports 0,0 and out-of-range values to mean "unknown"; drawing them would scatter
-  // vessels off West Africa. The replay pipeline discards them for the same reason.
-  if (Latitude === 0 || Longitude === 0 ||
+  // Discard the (0,0) null-island placeholder and out-of-range values; drawing them would scatter
+  // vessels off West Africa. A single zero axis is legitimate - vessels really do cross the equator
+  // and the Greenwich meridian. The replay pipeline applies the same rule.
+  if ((Latitude === 0 && Longitude === 0) ||
       Latitude > 90 || Latitude < -90 ||
       Longitude > 180 || Longitude < -180) {
     return null;

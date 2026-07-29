@@ -2,7 +2,10 @@
 // Copyright (c) Endjin Limited. All rights reserved.
 // </copyright>
 
+using System.Text.Json;
+
 using Ais.Net.Receiver.Demo.Tracks.Models;
+using Ais.Net.Receiver.Demo.Tracks.Output;
 using Ais.Net.Receiver.Demo.Tracks.Processing;
 
 using Shouldly;
@@ -18,6 +21,23 @@ namespace Ais.Net.Receiver.Tests;
 [TestClass]
 public class TrackPipelineProcessingTests
 {
+    [TestMethod]
+    public async Task Serialize_EmptyTracks_ProducesSaneMetadata()
+    {
+        // Everything geofenced away is a legitimate outcome; the metadata must not leak the min/max
+        // scan sentinels (long.MaxValue base epoch), which render as Invalid Date in the frontend.
+        using MemoryStream stream = new();
+        await DeckGlJsonWriter.SerializeAsync(stream, "empty.nm4", []);
+
+        stream.Position = 0;
+        using JsonDocument document = await JsonDocument.ParseAsync(stream);
+
+        JsonElement metadata = document.RootElement.GetProperty("metadata");
+        metadata.GetProperty("baseEpoch").GetInt64().ShouldBe(0);
+        metadata.GetProperty("timeRange").GetProperty("end").GetInt32().ShouldBe(0);
+        document.RootElement.GetProperty("vessels").GetArrayLength().ShouldBe(0);
+    }
+
     [TestMethod]
     public void Downsample_KeepsPointsThatMovedFarEnough()
     {

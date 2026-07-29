@@ -159,7 +159,13 @@ async function initLive(config) {
     loadingEl.classList.remove('hidden');
   });
 
-  document.getElementById('controls')?.style.setProperty('display', 'none');
+  // Live has no timeline to scrub, so hide only the playback widgets - the layer toggles share the
+  // same bar and still apply.
+  for (const id of ['btn-play', 'time-slider', 'btn-slower', 'speed-display', 'btn-faster']) {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  }
+
   setupLayerToggles();
   loadingEl.classList.add('hidden');
 
@@ -206,13 +212,11 @@ function updateLayers() {
   // Update time display
   timeDisplay.textContent = formatTimestamp(metadata.baseEpoch, currentTime);
 
-  // Build position layer (also computes active vessels)
-  const {layer: posLayer, activeCount: count} = createPositionLayer(
+  // Build position layer, which also computes this frame's active vessels - the same set the
+  // labels must use, so a vessel's label dies with its dot.
+  const {layer: posLayer, activeVessels, activeCount: count} = createPositionLayer(
     vesselData, currentTime, layerVisibility.dots
   );
-
-  // Get active vessels (those with _currentPos set)
-  const activeVessels = vesselData.filter(v => v._currentPos);
 
   activeCount.textContent = count;
 

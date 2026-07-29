@@ -33,8 +33,10 @@ several defaults behave differently.
   the oldest messages rather than stalling the receive path.
 * `Storage:EnableCapture` now defaults to `false` in the tracked `appsettings.json` files. Previously
   they shipped `true` with an empty connection string, which made `ValidateOnStart` throw before the
-  host started. Supply a connection string via user secrets, the environment, or the AppHost's
-  Azurite container to turn capture back on.
+  host started. To turn capture back on, set **both** `Storage:EnableCapture=true` *and* a connection
+  string (via user secrets, the environment, or the AppHost's Azurite container) — a connection
+  string alone never enables capture, and a deployment that relied on the old shipped `true` will
+  silently stop capturing until the flag is set explicitly.
 * Added a Worker Service host (`Ais.Net.Receiver.Host.Worker`) alongside the existing console host, for
   running the receiver as a long-lived service. The published container image is still built from the
   console host; `Solutions/docker-compose.yml` additionally defines worker services, including a

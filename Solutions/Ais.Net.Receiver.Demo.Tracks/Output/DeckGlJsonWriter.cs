@@ -59,7 +59,11 @@ public static class DeckGlJsonWriter
             totalPoints += track.Positions.Count;
         }
 
-        long baseEpoch = minEpoch;
+        // With no positions at all (nothing decoded, or everything geofenced away) the min/max scan
+        // never ran, and serializing its long.MaxValue/MinValue sentinels would hand the frontend an
+        // Invalid Date. An epoch of zero gives a sane, obviously-empty replay instead.
+        long baseEpoch = totalPoints == 0 ? 0 : minEpoch;
+        int end = totalPoints == 0 ? 0 : (int)(maxEpoch - baseEpoch);
 
         return new OutputRoot
         {
@@ -69,7 +73,7 @@ public static class DeckGlJsonWriter
                 TimeRange = new TimeRange
                 {
                     Start = 0,
-                    End = (int)(maxEpoch - baseEpoch)
+                    End = end
                 },
                 BaseEpoch = baseEpoch,
                 VesselCount = tracks.Count,

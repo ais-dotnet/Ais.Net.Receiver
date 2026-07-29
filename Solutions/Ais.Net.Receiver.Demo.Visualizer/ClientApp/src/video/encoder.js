@@ -14,6 +14,7 @@ export class VideoExporter {
     this.metadata = metadata;
     this.overlay = overlay;
     this.recording = false;
+    this.cancelled = false;
     this.encoder = null;
     this.onProgress = null;
     this.onComplete = null;
@@ -29,6 +30,7 @@ export class VideoExporter {
   }) {
     if (this.recording) return;
     this.recording = true;
+    this.cancelled = false;
     this.onProgress = onProgress;
     this.onComplete = onComplete;
 
@@ -86,6 +88,21 @@ export class VideoExporter {
       }
     }
 
+    if (this.cancelled) {
+      // A cancelled export must not behave like a successful one: flush the encoder so its
+      // resources are released, but discard the partial video and skip the completion callback
+      // (which is what triggers the download).
+      try {
+        await this.encoder.save();
+      } catch {
+        // The partial encoding is being thrown away regardless.
+      }
+
+      this.encoder = null;
+      this.recording = false;
+      return null;
+    }
+
     // Save the video
     const blob = await this.encoder.save();
     this.recording = false;
@@ -98,6 +115,7 @@ export class VideoExporter {
   }
 
   stop() {
+    this.cancelled = true;
     this.recording = false;
   }
 

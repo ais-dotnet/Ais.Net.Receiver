@@ -20,8 +20,9 @@ public class VesselTrackBuilder
         double lat = navigation.Position?.Latitude ?? 0;
         double lon = navigation.Position?.Longitude ?? 0;
 
-        // Filter out invalid positions
-        if (lat is 0 or > 90 or < -90 || lon is 0 or > 180 or < -180)
+        // Filter out the (0,0) null-island placeholder and out-of-range values. A single zero axis
+        // is legitimate - vessels really do cross the equator and the Greenwich meridian.
+        if ((lat == 0 && lon == 0) || lat is > 90 or < -90 || lon is > 180 or < -180)
             return;
 
         if (epoch <= 0)
@@ -59,6 +60,11 @@ public class VesselTrackBuilder
 
     public void AddShipType(uint mmsi, IShipType shipTypeInfo)
     {
+        // ShipType 0 means "not available"; latching it would permanently mask a later message that
+        // carries the real type - the same reason AddName skips blank names before latching.
+        if (shipTypeInfo.ShipType == ShipType.NotAvailable)
+            return;
+
         var (category, color) = ShipTypeColors.GetCategoryAndColor(shipTypeInfo.ShipType);
 
         lock (_lock)

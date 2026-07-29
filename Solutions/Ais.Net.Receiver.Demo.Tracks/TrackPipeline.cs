@@ -26,12 +26,18 @@ public static class TrackPipeline
     /// <param name="source">The NMEA source - a file or a captured blob.</param>
     /// <param name="geofence">Optional geofence; positions outside it are discarded.</param>
     /// <param name="progress">Optional callback reporting messages processed, for long files.</param>
+    /// <param name="onStreamFault">
+    /// Invoked when the source faults after messages have already decoded. The build still returns
+    /// what it read, but the caller must know the result may be truncated - serving or caching it as
+    /// a complete replay would silently lose most of the recording.
+    /// </param>
     /// <param name="cancellationToken">A cancellation token.</param>
     /// <returns>The tracks, with fewer than two positions removed.</returns>
     public static async Task<IReadOnlyList<VesselTrack>> BuildAsync(
         INmeaReceiver source,
         GeofenceFilter? geofence = null,
         IProgress<int>? progress = null,
+        Action<Exception>? onStreamFault = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(source);
@@ -86,7 +92,10 @@ public static class TrackPipeline
             // A network-style source signals the end of a finite recording by faulting once the far
             // end goes away, which is normal completion here. A fault before any message decoded is
             // different - a missing blob, a bad connection string - and swallowing it would quietly
-            // produce (and let the caller cache) an empty replay, so that one propagates.
+            // produce (and let the caller cache) an empty replay, so that one propagates. Faults
+            // after data are reported through the callback because for a file or blob they mean a
+            // mid-stream read failure, and the caller must not treat the partial result as complete.
+            onStreamFault?.Invoke(ex);
         }
 
         List<VesselTrack> tracks = [.. trackBuilder.GetTracks()];

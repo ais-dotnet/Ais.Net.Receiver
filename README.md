@@ -252,10 +252,14 @@ connection string out of source control with user secrets rather than editing `a
 ```bash
 dotnet user-secrets set "Storage:EnableCapture" "true" --project Solutions/Ais.Net.Receiver.Host.Worker
 dotnet user-secrets set "Storage:ConnectionString" "<connection string>" --project Solutions/Ais.Net.Receiver.Host.Worker
+DOTNET_ENVIRONMENT=Development dotnet run --project Solutions/Ais.Net.Receiver.Host.Worker
 ```
 
-Environment variables still take precedence over user secrets, so what a container or systemd unit
-injects continues to win.
+User secrets are only loaded in the **Development** environment, so run the host with
+`DOTNET_ENVIRONMENT=Development` as shown (the AppHost sets this for you). Without it the secrets
+are silently ignored and capture stays off. For a production deployment use environment variables
+instead — they take precedence over user secrets, so what a container or systemd unit injects
+continues to win.
 
 ## Demos
 

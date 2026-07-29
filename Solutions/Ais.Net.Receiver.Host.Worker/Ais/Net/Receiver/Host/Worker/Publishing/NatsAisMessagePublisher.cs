@@ -62,11 +62,17 @@ public sealed class NatsAisMessagePublisher : IAisMessagePublisher, IHostedServi
         this.connection = connection;
         this.logger = logger;
         this.subject = subject;
-        this.queue = Channel.CreateBounded<AisMessageBase>(new BoundedChannelOptions(capacity)
-        {
-            FullMode = BoundedChannelFullMode.DropOldest,
-            SingleReader = true,
-        });
+
+        // Drops are observed via the itemDropped callback: under DropOldest, TryWrite always
+        // succeeds on a full channel by evicting the oldest entry, so a failed-write check could
+        // never see a backpressure drop.
+        this.queue = Channel.CreateBounded<AisMessageBase>(
+            new BoundedChannelOptions(capacity)
+            {
+                FullMode = BoundedChannelFullMode.DropOldest,
+                SingleReader = true,
+            },
+            _ => this.CountDrop());
     }
 
     /// <inheritdoc/>
@@ -79,10 +85,9 @@ public sealed class NatsAisMessagePublisher : IAisMessagePublisher, IHostedServi
             return;
         }
 
-        if (!this.queue.Writer.TryWrite(concrete))
-        {
-            this.CountDrop();
-        }
+        // A false return only happens after shutdown has completed the writer; backpressure drops
+        // are reported through the channel's itemDropped callback instead.
+        this.queue.Writer.TryWrite(concrete);
     }
 
     /// <inheritdoc/>
