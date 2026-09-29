@@ -26,6 +26,24 @@ $zerofailedExtensions = @(
 # extensions load, so it wins over their defaults.
 $covenantVersion = "0.24.0"
 
+# Endjin.RecommendedPractices.Build 1.5.14 also assigns the VSTest-era test logging settings outright:
+# '/flp:...' as the file logger and an empty logger list. ZeroFailed.Build.DotNet only applies its own
+# defaults when these are unset, so it inherits them - and the Microsoft Testing Platform rejects '/flp'
+# as an unknown argument (exit code 5, "Zero tests ran"), leaving no TRX results and empty coverage.
+# Restore ZeroFailed.Build.DotNet's platform-aware defaults.
+$DotNetTestLoggers = @(
+    "console;verbosity=$LogLevel"
+    "trx;LogFilePrefix=test-results"
+)
+$DotNetTestFileLoggerProps = {
+    if ($isMtp) {
+        Resolve-Value $DotNetTestFileLoggerProps_MTP
+    }
+    else {
+        Resolve-Value $DotNetTestFileLoggerProps_VSTest
+    }
+}
+
 #
 # Build process configuration
 #

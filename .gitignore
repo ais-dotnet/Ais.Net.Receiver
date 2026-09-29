@@ -420,6 +420,8 @@ FodyWeavers.xsd
 /_packages/
 /_codeCoverage/
 /.zf/extensions/
+# Microsoft.Testing.Platform diagnostic logs written to the repo root by the ZeroFailed test task
+/*.diag
 Endjin.FreeAgent.sbom.spdx.json
 Endjin.FreeAgent.sbom.html
 Endjin.FreeAgent.sbom.json
