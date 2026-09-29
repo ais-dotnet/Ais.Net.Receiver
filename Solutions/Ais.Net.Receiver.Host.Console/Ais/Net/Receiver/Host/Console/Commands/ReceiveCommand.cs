@@ -44,7 +44,7 @@ public class ReceiveCommand : AsyncCommand<ReceiveCommand.Settings>
         this.timeProvider = timeProvider;
     }
 
-    protected override async Task<int> ExecuteAsync(CommandContext context, Settings settings, CancellationToken cancellationToken)
+    public override async Task<int> ExecuteAsync(CommandContext context, Settings settings, CancellationToken cancellationToken)
     {
         // Start hosted services (like OpenTelemetry)
         IEnumerable<IHostedService> hostedServices = this.serviceProvider.GetServices<IHostedService>();
