@@ -6,6 +6,8 @@
     <Nullable>enable</Nullable>
     <IsAspireSharedProject>true</IsAspireSharedProject>
     <IsPackable>false</IsPackable>
+    <!-- The Hosting/ types are part of the shared Ais.Net.Receiver.Hosting namespace, not a project-named one. -->
+    <RootNamespace>Ais.Net.Receiver</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>

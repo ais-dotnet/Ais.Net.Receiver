@@ -3,14 +3,19 @@
 // </copyright>
 
 using System.Text.Json;
+using Ais.Net.Receiver.Demo.Tracks.Models;
 using NetTopologySuite.Geometries;
 using NetTopologySuite.IO.Converters;
-using Ais.Net.Receiver.Demo.Tracks.Models;
 
 namespace Ais.Net.Receiver.Demo.Tracks.Processing;
 
 public class GeofenceFilter
 {
+    private static readonly JsonSerializerOptions GeoJsonOptions = new()
+    {
+        Converters = { new GeoJsonConverterFactory() },
+    };
+
     private readonly Geometry _polygon;
 
     private GeofenceFilter(Geometry polygon)
@@ -22,15 +27,12 @@ public class GeofenceFilter
     {
         string json = File.ReadAllText(path);
 
-        var options = new JsonSerializerOptions();
-        options.Converters.Add(new GeoJsonConverterFactory());
-
         using var doc = JsonDocument.Parse(json);
         var features = doc.RootElement.GetProperty("features");
         var geometry = features[0].GetProperty("geometry");
         string geometryJson = geometry.GetRawText();
 
-        var geom = JsonSerializer.Deserialize<Geometry>(geometryJson, options)
+        var geom = JsonSerializer.Deserialize<Geometry>(geometryJson, GeoJsonOptions)
             ?? throw new InvalidOperationException("Failed to parse geofence geometry");
 
         return new GeofenceFilter(geom);
@@ -42,8 +44,5 @@ public class GeofenceFilter
         return _polygon.Contains(point);
     }
 
-    public List<VesselTrackPoint> Filter(List<VesselTrackPoint> points)
-    {
-        return points.Where(p => Contains(p.Longitude, p.Latitude)).ToList();
-    }
+    public List<VesselTrackPoint> Filter(List<VesselTrackPoint> points) => [.. points.Where(p => Contains(p.Longitude, p.Latitude))];
 }

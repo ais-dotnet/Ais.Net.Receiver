@@ -64,10 +64,7 @@ public class ApplicationMetricsTests
                 listener.EnableMeasurementEvents(instrument);
             }
         };
-        listener.SetMeasurementEventCallback<long>((instrument, measurement, tags, state) =>
-        {
-            measurements.Add(measurement);
-        });
+        listener.SetMeasurementEventCallback<long>((instrument, measurement, tags, state) => measurements.Add(measurement));
         listener.Start();
 
         // Act
@@ -96,10 +93,7 @@ public class ApplicationMetricsTests
                 listener.EnableMeasurementEvents(instrument);
             }
         };
-        listener.SetMeasurementEventCallback<long>((instrument, measurement, tags, state) =>
-        {
-            measurements.Add(measurement);
-        });
+        listener.SetMeasurementEventCallback<long>((instrument, measurement, tags, state) => measurements.Add(measurement));
         listener.Start();
 
         // Act
@@ -128,10 +122,7 @@ public class ApplicationMetricsTests
                 listener.EnableMeasurementEvents(instrument);
             }
         };
-        listener.SetMeasurementEventCallback<long>((instrument, measurement, tags, state) =>
-        {
-            measurements.Add(measurement);
-        });
+        listener.SetMeasurementEventCallback<long>((instrument, measurement, tags, state) => measurements.Add(measurement));
         listener.Start();
 
         // Act
@@ -158,10 +149,7 @@ public class ApplicationMetricsTests
                 listener.EnableMeasurementEvents(instrument);
             }
         };
-        listener.SetMeasurementEventCallback<long>((instrument, measurement, tags, state) =>
-        {
-            measurements.Add(measurement);
-        });
+        listener.SetMeasurementEventCallback<long>((instrument, measurement, tags, state) => measurements.Add(measurement));
         listener.Start();
 
         // Act
@@ -189,10 +177,7 @@ public class ApplicationMetricsTests
                 listener.EnableMeasurementEvents(instrument);
             }
         };
-        listener.SetMeasurementEventCallback<double>((instrument, measurement, tags, state) =>
-        {
-            measurements.Add(measurement);
-        });
+        listener.SetMeasurementEventCallback<double>((instrument, measurement, tags, state) => measurements.Add(measurement));
         listener.Start();
 
         // Act
@@ -219,10 +204,7 @@ public class ApplicationMetricsTests
                 listener.EnableMeasurementEvents(instrument);
             }
         };
-        listener.SetMeasurementEventCallback<long>((instrument, measurement, tags, state) =>
-        {
-            measurements.Add(measurement);
-        });
+        listener.SetMeasurementEventCallback<long>((instrument, measurement, tags, state) => measurements.Add(measurement));
         listener.Start();
 
         // Act

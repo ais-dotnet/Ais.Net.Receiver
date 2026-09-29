@@ -23,7 +23,7 @@ namespace Ais.Net.Receiver.Demo.Visualizer.Replay;
 /// concern at all: the browser cannot read an Azure blob without a credential, and re-parsing 90MB of
 /// NMEA on every request would make the demo feel broken.
 /// </remarks>
-public sealed class ReplayTrackSource
+public sealed partial class ReplayTrackSource
 {
     private readonly VisualizerOptions options;
     private readonly ILogger<ReplayTrackSource> logger;
@@ -73,7 +73,7 @@ public sealed class ReplayTrackSource
                 ? null
                 : GeofenceFilter.LoadFromGeoJson(this.options.Replay.GeofencePath);
 
-            this.logger.LogInformation("Building replay tracks from {Source}", label);
+            BuildingReplay(this.logger, label);
 
             Exception? streamFault = null;
             IReadOnlyList<VesselTrack> tracks;
@@ -100,10 +100,12 @@ public sealed class ReplayTrackSource
             this.cached = tracks;
             this.cachedLabel = label;
 
-            this.logger.LogInformation(
-                "Replay ready: {VesselCount} vessels, {PositionCount} positions",
-                this.cached.Count,
-                this.cached.Sum(t => t.Positions.Count));
+            // Summing positions walks every track, so only pay for it when the line will be written.
+            if (this.logger.IsEnabled(LogLevel.Information))
+            {
+                int positionCount = this.cached.Sum(t => t.Positions.Count);
+                ReplayReady(this.logger, this.cached.Count, positionCount);
+            }
 
             return (this.cached, label);
         }
@@ -145,4 +147,10 @@ public sealed class ReplayTrackSource
         throw new InvalidOperationException(
             "Replay needs either Visualizer:Replay:FilePath or Visualizer:Replay:BlobPath.");
     }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Building replay tracks from {Source}")]
+    private static partial void BuildingReplay(ILogger logger, string source);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Replay ready: {VesselCount} vessels, {PositionCount} positions")]
+    private static partial void ReplayReady(ILogger logger, int vesselCount, int positionCount);
 }

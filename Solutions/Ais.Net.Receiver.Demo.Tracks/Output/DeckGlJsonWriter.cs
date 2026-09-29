@@ -79,7 +79,7 @@ public static class DeckGlJsonWriter
                 VesselCount = tracks.Count,
                 TotalPoints = totalPoints
             },
-            Vessels = tracks
+            Vessels = [.. tracks
                 .Where(t => t.Positions.Count >= 2)
                 .OrderByDescending(t => t.Positions.Count)
                 .Select(t => new OutputVessel
@@ -89,7 +89,7 @@ public static class DeckGlJsonWriter
                     ShipType = t.Metadata.ShipType,
                     ShipTypeCategory = t.Metadata.ShipTypeCategory,
                     Color = t.Metadata.Color,
-                    Positions = t.Positions
+                    Positions = [.. t.Positions
                         .OrderBy(p => p.Epoch)
                         .Select(p => new OutputPosition
                         {
@@ -100,10 +100,8 @@ public static class DeckGlJsonWriter
                             Timestamp = (int)(p.Epoch - baseEpoch),
                             Speed = MathF.Round(p.SpeedOverGround, 1),
                             Course = MathF.Round(p.CourseOverGround, 1)
-                        })
-                        .ToList()
-                })
-                .ToList()
+                        })]
+                })]
         };
     }
 

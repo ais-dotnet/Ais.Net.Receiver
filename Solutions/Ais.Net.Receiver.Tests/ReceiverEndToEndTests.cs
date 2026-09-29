@@ -89,7 +89,7 @@ public class ReceiverEndToEndTests : AzuriteIntegrationTestBase
 
             await using (pipeline)
             {
-                await host.StartAsync();
+                await host.StartAsync(TestContext.CancellationToken);
                 await FlushAsync(pipeline);
             }
         }
@@ -144,7 +144,7 @@ public class ReceiverEndToEndTests : AzuriteIntegrationTestBase
 
         await using (pipeline)
         {
-            await host.StartAsync();
+            await host.StartAsync(TestContext.CancellationToken);
             await FlushAsync(pipeline);
 
             // The batch was dead-lettered, not lost - and deliberately not surfaced as a persist
@@ -227,7 +227,7 @@ public class ReceiverEndToEndTests : AzuriteIntegrationTestBase
         {
             // The host publishes raw sentences synchronously on its receive loop, so by the time
             // StartAsync returns every declined post - and its drop callback - has already run.
-            await host.StartAsync();
+            await host.StartAsync(TestContext.CancellationToken);
 
             drops.ShouldNotBeEmpty();
 
@@ -298,7 +298,7 @@ public class ReceiverEndToEndTests : AzuriteIntegrationTestBase
             await using (ReceiverHost host = CreateHost(beforeRollover, time))
             {
                 using IDisposable forward = host.RawSentences.Subscribe(sentences.OnNext);
-                await host.StartAsync();
+                await host.StartAsync(TestContext.CancellationToken);
             }
 
             // Persistence of a size-triggered batch happens on the dataflow block's own thread, so
@@ -317,7 +317,7 @@ public class ReceiverEndToEndTests : AzuriteIntegrationTestBase
             await using (ReceiverHost host = CreateHost(afterRollover, time))
             {
                 using IDisposable forward = host.RawSentences.Subscribe(sentences.OnNext);
-                await host.StartAsync();
+                await host.StartAsync(TestContext.CancellationToken);
             }
 
             // The second feed is a partial batch, so this single flush is what drives it out.
@@ -408,4 +408,6 @@ public class ReceiverEndToEndTests : AzuriteIntegrationTestBase
 
         public void Dispose() => inner.Dispose();
     }
+
+    public TestContext TestContext { get; set; }
 }

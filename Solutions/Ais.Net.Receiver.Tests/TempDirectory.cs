@@ -5,9 +5,11 @@ namespace Ais.Net.Receiver.Tests;
 /// </summary>
 internal sealed class TempDirectory : IDisposable
 {
-    public TempDirectory() =>
+    public TempDirectory()
+    {
         this.Path = Directory.CreateDirectory(
             System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ais-test-" + Guid.NewGuid().ToString("N"))).FullName;
+    }
 
     public string Path { get; }
 

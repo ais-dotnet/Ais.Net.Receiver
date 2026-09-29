@@ -29,13 +29,13 @@ public class BlobNmeaReceiverIntegrationTests : AzuriteIntegrationTestBase
         byte[] content = [.. line1, (byte)'\n', .. line2, (byte)'\n'];
 
         BlobContainerClient container = this.CreateVerificationClient();
-        await container.CreateIfNotExistsAsync();
-        await container.GetBlobClient("raw/2021/03/01.nm4").UploadAsync(new BinaryData(content));
+        await container.CreateIfNotExistsAsync(cancellationToken: TestContext.CancellationToken);
+        await container.GetBlobClient("raw/2021/03/01.nm4").UploadAsync(new BinaryData(content), TestContext.CancellationToken);
 
         await using BlobNmeaReceiver receiver = new(this.ConnectionString, this.ContainerName, "raw/2021/03/01.nm4");
 
         List<byte[]> lines = [];
-        await foreach (ReadOnlyMemory<byte> line in receiver.GetAsync())
+        await foreach (ReadOnlyMemory<byte> line in receiver.GetAsync(TestContext.CancellationToken))
         {
             lines.Add(line.ToArray());
         }
@@ -44,4 +44,6 @@ public class BlobNmeaReceiverIntegrationTests : AzuriteIntegrationTestBase
         lines[0].ShouldBe(line1);
         lines[1].ShouldBe(line2);
     }
+
+    public TestContext TestContext { get; set; }
 }

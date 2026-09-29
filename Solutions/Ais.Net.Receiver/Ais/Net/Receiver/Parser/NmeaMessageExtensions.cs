@@ -84,7 +84,11 @@ public static class NmeaMessageExtensions
                         value = value[..checksumIndex];
                     }
 
-                    Utf8Parser.TryParse(value, out timestamp, out _);
+                    // A malformed timestamp leaves the tag unset (0) rather than failing the message.
+                    if (Utf8Parser.TryParse(value, out long parsedTimestamp, out _))
+                    {
+                        timestamp = parsedTimestamp;
+                    }
                 }
             }
 

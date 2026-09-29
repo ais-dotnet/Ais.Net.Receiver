@@ -18,7 +18,11 @@ using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 
+// Lives in the hosting namespace, as Aspire's service-defaults template does, so AddServiceDefaults()
+// is in scope wherever a host builder is, with no extra using.
+#pragma warning disable IDE0130 // Namespace does not match folder structure
 namespace Microsoft.Extensions.Hosting;
+#pragma warning restore IDE0130
 
 /// <summary>
 /// Extension methods for configuring service defaults including OpenTelemetry and service discovery.
@@ -168,15 +172,12 @@ public static class Extensions
 
         // Stamp trace context onto every log record, so a log line can be pivoted to the trace it
         // belongs to without the call sites having to carry the ids themselves.
-        builder.Logging.Configure(options =>
-        {
-            options.ActivityTrackingOptions =
+        builder.Logging.Configure(options => options.ActivityTrackingOptions =
                 ActivityTrackingOptions.SpanId |
                 ActivityTrackingOptions.TraceId |
                 ActivityTrackingOptions.ParentId |
                 ActivityTrackingOptions.TraceState |
-                ActivityTrackingOptions.TraceFlags;
-        });
+                ActivityTrackingOptions.TraceFlags);
 
         builder.Services.AddOpenTelemetry()
             .ConfigureResource(resource => resource
@@ -219,10 +220,7 @@ public static class Extensions
 
                 if (useOtlpExporter)
                 {
-                    metrics.AddOtlpExporter((exporterOptions, readerOptions) =>
-                    {
-                        readerOptions.PeriodicExportingMetricReaderOptions.ExportIntervalMilliseconds = 10_000;
-                    });
+                    metrics.AddOtlpExporter((exporterOptions, readerOptions) => readerOptions.PeriodicExportingMetricReaderOptions.ExportIntervalMilliseconds = 10_000);
                 }
             })
             .WithTracing(tracing =>

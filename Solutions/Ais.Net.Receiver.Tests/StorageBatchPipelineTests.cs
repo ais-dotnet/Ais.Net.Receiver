@@ -63,7 +63,7 @@ public class StorageBatchPipelineTests
         source.OnNext("b"u8.ToArray());
         source.OnNext("c"u8.ToArray()); // reaching WriteBatchSize triggers a batch on its own
 
-        await persisted.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        await persisted.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.CancellationToken);
         storage.Persisted.Count.ShouldBe(3);
     }
 
@@ -89,7 +89,7 @@ public class StorageBatchPipelineTests
 
         source.OnNext("!AIVDM,1,1,,A,aaaa,0*00"u8.ToArray());
 
-        await errorSeen.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        await errorSeen.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.CancellationToken);
         errors.ShouldHaveSingleItem().ShouldBeOfType<IOException>();
     }
 
@@ -167,7 +167,10 @@ public class StorageBatchPipelineTests
         private readonly List<byte[]> persisted = [];
         private readonly Func<Task>? onPersist;
 
-        public RecordingStorageClient(Func<Task>? onPersist = null) => this.onPersist = onPersist;
+        public RecordingStorageClient(Func<Task>? onPersist = null)
+        {
+            this.onPersist = onPersist;
+        }
 
         public IReadOnlyList<byte[]> Persisted
         {
@@ -200,4 +203,6 @@ public class StorageBatchPipelineTests
         {
         }
     }
+
+    public TestContext TestContext { get; set; }
 }

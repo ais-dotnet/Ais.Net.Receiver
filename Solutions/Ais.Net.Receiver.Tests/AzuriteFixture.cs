@@ -98,6 +98,8 @@ internal static class AzuriteFixture
 
         using CancellationTokenSource cts = new(StartupTimeout());
 
+        Exception startupFailure;
+
         try
         {
             await azurite.StartAsync(cts.Token);
@@ -108,24 +110,27 @@ internal static class AzuriteFixture
         {
             await azurite.DisposeAsync();
 
-            // The only skippable failure: Testcontainers could not find a usable Docker endpoint.
-            if (!required && IsDockerEndpointUnavailable(ex))
-            {
-                Assert.Inconclusive(
-                    "Docker is not available, so the Azurite integration tests were skipped: " +
-                    ex.Message +
-                    " Set AIS_TEST_REQUIRE_INTEGRATION=true to fail instead of skipping.");
-            }
-
-            // Everything else means Docker answered and Azurite still did not come up: a bad or
-            // withdrawn image tag, a failed pull, a port conflict, or our own startup timeout. Those
-            // are genuine failures and must not masquerade as "no Docker".
-            throw new InvalidOperationException(
-                $"A Docker endpoint was available but the Azurite container ('{image}') failed to " +
-                "start. This is a genuine integration-test failure, not a missing-Docker skip. If " +
-                "the ':latest' image has regressed, pin a known-good tag with AIS_TEST_AZURITE_IMAGE.",
-                ex);
+            // Decided outside the catch: an assert inside one could be swallowed by the handler.
+            startupFailure = ex;
         }
+
+        // The only skippable failure: Testcontainers could not find a usable Docker endpoint.
+        if (!required && IsDockerEndpointUnavailable(startupFailure))
+        {
+            Assert.Inconclusive(
+                "Docker is not available, so the Azurite integration tests were skipped: " +
+                startupFailure.Message +
+                " Set AIS_TEST_REQUIRE_INTEGRATION=true to fail instead of skipping.");
+        }
+
+        // Everything else means Docker answered and Azurite still did not come up: a bad or
+        // withdrawn image tag, a failed pull, a port conflict, or our own startup timeout. Those
+        // are genuine failures and must not masquerade as "no Docker".
+        throw new InvalidOperationException(
+            $"A Docker endpoint was available but the Azurite container ('{image}') failed to " +
+            "start. This is a genuine integration-test failure, not a missing-Docker skip. If " +
+            "the ':latest' image has regressed, pin a known-good tag with AIS_TEST_AZURITE_IMAGE.",
+            startupFailure);
     }
 
     private static string ImageRef() =>

@@ -17,7 +17,7 @@ public class ReceiverHostExtensionsStatisticsTests
         byte[] bytes = "!AIVDM,1,1,,A,13u?etPv2;0n:dDPwUM1U1Cb069D,0*24"u8.ToArray();
 
         // Yield 5 messages
-        List<ReadOnlyMemory<byte>> messages = Enumerable.Repeat((ReadOnlyMemory<byte>)bytes, 5).ToList();
+        List<ReadOnlyMemory<byte>> messages = [.. Enumerable.Repeat((ReadOnlyMemory<byte>)bytes, 5)];
 
         receiver.GetAsync(Arg.Any<CancellationToken>())
             .Returns(messages.ToAsyncEnumerable());
@@ -59,7 +59,7 @@ public class ReceiverHostExtensionsStatisticsTests
         byte[] bytes = "GARBAGE"u8.ToArray();
 
         // Yield 5 garbage messages
-        List<ReadOnlyMemory<byte>> messages = Enumerable.Repeat((ReadOnlyMemory<byte>)bytes, 5).ToList();
+        List<ReadOnlyMemory<byte>> messages = [.. Enumerable.Repeat((ReadOnlyMemory<byte>)bytes, 5)];
 
         receiver.GetAsync(Arg.Any<CancellationToken>())
             .Returns(messages.ToAsyncEnumerable());

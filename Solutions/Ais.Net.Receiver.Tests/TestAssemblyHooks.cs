@@ -9,7 +9,7 @@ namespace Ais.Net.Receiver.Tests;
 /// <c>[TestClass]</c>, so it sits here rather than forcing <see cref="AzuriteFixture"/> to be one.
 /// </summary>
 [TestClass]
-public sealed class TestAssemblyHooks
+public static class TestAssemblyHooks
 {
     /// <summary>
     /// Tears down the shared Azurite container once every test has finished. No-op when no

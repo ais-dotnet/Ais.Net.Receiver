@@ -22,12 +22,9 @@ internal static class RetryPipelines
     public static ResiliencePipeline ConstantDelay(TimeSpan delay, int maxAttempts)
     {
         // Polly requires MaxRetryAttempts >= 1; a single total attempt means no retry strategy at all.
-        if (maxAttempts <= 1)
-        {
-            return ResiliencePipeline.Empty;
-        }
-
-        return new ResiliencePipelineBuilder()
+        return maxAttempts <= 1
+            ? ResiliencePipeline.Empty
+            : new ResiliencePipelineBuilder()
             .AddRetry(new RetryStrategyOptions
             {
                 ShouldHandle = new PredicateBuilder().Handle<Exception>(),

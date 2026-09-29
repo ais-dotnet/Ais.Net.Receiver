@@ -45,8 +45,5 @@ public sealed class ApplicationInstrumentation : IDisposable
     public ActivitySource ActivitySource { get; }
 
     /// <inheritdoc/>
-    public void Dispose()
-    {
-        this.ActivitySource.Dispose();
-    }
+    public void Dispose() => this.ActivitySource.Dispose();
 }

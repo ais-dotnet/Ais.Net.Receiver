@@ -58,8 +58,5 @@ public class AisConnectionMonitor : IAisConnectionMonitor
     }
 
     /// <inheritdoc/>
-    public void RecordConnectionStateChanged(bool connected)
-    {
-        this.isConnected = connected;
-    }
+    public void RecordConnectionStateChanged(bool connected) => this.isConnected = connected;
 }

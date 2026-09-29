@@ -215,7 +215,7 @@ public class ActivityExtensionsTests
         activity.StatusDescription.ShouldBe("Outer error");
 
         // Should have 3 exception events: outer + 2 inner
-        activity.Events.Count(e => e.Name == "exception" || e.Name == "exception.inner").ShouldBe(3);
+        activity.Events.Count(e => e.Name is "exception" or "exception.inner").ShouldBe(3);
 
         // Verify outer exception
         ActivityEvent outerEvent = activity.Events.First(e => e.Name == "exception");
@@ -224,7 +224,7 @@ public class ActivityExtensionsTests
         outerEvent.Tags.First(t => t.Key == "exception.depth").Value.ShouldBe(0);
 
         // Verify inner exceptions
-        ActivityEvent[] innerEvents = activity.Events.Where(e => e.Name == "exception.inner").ToArray();
+        ActivityEvent[] innerEvents = [.. activity.Events.Where(e => e.Name == "exception.inner")];
         innerEvents.Length.ShouldBe(2);
 
         // First inner (middle)
@@ -301,8 +301,7 @@ public class ActivityExtensionsTests
         using ActivityListener unsampledListener = new()
         {
             ShouldListenTo = source => ReferenceEquals(source, unsampledSource),
-            Sample = (ref ActivityCreationOptions<ActivityContext> _) =>
-                ActivitySamplingResult.PropagationData,
+            Sample = (ref _) => ActivitySamplingResult.PropagationData,
         };
 
         ActivitySource.AddActivityListener(unsampledListener);

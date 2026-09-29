@@ -27,10 +27,10 @@ public class TrackPipelineProcessingTests
         // Everything geofenced away is a legitimate outcome; the metadata must not leak the min/max
         // scan sentinels (long.MaxValue base epoch), which render as Invalid Date in the frontend.
         using MemoryStream stream = new();
-        await DeckGlJsonWriter.SerializeAsync(stream, "empty.nm4", []);
+        await DeckGlJsonWriter.SerializeAsync(stream, "empty.nm4", [], TestContext.CancellationToken);
 
         stream.Position = 0;
-        using JsonDocument document = await JsonDocument.ParseAsync(stream);
+        using JsonDocument document = await JsonDocument.ParseAsync(stream, cancellationToken: TestContext.CancellationToken);
 
         JsonElement metadata = document.RootElement.GetProperty("metadata");
         metadata.GetProperty("baseEpoch").GetInt64().ShouldBe(0);
@@ -140,4 +140,6 @@ public class TrackPipelineProcessingTests
         filtered.Count.ShouldBe(2);
         filtered.ShouldAllBe(p => p.Longitude < 11);
     }
+
+    public TestContext TestContext { get; set; }
 }

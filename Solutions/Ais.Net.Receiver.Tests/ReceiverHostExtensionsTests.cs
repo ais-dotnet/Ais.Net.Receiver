@@ -27,13 +27,13 @@ public class ReceiverHostExtensionsTests
         IObservable<IAisMessage> messages = new[] { (IAisMessage)navigationMessage, (IAisMessage)nameMessage }.ToObservable();
 
         // Act
-        (uint Mmsi, IVesselNavigation Navigation, IVesselName Name) result = await messages.VesselNavigationWithNameStream().FirstOrDefaultAsync();
+        (uint resultMmsi, IVesselNavigation navigation, IVesselName vesselName) = await messages.VesselNavigationWithNameStream().FirstOrDefaultAsync();
 
         // Assert
-        result.Mmsi.ShouldBe(mmsi);
-        result.Navigation.ShouldBe(navigationMessage);
-        result.Name.ShouldBe(nameMessage);
-        result.Name.VesselName.ShouldBe("TEST VESSEL");
+        resultMmsi.ShouldBe(mmsi);
+        navigation.ShouldBe(navigationMessage);
+        vesselName.ShouldBe(nameMessage);
+        vesselName.VesselName.ShouldBe("TEST VESSEL");
     }
 
     [TestMethod]
@@ -115,12 +115,12 @@ public class ReceiverHostExtensionsTests
         IObservable<IAisMessage> messages = new[] { (IAisMessage)nav, (IAisMessage)name }.ToObservable();
 
         // Act - use a configured timeout (test should still work as messages come quickly)
-        (uint Mmsi, IVesselNavigation Navigation, IVesselName Name) result =
+        (uint resultMmsi, _, IVesselName vesselName) =
             await messages.VesselNavigationWithNameStream(TimeSpan.FromMinutes(1)).FirstOrDefaultAsync();
 
         // Assert
-        result.Mmsi.ShouldBe(mmsi);
-        result.Name.VesselName.ShouldBe("TEST VESSEL");
+        resultMmsi.ShouldBe(mmsi);
+        vesselName.VesselName.ShouldBe("TEST VESSEL");
     }
 
     [TestMethod]

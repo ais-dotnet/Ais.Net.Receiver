@@ -29,7 +29,7 @@ public class StorageHealthCheckIntegrationTests : AzuriteIntegrationTestBase
     {
         StorageHealthCheck check = new(Options.Create(this.CreateStorageConfig()));
 
-        HealthCheckResult result = await check.CheckHealthAsync(new HealthCheckContext());
+        HealthCheckResult result = await check.CheckHealthAsync(new HealthCheckContext(), TestContext.CancellationToken);
 
         // Degraded rather than Unhealthy: the endpoint is reachable and the container will be created
         // on first write, so this is "not ready yet", not "broken".
@@ -52,7 +52,7 @@ public class StorageHealthCheckIntegrationTests : AzuriteIntegrationTestBase
 
         StorageHealthCheck check = new(Options.Create(config));
 
-        HealthCheckResult result = await check.CheckHealthAsync(new HealthCheckContext());
+        HealthCheckResult result = await check.CheckHealthAsync(new HealthCheckContext(), TestContext.CancellationToken);
 
         result.Status.ShouldBe(HealthStatus.Healthy);
         result.Data["containerExists"].ShouldBe(true);
@@ -72,7 +72,7 @@ public class StorageHealthCheckIntegrationTests : AzuriteIntegrationTestBase
 
         StorageHealthCheck check = new(Options.Create(config));
 
-        HealthCheckResult result = await check.CheckHealthAsync(new HealthCheckContext());
+        HealthCheckResult result = await check.CheckHealthAsync(new HealthCheckContext(), TestContext.CancellationToken);
 
         result.Status.ShouldBe(HealthStatus.Healthy);
         result.Data["enabled"].ShouldBe(false);
@@ -94,10 +94,12 @@ public class StorageHealthCheckIntegrationTests : AzuriteIntegrationTestBase
 
         StorageHealthCheck check = new(Options.Create(config));
 
-        HealthCheckResult result = await check.CheckHealthAsync(new HealthCheckContext());
+        HealthCheckResult result = await check.CheckHealthAsync(new HealthCheckContext(), TestContext.CancellationToken);
 
         result.Status.ShouldBe(HealthStatus.Unhealthy);
         result.Data.ShouldContainKey("error");
         result.Exception.ShouldNotBeNull();
     }
+
+    public TestContext TestContext { get; set; }
 }

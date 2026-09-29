@@ -27,7 +27,7 @@ public class TcpClientNmeaStreamReaderTests
             int port = ((IPEndPoint)listener.LocalEndpoint).Port;
 
             // Act
-            await reader.ConnectAsync("127.0.0.1", port, this.TestContext.CancellationTokenSource.Token);
+            await reader.ConnectAsync("127.0.0.1", port, this.TestContext.CancellationToken);
 
             // Assert
             reader.Connected.ShouldBeTrue();
@@ -52,21 +52,21 @@ public class TcpClientNmeaStreamReaderTests
             listener.Start();
             int port = ((IPEndPoint)listener.LocalEndpoint).Port;
 
-            await reader.ConnectAsync("127.0.0.1", port, this.TestContext.CancellationTokenSource.Token);
+            await reader.ConnectAsync("127.0.0.1", port, this.TestContext.CancellationToken);
 
             // Accept client and send data
-            TcpClient serverClient = await listener.AcceptTcpClientAsync(this.TestContext.CancellationTokenSource.Token);
+            TcpClient serverClient = await listener.AcceptTcpClientAsync(this.TestContext.CancellationToken);
             NetworkStream stream = serverClient.GetStream();
             byte[] data = "Line1\nLine2\r\n"u8.ToArray();
-            await stream.WriteAsync(data, this.TestContext.CancellationTokenSource.Token);
+            await stream.WriteAsync(data, this.TestContext.CancellationToken);
 
             // Act & Assert - the returned buffer is only valid until the next read, so read and
             // verify each line before requesting the next.
-            ReadOnlyMemory<byte>? line1 = await reader.ReadLineAsync(this.TestContext.CancellationTokenSource.Token);
+            ReadOnlyMemory<byte>? line1 = await reader.ReadLineAsync(this.TestContext.CancellationToken);
             line1.HasValue.ShouldBeTrue();
             Encoding.ASCII.GetString(line1.Value.Span).ShouldBe("Line1");
 
-            ReadOnlyMemory<byte>? line2 = await reader.ReadLineAsync(this.TestContext.CancellationTokenSource.Token);
+            ReadOnlyMemory<byte>? line2 = await reader.ReadLineAsync(this.TestContext.CancellationToken);
             line2.HasValue.ShouldBeTrue();
             Encoding.ASCII.GetString(line2.Value.Span).ShouldBe("Line2");
         }
@@ -90,21 +90,21 @@ public class TcpClientNmeaStreamReaderTests
             listener.Start();
             int port = ((IPEndPoint)listener.LocalEndpoint).Port;
 
-            await reader.ConnectAsync("127.0.0.1", port, this.TestContext.CancellationTokenSource.Token);
+            await reader.ConnectAsync("127.0.0.1", port, this.TestContext.CancellationToken);
 
-            TcpClient serverClient = await listener.AcceptTcpClientAsync(this.TestContext.CancellationTokenSource.Token);
+            TcpClient serverClient = await listener.AcceptTcpClientAsync(this.TestContext.CancellationToken);
             NetworkStream stream = serverClient.GetStream();
             // Send data with CRLF line ending
             byte[] data = "Line1\r\nLine2\r\n"u8.ToArray();
-            await stream.WriteAsync(data, this.TestContext.CancellationTokenSource.Token);
+            await stream.WriteAsync(data, this.TestContext.CancellationToken);
 
             // Act & Assert - the returned buffer is only valid until the next read, so read and
             // verify each line before requesting the next.
-            ReadOnlyMemory<byte>? line1 = await reader.ReadLineAsync(this.TestContext.CancellationTokenSource.Token);
+            ReadOnlyMemory<byte>? line1 = await reader.ReadLineAsync(this.TestContext.CancellationToken);
             line1.HasValue.ShouldBeTrue();
             Encoding.ASCII.GetString(line1.Value.Span).ShouldBe("Line1");
 
-            ReadOnlyMemory<byte>? line2 = await reader.ReadLineAsync(this.TestContext.CancellationTokenSource.Token);
+            ReadOnlyMemory<byte>? line2 = await reader.ReadLineAsync(this.TestContext.CancellationToken);
             line2.HasValue.ShouldBeTrue();
             Encoding.ASCII.GetString(line2.Value.Span).ShouldBe("Line2");
         }
@@ -128,14 +128,14 @@ public class TcpClientNmeaStreamReaderTests
             listener.Start();
             int port = ((IPEndPoint)listener.LocalEndpoint).Port;
 
-            await reader.ConnectAsync("127.0.0.1", port, this.TestContext.CancellationTokenSource.Token);
+            await reader.ConnectAsync("127.0.0.1", port, this.TestContext.CancellationToken);
 
-            TcpClient serverClient = await listener.AcceptTcpClientAsync(this.TestContext.CancellationTokenSource.Token);
+            TcpClient serverClient = await listener.AcceptTcpClientAsync(this.TestContext.CancellationToken);
             serverClient.Close(); // Close server side
 
             // Act - wait a bit for the close to propagate
-            await Task.Delay(50, this.TestContext.CancellationTokenSource.Token);
-            ReadOnlyMemory<byte>? line = await reader.ReadLineAsync(this.TestContext.CancellationTokenSource.Token);
+            await Task.Delay(50, this.TestContext.CancellationToken);
+            ReadOnlyMemory<byte>? line = await reader.ReadLineAsync(this.TestContext.CancellationToken);
 
             // Assert
             line.HasValue.ShouldBeFalse();
@@ -250,21 +250,21 @@ public class TcpClientNmeaStreamReaderTests
             listener.Start();
             int port = ((IPEndPoint)listener.LocalEndpoint).Port;
 
-            await reader.ConnectAsync("127.0.0.1", port, this.TestContext.CancellationTokenSource.Token);
+            await reader.ConnectAsync("127.0.0.1", port, this.TestContext.CancellationToken);
 
-            TcpClient serverClient = await listener.AcceptTcpClientAsync(this.TestContext.CancellationTokenSource.Token);
+            TcpClient serverClient = await listener.AcceptTcpClientAsync(this.TestContext.CancellationToken);
             NetworkStream stream = serverClient.GetStream();
 
             // Send one complete line, then disconnect
             byte[] data = "CompleteLine\n"u8.ToArray();
-            await stream.WriteAsync(data, this.TestContext.CancellationTokenSource.Token);
-            await stream.FlushAsync(this.TestContext.CancellationTokenSource.Token);
+            await stream.WriteAsync(data, this.TestContext.CancellationToken);
+            await stream.FlushAsync(this.TestContext.CancellationToken);
             serverClient.Close();
 
             // Act
-            ReadOnlyMemory<byte>? line1 = await reader.ReadLineAsync(this.TestContext.CancellationTokenSource.Token);
-            await Task.Delay(50, this.TestContext.CancellationTokenSource.Token); // Allow close to propagate
-            ReadOnlyMemory<byte>? line2 = await reader.ReadLineAsync(this.TestContext.CancellationTokenSource.Token);
+            ReadOnlyMemory<byte>? line1 = await reader.ReadLineAsync(this.TestContext.CancellationToken);
+            await Task.Delay(50, this.TestContext.CancellationToken); // Allow close to propagate
+            ReadOnlyMemory<byte>? line2 = await reader.ReadLineAsync(this.TestContext.CancellationToken);
 
             // Assert
             line1.HasValue.ShouldBeTrue();
@@ -291,17 +291,17 @@ public class TcpClientNmeaStreamReaderTests
             listener.Start();
             int port = ((IPEndPoint)listener.LocalEndpoint).Port;
 
-            await reader.ConnectAsync("127.0.0.1", port, this.TestContext.CancellationTokenSource.Token);
+            await reader.ConnectAsync("127.0.0.1", port, this.TestContext.CancellationToken);
 
-            TcpClient serverClient = await listener.AcceptTcpClientAsync(this.TestContext.CancellationTokenSource.Token);
+            TcpClient serverClient = await listener.AcceptTcpClientAsync(this.TestContext.CancellationToken);
 
             // Configure socket to send RST instead of FIN on close
             serverClient.LingerState = new LingerOption(true, 0);
             serverClient.Close();
 
             // Act - wait for RST to propagate
-            await Task.Delay(50, this.TestContext.CancellationTokenSource.Token);
-            ReadOnlyMemory<byte>? line = await reader.ReadLineAsync(this.TestContext.CancellationTokenSource.Token);
+            await Task.Delay(50, this.TestContext.CancellationToken);
+            ReadOnlyMemory<byte>? line = await reader.ReadLineAsync(this.TestContext.CancellationToken);
 
             // Assert - should handle gracefully by returning null
             line.HasValue.ShouldBeFalse();
@@ -326,10 +326,10 @@ public class TcpClientNmeaStreamReaderTests
             listener.Start();
             int port = ((IPEndPoint)listener.LocalEndpoint).Port;
 
-            await reader.ConnectAsync("127.0.0.1", port, this.TestContext.CancellationTokenSource.Token);
+            await reader.ConnectAsync("127.0.0.1", port, this.TestContext.CancellationToken);
 
             // Accept but don't send any data
-            _ = await listener.AcceptTcpClientAsync(this.TestContext.CancellationTokenSource.Token);
+            _ = await listener.AcceptTcpClientAsync(this.TestContext.CancellationToken);
 
             using CancellationTokenSource cts = new(TimeSpan.FromMilliseconds(50));
 
@@ -359,19 +359,19 @@ public class TcpClientNmeaStreamReaderTests
             listener.Start();
             int port = ((IPEndPoint)listener.LocalEndpoint).Port;
 
-            await reader.ConnectAsync("127.0.0.1", port, this.TestContext.CancellationTokenSource.Token);
+            await reader.ConnectAsync("127.0.0.1", port, this.TestContext.CancellationToken);
 
-            TcpClient serverClient = await listener.AcceptTcpClientAsync(this.TestContext.CancellationTokenSource.Token);
+            TcpClient serverClient = await listener.AcceptTcpClientAsync(this.TestContext.CancellationToken);
             NetworkStream stream = serverClient.GetStream();
 
             // Send data with delay - but within timeout
             Task sendTask = Task.Run(async () =>
             {
-                await Task.Delay(30, this.TestContext.CancellationTokenSource.Token);
+                await Task.Delay(30, this.TestContext.CancellationToken);
                 byte[] data = "SlowLine\n"u8.ToArray();
-                await stream.WriteAsync(data, this.TestContext.CancellationTokenSource.Token);
-                await stream.FlushAsync(this.TestContext.CancellationTokenSource.Token);
-            });
+                await stream.WriteAsync(data, this.TestContext.CancellationToken);
+                await stream.FlushAsync(this.TestContext.CancellationToken);
+            }, TestContext.CancellationToken);
 
             using CancellationTokenSource cts = new(TimeSpan.FromSeconds(2));
 
@@ -405,17 +405,17 @@ public class TcpClientNmeaStreamReaderTests
             listener.Start();
             int port = ((IPEndPoint)listener.LocalEndpoint).Port;
 
-            await reader.ConnectAsync("127.0.0.1", port, this.TestContext.CancellationTokenSource.Token);
+            await reader.ConnectAsync("127.0.0.1", port, this.TestContext.CancellationToken);
             reader.Connected.ShouldBeTrue();
 
-            TcpClient serverClient = await listener.AcceptTcpClientAsync(this.TestContext.CancellationTokenSource.Token);
+            TcpClient serverClient = await listener.AcceptTcpClientAsync(this.TestContext.CancellationToken);
             serverClient.Close();
 
             // Wait for close to propagate
-            await Task.Delay(50, this.TestContext.CancellationTokenSource.Token);
+            await Task.Delay(50, this.TestContext.CancellationToken);
 
             // Act - the proper way to detect disconnection is via ReadLineAsync returning null
-            ReadOnlyMemory<byte>? line = await reader.ReadLineAsync(this.TestContext.CancellationTokenSource.Token);
+            ReadOnlyMemory<byte>? line = await reader.ReadLineAsync(this.TestContext.CancellationToken);
 
             // Assert - ReadLineAsync returns null to indicate disconnection
             // Note: TcpClient.Connected property doesn't update until a failed I/O operation,
@@ -441,22 +441,22 @@ public class TcpClientNmeaStreamReaderTests
             listener.Start();
             int port = ((IPEndPoint)listener.LocalEndpoint).Port;
 
-            await reader.ConnectAsync("127.0.0.1", port, this.TestContext.CancellationTokenSource.Token);
+            await reader.ConnectAsync("127.0.0.1", port, this.TestContext.CancellationToken);
 
-            TcpClient serverClient = await listener.AcceptTcpClientAsync(this.TestContext.CancellationTokenSource.Token);
+            TcpClient serverClient = await listener.AcceptTcpClientAsync(this.TestContext.CancellationToken);
             NetworkStream stream = serverClient.GetStream();
 
             // Send a sentence with NO trailing newline, then close the connection.
-            await stream.WriteAsync("!AIVDM,1,1,,A,tail,0*00"u8.ToArray(), this.TestContext.CancellationTokenSource.Token);
-            await stream.FlushAsync(this.TestContext.CancellationTokenSource.Token);
+            await stream.WriteAsync("!AIVDM,1,1,,A,tail,0*00"u8.ToArray(), this.TestContext.CancellationToken);
+            await stream.FlushAsync(this.TestContext.CancellationToken);
             serverClient.Close();
 
             // The final unterminated line is still emitted (StreamReader did), then end-of-stream.
-            ReadOnlyMemory<byte>? line = await reader.ReadLineAsync(this.TestContext.CancellationTokenSource.Token);
+            ReadOnlyMemory<byte>? line = await reader.ReadLineAsync(this.TestContext.CancellationToken);
             line.HasValue.ShouldBeTrue();
             Encoding.ASCII.GetString(line.Value.Span).ShouldBe("!AIVDM,1,1,,A,tail,0*00");
 
-            ReadOnlyMemory<byte>? next = await reader.ReadLineAsync(this.TestContext.CancellationTokenSource.Token);
+            ReadOnlyMemory<byte>? next = await reader.ReadLineAsync(this.TestContext.CancellationToken);
             next.HasValue.ShouldBeFalse();
         }
         finally
@@ -478,24 +478,24 @@ public class TcpClientNmeaStreamReaderTests
             listener.Start();
             int port = ((IPEndPoint)listener.LocalEndpoint).Port;
 
-            await reader.ConnectAsync("127.0.0.1", port, this.TestContext.CancellationTokenSource.Token);
+            await reader.ConnectAsync("127.0.0.1", port, this.TestContext.CancellationToken);
 
-            TcpClient serverClient = await listener.AcceptTcpClientAsync(this.TestContext.CancellationTokenSource.Token);
+            TcpClient serverClient = await listener.AcceptTcpClientAsync(this.TestContext.CancellationToken);
             NetworkStream stream = serverClient.GetStream();
 
             // A 32 KB burst with no newline (far over the reader's cap), then a clean sentence.
             byte[] junk = new byte[32 * 1024];
             Array.Fill(junk, (byte)'X');
-            await stream.WriteAsync(junk, this.TestContext.CancellationTokenSource.Token);
-            await stream.WriteAsync("\n!AIVDM,1,1,,A,good,0*00\n"u8.ToArray(), this.TestContext.CancellationTokenSource.Token);
-            await stream.FlushAsync(this.TestContext.CancellationTokenSource.Token);
+            await stream.WriteAsync(junk, this.TestContext.CancellationToken);
+            await stream.WriteAsync("\n!AIVDM,1,1,,A,good,0*00\n"u8.ToArray(), this.TestContext.CancellationToken);
+            await stream.FlushAsync(this.TestContext.CancellationToken);
 
             // The reader must never surface a line longer than its cap, and must resync to the
             // clean sentence rather than buffering the junk without bound.
             string? recovered = null;
             for (int i = 0; i < 40 && recovered is null; i++)
             {
-                ReadOnlyMemory<byte>? line = await reader.ReadLineAsync(this.TestContext.CancellationTokenSource.Token);
+                ReadOnlyMemory<byte>? line = await reader.ReadLineAsync(this.TestContext.CancellationToken);
                 if (line is null)
                 {
                     break;
@@ -531,14 +531,14 @@ public class TcpClientNmeaStreamReaderTests
             listener.Start();
             int port = ((IPEndPoint)listener.LocalEndpoint).Port;
 
-            await reader.ConnectAsync("127.0.0.1", port, this.TestContext.CancellationTokenSource.Token);
-            _ = await listener.AcceptTcpClientAsync(this.TestContext.CancellationTokenSource.Token);
+            await reader.ConnectAsync("127.0.0.1", port, this.TestContext.CancellationToken);
+            _ = await listener.AcceptTcpClientAsync(this.TestContext.CancellationToken);
 
             // Dispose the reader
             await reader.DisposeAsync();
 
             // Act - reading after dispose should return null (reader is null)
-            ReadOnlyMemory<byte>? line = await reader.ReadLineAsync(this.TestContext.CancellationTokenSource.Token);
+            ReadOnlyMemory<byte>? line = await reader.ReadLineAsync(this.TestContext.CancellationToken);
 
             // Assert
             line.HasValue.ShouldBeFalse();

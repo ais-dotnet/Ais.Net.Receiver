@@ -70,7 +70,7 @@ public class ResilientStorageClientTests
 
             string[] files = Directory.GetFiles(deadLetterDir);
             files.Length.ShouldBe(1);
-            (await File.ReadAllTextAsync(files[0])).ShouldBe("SENTENCE-A\nSENTENCE-B\n");
+            (await File.ReadAllTextAsync(files[0], TestContext.CancellationToken)).ShouldBe("SENTENCE-A\nSENTENCE-B\n");
         }
         finally
         {
@@ -149,4 +149,6 @@ public class ResilientStorageClientTests
             }
         }
     }
+
+    public TestContext TestContext { get; set; }
 }

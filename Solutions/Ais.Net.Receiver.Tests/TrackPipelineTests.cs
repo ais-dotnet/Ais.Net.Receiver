@@ -34,7 +34,7 @@ public class TrackPipelineTests
             "\\s:2573595,c:1614556794*08\\!BSVDM,1,1,,A,13m;PJ?00025:B8`RpHL=D5f26sd,0*46"u8.ToArray(),
         }.ToAsyncEnumerable());
 
-        IReadOnlyList<VesselTrack> tracks = await TrackPipeline.BuildAsync(receiver);
+        IReadOnlyList<VesselTrack> tracks = await TrackPipeline.BuildAsync(receiver, cancellationToken: TestContext.CancellationToken);
 
         VesselTrack track = tracks.ShouldHaveSingleItem();
         track.Mmsi.ShouldNotBe(0u);
@@ -52,7 +52,7 @@ public class TrackPipelineTests
         INmeaReceiver receiver = Substitute.For<INmeaReceiver>();
         receiver.GetAsync(Arg.Any<CancellationToken>()).Throws(new IOException("storage unavailable"));
 
-        await Should.ThrowAsync<IOException>(() => TrackPipeline.BuildAsync(receiver));
+        await Should.ThrowAsync<IOException>(() => TrackPipeline.BuildAsync(receiver, cancellationToken: TestContext.CancellationToken));
     }
 
     [TestMethod]
@@ -67,7 +67,8 @@ public class TrackPipelineTests
         Exception? reported = null;
         IReadOnlyList<VesselTrack> tracks = await TrackPipeline.BuildAsync(
             receiver,
-            onStreamFault: ex => reported = ex);
+            onStreamFault: ex => reported = ex,
+            cancellationToken: TestContext.CancellationToken);
 
         // The single position is filtered by the >= 2 rule; the point is that no exception escaped.
         tracks.ShouldBeEmpty();
@@ -80,4 +81,6 @@ public class TrackPipelineTests
             throw new IOException("connection reset");
         }
     }
+
+    public TestContext TestContext { get; set; }
 }

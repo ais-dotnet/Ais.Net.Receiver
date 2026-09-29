@@ -10,7 +10,7 @@ namespace Ais.Net.Receiver.Demo.Tracks.Processing;
 
 public class VesselTrackBuilder
 {
-    private readonly Dictionary<uint, VesselTrack> _tracks = new();
+    private readonly Dictionary<uint, VesselTrack> _tracks = [];
     private readonly Lock _lock = new();
 
     public void AddNavigation(uint mmsi, IVesselNavigation navigation, long epoch)

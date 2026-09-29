@@ -55,7 +55,7 @@ public static class ReceiverHostExtensions
                             sentences - state.LastSentences,
                             errors - state.LastErrors);
                     })
-                .Select(state => (Message: state.Message, Sentence: state.Sentence, Error: state.Error));
+                .Select(state => (state.Message, state.Sentence, state.Error));
         }
     }
 

@@ -78,7 +78,10 @@ public class NetworkStreamNmeaReceiverReconnectionTests
         private readonly int linesPerConnection;
         private int linesRemaining;
 
-        public CyclingStreamReader(int linesPerConnection) => this.linesPerConnection = linesPerConnection;
+        public CyclingStreamReader(int linesPerConnection)
+        {
+            this.linesPerConnection = linesPerConnection;
+        }
 
         public int ConnectCount { get; private set; }
 

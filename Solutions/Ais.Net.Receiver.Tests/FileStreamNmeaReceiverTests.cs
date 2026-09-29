@@ -47,7 +47,7 @@ public class FileStreamNmeaReceiverTests
         IFile file = this.fileSystem.CreateFile(this.testFilePath);
         await using (Stream stream = file.OpenWrite())
         {
-            await stream.WriteAsync(fileBytes);
+            await stream.WriteAsync(fileBytes, TestContext.CancellationToken);
         }
 
         FileStreamNmeaReceiver receiver = new(this.fileSystem, this.testFilePath);
@@ -55,7 +55,7 @@ public class FileStreamNmeaReceiverTests
         List<ReadOnlyMemory<byte>> result = await receiver.GetAsync(CancellationToken.None).ToListAsync(CancellationToken.None);
 
         result.Count.ShouldBe(1);
-        result[0].ToArray().ShouldBe(new byte[] { (byte)'!', 0xE9, (byte)'A' });
+        result[0].ToArray().ShouldBe([(byte)'!', 0xE9, (byte)'A']);
     }
 
     [TestMethod]
@@ -176,4 +176,6 @@ public class FileStreamNmeaReceiverTests
         result.Count.ShouldBe(1);
         System.Text.Encoding.ASCII.GetString(result[0].Span).ShouldBe("SingleLine");
     }
+
+    public TestContext TestContext { get; set; }
 }

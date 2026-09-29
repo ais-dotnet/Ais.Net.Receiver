@@ -82,7 +82,10 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
             storageConfig.ContainerName,
             storageConfig.WriteBatchSize);
 
-        this.logger.TelemetryConfigured(aisConfig.Telemetry.Verbosity.ToString());
+        if (this.logger.IsEnabled(LogLevel.Information))
+        {
+            this.logger.TelemetryConfigured(aisConfig.Telemetry.Verbosity.ToString());
+        }
 
         this.receiverHost = ReceiverPipeline.CreateHost(
             aisConfig,
@@ -212,10 +215,7 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
 
         // Subscribe to sentences for metrics
         this.subscriptions.Add(
-            this.receiverHost.RawSentences.Subscribe(_ =>
-            {
-                this.metrics.SentencesReceived.Add(1);
-            }));
+            this.receiverHost.RawSentences.Subscribe(_ => this.metrics.SentencesReceived.Add(1)));
 
         // Subscribe to errors for metrics with error type dimension
         this.subscriptions.Add(
@@ -247,11 +247,16 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
                 this.receiverHost.GetStreamStatistics(aisConfig.Telemetry.StatisticsPeriodicity)
                     .Subscribe(
                         statistics =>
-                            this.logger.StreamStatistics(
-                                this.timeProvider.GetUtcNow().UtcDateTime,
-                                statistics.Sentence,
-                                statistics.Message,
-                                statistics.Error),
+                        {
+                            if (this.logger.IsEnabled(LogLevel.Information))
+                            {
+                                this.logger.StreamStatistics(
+                                    this.timeProvider.GetUtcNow().UtcDateTime,
+                                    statistics.Sentence,
+                                    statistics.Message,
+                                    statistics.Error);
+                            }
+                        },
                         error => this.logger.StatisticsStreamError(error)));
         }
 

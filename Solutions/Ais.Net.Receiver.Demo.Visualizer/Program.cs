@@ -23,11 +23,9 @@ builder.AddServiceDefaults(
 builder.Services.AddOptions<VisualizerOptions>()
     .Bind(builder.Configuration.GetSection(VisualizerOptions.SectionName))
     .PostConfigure(options =>
-    {
         // Replaying a captured blob should need nothing beyond the blob path: fall back to the
         // receiver's own storage connection string, which under the AppHost already points at Azurite.
-        options.Replay.ConnectionString ??= builder.Configuration["Storage:ConnectionString"];
-    });
+        options.Replay.ConnectionString ??= builder.Configuration["Storage:ConnectionString"]);
 
 builder.Services.AddSingleton<ReplayTrackSource>();
 

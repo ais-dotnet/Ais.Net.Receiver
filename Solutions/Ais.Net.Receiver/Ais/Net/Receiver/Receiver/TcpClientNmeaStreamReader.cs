@@ -215,7 +215,7 @@ public class TcpClientNmeaStreamReader : INmeaStreamReader
                 // The stream closed with no further newline. Emit any final, unterminated line
                 // (StreamReader.ReadLineAsync did) before signalling end of stream, unless it is over
                 // the length cap, in which case drop it.
-                if (buffer.Length == 0 || buffer.Length > MaxLineLength)
+                if (buffer.Length is 0 or > MaxLineLength)
                 {
                     if (buffer.Length > 0)
                     {

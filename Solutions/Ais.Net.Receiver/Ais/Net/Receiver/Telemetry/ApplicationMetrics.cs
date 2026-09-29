@@ -229,8 +229,5 @@ public sealed class ApplicationMetrics : IDisposable
     public void SetBatchesPending(long count) => Volatile.Write(ref this.batchesPending, count);
 
     /// <inheritdoc/>
-    public void Dispose()
-    {
-        this.meter.Dispose();
-    }
+    public void Dispose() => this.meter.Dispose();
 }

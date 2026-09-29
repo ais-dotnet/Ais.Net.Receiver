@@ -57,7 +57,7 @@ public class DeadLetterStoreTests
         string good = await store.WriteAsync(["GOOD"u8.ToArray()]);
 
         // ...alongside a leftover staging file from a hypothetical interrupted write.
-        await File.WriteAllTextAsync(Path.Combine(dir.Path, "deadletter-partial.nm4.tmp"), "half-written");
+        await File.WriteAllTextAsync(Path.Combine(dir.Path, "deadletter-partial.nm4.tmp"), "half-written", TestContext.CancellationToken);
 
         store.GetPendingFiles().ShouldHaveSingleItem().ShouldBe(good);
     }
@@ -75,4 +75,6 @@ public class DeadLetterStoreTests
 
         store.GetPendingFiles().ShouldBe([first, second]);
     }
+
+    public TestContext TestContext { get; set; }
 }
