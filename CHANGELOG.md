@@ -95,7 +95,7 @@ entries below.
 ### Changed
 
 - Upgraded to .NET 10 (`net10.0`) and C# 14, with a modernised project structure, and to
-  `Ais.Net.Models` 1.0.1.
+  `Ais.Net.Models` 1.0.2.
 - Adopted Central Package Management: package versions live in `Solutions/Directory.Packages.props`.
 - **The configuration file is renamed and restructured.** Settings move from `settings.json` to
   `appsettings.json`, read through the standard .NET host pipeline, so `appsettings.{Environment}.json`,

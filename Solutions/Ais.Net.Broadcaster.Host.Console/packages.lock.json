@@ -268,7 +268,7 @@
       "ais.net.receiver": {
         "type": "Project",
         "dependencies": {
-          "Ais.Net.Models": "[1.0.1, )",
+          "Ais.Net.Models": "[1.0.2, )",
           "Corvus.Retry": "[1.0.7, )",
           "Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions": "[10.0.12, )",
           "Microsoft.Extensions.Logging.Abstractions": "[10.0.12, )",
@@ -281,9 +281,9 @@
       },
       "Ais.Net.Models": {
         "type": "CentralTransitive",
-        "requested": "[1.0.1, )",
-        "resolved": "1.0.1",
-        "contentHash": "irKtFX2z8wDJB7IKVmeztgyIArczoanL1FLI+zLpUGgWDoutiPAX73V7IJrfMJ96BAeuIkIQUHJFW3ifS26Wlw==",
+        "requested": "[1.0.2, )",
+        "resolved": "1.0.2",
+        "contentHash": "/pC6UVuF6bzPkB8wyZJ64QkpjTGt+zn3ASLSeRzvhF/H7bJRZtXc65KkX2/Y2p2/VtDK81jafZM8P/qYSrKeEw==",
         "dependencies": {
           "Ais.Net": "0.4.2"
         }
