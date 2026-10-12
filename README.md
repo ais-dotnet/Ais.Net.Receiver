@@ -39,7 +39,7 @@ A simple .NET AIS Receiver for capturing the Norwegian Coastal Administration's 
 
 The [Norwegian Coastal Administration provide a TCP endpoint](https://ais.kystverket.no/) (`153.44.253.27:5631`) for broadcasting their raw AIS AIVDM/AIVDO sentences, captured by over 50 base stations, and covers the area 40-60 nautical miles from the Norwegian coastline.
 
-This project contains a [NmeaReceiver](https://github.com/ais-dotnet/Ais.Net.Receiver/blob/master/Solutions/Ais.Net.Receiver/Receiver/NmeaReceiver.cs) which consumes the raw NetworkStream, a [NmeaToAisMessageTypeProcessor](https://github.com/ais-dotnet/Ais.Net.Receiver/blob/master/Solutions/Ais.Net.Receiver/Parser/NmeaToAisMessageTypeProcessor.cs), which can decode the raw sentences into `IAisMessage`, and [ReceiverHost](https://github.com/ais-dotnet/Ais.Net.Receiver/blob/master/Solutions/Ais.Net.Receiver/Receiver/ReceiverHost.cs) which manages the process and exposes an `IObservable<string>` for raw sentences and an `IObservable<IAisMessage>` for decoded messages. `ReceiverHost` can be hosted in a console application or other runtime environments like [Polyglot Notebooks](https://github.com/dotnet/interactive) or even [WASM](#running-as-wasm).
+This project contains a [NmeaReceiver](https://github.com/ais-dotnet/Ais.Net.Receiver/blob/main/Solutions/Ais.Net.Receiver/Ais/Net/Receiver/Receiver/NmeaReceiver.cs) which consumes the raw NetworkStream, a [NmeaToAisMessageTypeProcessor](https://github.com/ais-dotnet/Ais.Net.Receiver/blob/main/Solutions/Ais.Net.Receiver/Ais/Net/Receiver/Parser/NmeaToAisMessageTypeProcessor.cs), which can decode the raw sentences into `IAisMessage`, and [ReceiverHost](https://github.com/ais-dotnet/Ais.Net.Receiver/blob/main/Solutions/Ais.Net.Receiver/Ais/Net/Receiver/Receiver/ReceiverHost.cs) which manages the process and exposes an `IObservable<string>` for raw sentences and an `IObservable<IAisMessage>` for decoded messages. `ReceiverHost` can be hosted in a console application or other runtime environments like [Polyglot Notebooks](https://github.com/dotnet/interactive) or even [WASM](#running-as-wasm).
 
 The project also includes a [demo console](https://github.com/ais-dotnet/Ais.Net.Receiver/blob/master/Solutions/Ais.Net.Receiver.Host.Console/Program.cs) which shows how the various pieces can fit together, including subscribing to the `IObservable<string>` and `IObservable<IAisMessage>` streams and displaying the results or batch the AIVDM/AIVDO sentences and write them to Azure Blob Storage using the [Append Blob](https://docs.microsoft.com/en-us/rest/api/storageservices/append-block) feature, to create timestamped hour-long rolling logs.
 
@@ -63,9 +63,9 @@ visualisation — is a subscriber to its streams.
 
 ### The receive pipeline
 
-Any `INmeaReceiver` can feed the decoder: the live TCP feed, a recorded `.nm4` file, or (in the
-demos) an hour the receiver previously captured to blob storage. `ReceiverHost` wraps the source in
-retry ([Polly](https://github.com/App-vNext/Polly)), decodes each sentence with
+Any `INmeaReceiver` can feed the decoder: a live TCP or WebSocket (`ws://`/`wss://`) feed, a
+recorded `.nm4` file, or (in the demos) an hour the receiver previously captured to blob storage. `ReceiverHost` wraps the source in
+retry ([Corvus.Retry](https://github.com/corvus-dotnet/Corvus.Retry)), decodes each sentence with
 [Ais.Net](https://github.com/ais-dotnet/Ais.Net), and exposes the results as Rx streams:
 `RawSentences` (bytes), `Sentences` (text), `Messages` (`IAisMessage`), `Metadata` (each message
 paired with the station id and Unix timestamp parsed from its NMEA tag block), and `Errors`.
@@ -73,6 +73,7 @@ paired with the station id and Unix timestamp parsed from its NMEA tag block), a
 ```mermaid
 flowchart LR
     TCP["Live TCP feed<br/>NetworkStreamNmeaReceiver"] --> RH
+    WS["Live WebSocket feed<br/>WebSocketNmeaReceiver"] --> RH
     FILE["Recorded .nm4 file<br/>FileStreamNmeaReceiver"] --> RH
     BLOB["Captured blob<br/>BlobNmeaReceiver (demo)"] --> RH
 
@@ -102,8 +103,10 @@ flowchart LR
         N[("NATS<br/>tcp 4222 · ws 8080")]
         A[("Azurite<br/>blob emulator")]
         V["visualizer<br/>ASP.NET Core"]
+        BC["broadcaster<br/>sample replay · tcp 15631 · ws 18080"]
     end
 
+    BC -. "AisSource=broadcaster" .-> W
     W -- "capture: hourly .nm4 blobs" --> A
     W -- "publish: ais.messages (JSON)" --> N
     A -. "replay source" .-> V
@@ -129,7 +132,7 @@ a second decode path, is why `Ais.Net.Receiver.Demo.Tracks` exists.
 
 | Project | Role |
 | --- | --- |
-| `Ais.Net.Receiver` | Core library: `INmeaReceiver` sources, `ReceiverHost` decode, resilience |
+| `Ais.Net.Receiver` | Core library: `INmeaReceiver` sources (TCP, WebSocket, file), `ReceiverHost` decode, resilience |
 | `Ais.Net.Receiver.Storage.Azure.Blob` | Hourly append-blob capture for Azure Storage |
 | `Ais.Net.Receiver.ServiceDefaults` | Shared hosting: OpenTelemetry, health checks, receive/storage pipeline wiring, shared NATS names |
 | `Ais.Net.Receiver.Host.Console` | Interactive Spectre.Console host |
@@ -137,6 +140,9 @@ a second decode path, is why `Ais.Net.Receiver.Demo.Tracks` exists.
 | `Ais.Net.Receiver.AppHost` | .NET Aspire orchestration for local development |
 | `Ais.Net.Receiver.Demo.Tracks` | Demo library: recording → vessel tracks (geofence, downsample, deck.gl JSON) |
 | `Ais.Net.Receiver.Demo.Visualizer` | Demo web host: serves the deck.gl page, `/api/config`, `/api/tracks` |
+| `Ais.Net.Broadcaster` | Sink-side library: `INmeaBroadcaster` (TCP, WebSocket) and the `BroadcastPipeline` that paces, loops and injects faults |
+| `Ais.Net.Broadcaster.Host.Console` | The `ais-broadcaster` dotnet tool: `replay` a recording or `relay` a live feed |
+| `Ais.Net.Broadcaster.Tests` | Broadcaster unit and end-to-end tests, driven through the receiver's own connections |
 
 ### Design rules
 
@@ -205,6 +211,7 @@ Update the values in the `appsettings.json` file:
 {
   "Ais": {
     "Connection": {
+      "Transport": "Tcp",
       "Host": "153.44.253.27",
       "Port": 5631,
       "Retry": {
@@ -221,6 +228,28 @@ Update the values in the `appsettings.json` file:
   }
 }
 ```
+
+`Ais:Connection:Transport` selects the source: `Tcp` (the default, which uses `Host` and `Port`) or
+`WebSocket`, which uses `Url` instead and ignores `Host` and `Port`. `Url` must be an absolute
+`ws://` or `wss://` URL. To receive from a WebSocket feed:
+
+```json
+{
+  "Ais": {
+    "Connection": {
+      "Transport": "WebSocket",
+      "Url": "wss://example.net/ais",
+      "Retry": {
+        "Attempts": 5,
+        "Periodicity": "00:00:00:01"
+      }
+    }
+  }
+}
+```
+
+The WebSocket receiver accepts one sentence per message or several newline-delimited sentences in one
+message, and it reconnects with the same `Retry` settings as the TCP receiver.
 
 See [Configuration](#configuration) for the full schema and every available setting.
 
@@ -262,6 +291,57 @@ User secrets are only loaded in the **Development** environment, so run the host
 are silently ignored and capture stays off. For a production deployment use environment variables
 instead — they take precedence over user secrets, so what a container or systemd unit injects
 continues to win.
+
+## Ais.Net.Broadcaster
+
+The broadcaster is the sink-side counterpart of the receiver: where the receiver connects to an NMEA
+feed, the broadcaster *is* one. It either replays a recording or relays a live feed, and serves the
+sentences to any number of clients over raw TCP (newline-terminated, the shape of the Norwegian
+Coastal Administration feed) and WebSocket (one sentence per message, or newline-delimited batches),
+on both at once if you like. A replay can be paced by the recording's NMEA tag-block timestamps, so
+it reproduces the original bursts and lulls, or at a fixed rate, or as fast as possible; it loops by
+default, so the feed never ends. Fault injection - dropped connections, silences, malformed and
+over-long lines - exercises a receiver's reconnect, idle-timeout and error paths on demand rather
+than waiting for the real feed to misbehave.
+
+It ships as a dotnet tool, with a short sample recording in its `samples` folder:
+
+```bash
+dotnet tool install -g Ais.Net.Broadcaster.Cli
+```
+
+Replay the sample, paced by its timestamps, to TCP clients on port 5631 and WebSocket clients on
+port 8080:
+
+```bash
+ais-broadcaster replay samples/kystverket-20260511T00.nm4 --tcp 5631 --ws 8080
+```
+
+Relay the live Norwegian feed to local WebSocket clients, so one upstream connection serves them all:
+
+```bash
+ais-broadcaster relay tcp://153.44.253.27:5631 --ws 8080
+```
+
+Test a receiver's resilience: drop every client each minute, go silent for 90 seconds every ten
+minutes, and corrupt every 200th sentence:
+
+```bash
+ais-broadcaster replay samples/sample.nm4 --tcp 5631 --disconnect-every 60 --silence-every 600 --silence-for 90 --malformed-every 200
+```
+
+`ais-broadcaster replay --help` and `ais-broadcaster relay --help` list every option: listener
+address and path, WebSocket framing, line endings, per-client queue size and slow-client policy,
+pacing rate and speed, and the faults. Press Ctrl+C to stop; the listeners close their clients and
+the tool exits cleanly.
+
+The Aspire AppHost always runs the broadcaster, replaying the sample recording. The worker reads the
+live Kystverket feed unless the AppHost is started with `AisSource` set to `broadcaster`; then it
+reads the broadcaster's WebSocket endpoint instead, which works offline. The quickest way is the
+`Ais.Net.Receiver.AppHost (broadcaster)` launch profile, from the IDE or with
+`dotnet run --project Solutions/Ais.Net.Receiver.AppHost --launch-profile "Ais.Net.Receiver.AppHost (broadcaster)"`;
+the setting is also honoured as an environment variable or on the command line
+(`dotnet run --project Solutions/Ais.Net.Receiver.AppHost -- --AisSource broadcaster`).
 
 ## Demos
 
@@ -582,10 +662,12 @@ The full schema, with every optional section present:
 
 ##### AIS
 
-`Ais:Connection` controls the TCP connection to the feed.
+`Ais:Connection` controls the connection to the feed.
 
-- `Host`: IP address or FQDN of the AIS source
-- `Port`: port number for the AIS source
+- `Transport`: `Tcp` (default) or `WebSocket`
+- `Host`: IP address or FQDN of the AIS source (TCP only)
+- `Port`: port number for the AIS source (TCP only)
+- `Url`: absolute `ws://` or `wss://` URL of the AIS source (WebSocket only)
 - `Retry:Periodicity`: base delay between reconnection attempts. Backoff is linear —
   `Periodicity × attempt`.
 - `Retry:Attempts`: **caps how far the backoff delay grows, and does not limit the number of
