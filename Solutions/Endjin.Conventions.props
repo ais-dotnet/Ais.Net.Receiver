@@ -29,11 +29,11 @@
     <Authors>Endjin Limited</Authors>
 
     <!--
-      Preserved verbatim from the package rather than updated to the current year: a copyright notice
-      is not ours to silently change, and computing the year at build time would make the output
-      non-reproducible.
+      The year is computed at build time (UTC) so the notice never goes stale. Only the Copyright
+      assembly attribute and package metadata vary with it, so builds remain functionally identical
+      across a year boundary.
     -->
-    <Copyright>Copyright (c) Endjin Limited 2023. All rights reserved.</Copyright>
+    <Copyright>Copyright (c) Endjin Limited $([System.DateTime]::UtcNow.Year). All rights reserved.</Copyright>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -53,6 +53,17 @@
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <Deterministic>true</Deterministic>
   </PropertyGroup>
+
+  <PropertyGroup>
+    <!--
+      Package icon. The removed package set this and packed the solution-level PackageIcon.png
+      itself; without it the nupkg ships with no icon. The file lives alongside this props file.
+    -->
+    <PackageIcon>PackageIcon.png</PackageIcon>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)PackageIcon.png" Pack="true" PackagePath="\" Visible="false" />
+  </ItemGroup>
 
   <PropertyGroup>
     <!--

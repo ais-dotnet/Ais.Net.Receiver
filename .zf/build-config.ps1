@@ -1,15 +1,3 @@
-# First load Endjin.RecommendedPractices.Build as we need the container tasks from here
-# TODO: Replace with ZeroFailed extension when implemented
-
-$zerofailedExtensions = @(
-    @{
-        Name = "Endjin.RecommendedPractices.Build"
-        Version = "1.5.14"
-    }
-)
-. ZeroFailed.tasks -ZfPath $here/.zf
-
-# Then load the ZeroFailed extensions
 $zerofailedExtensions = @(
     @{
         # References the extension from its GitHub repository. If not already installed, use latest version from 'main' will be downloaded.
@@ -17,36 +5,15 @@ $zerofailedExtensions = @(
         GitRepository = "https://github.com/zerofailed/ZeroFailed.Build.DotNet"
         GitRef = "main"
     }
+    @{
+        # Builds and publishes the container images; hooks itself into the 'package' and 'publish' stages.
+        Name = "ZeroFailed.Build.Containers"
+        GitRepository = "https://github.com/zerofailed/ZeroFailed.Build.Containers"
+        GitRef = "main"
+    }
 )
 . ZeroFailed.tasks -ZfPath $here/.zf
 
-# Endjin.RecommendedPractices.Build 1.5.14 (loaded above) hard-pins the Covenant SBOM tool to 0.19.0,
-# which predates Central Package Management support and reports "no components could be found" for this
-# CPM solution, failing the build. Override it to a CPM-aware version. This assignment runs after both
-# extensions load, so it wins over their defaults.
-$covenantVersion = "0.24.0"
-
-# Endjin.RecommendedPractices.Build 1.5.14 also assigns the VSTest-era test logging settings outright:
-# '/flp:...' as the file logger and an empty logger list. ZeroFailed.Build.DotNet only applies its own
-# defaults when these are unset, so it inherits them - and the Microsoft Testing Platform rejects '/flp'
-# as an unknown argument (exit code 5, "Zero tests ran"), leaving no TRX results and empty coverage.
-# Restore ZeroFailed.Build.DotNet's platform-aware defaults.
-$DotNetTestLoggers = @(
-    "console;verbosity=$LogLevel"
-    "trx;LogFilePrefix=test-results"
-)
-$DotNetTestFileLoggerProps = {
-    if ($isMtp) {
-        Resolve-Value $DotNetTestFileLoggerProps_MTP
-    }
-    else {
-        Resolve-Value $DotNetTestFileLoggerProps_VSTest
-    }
-}
-
-#
-# Build process configuration
-#
 #
 # Build process control options
 #
@@ -67,6 +34,9 @@ $ProjectsToPublish = @(
     # "Solutions/Ais.Net.Receiver.Host.Console/Ais.Net.Receiver.Host.Console.csproj"
 )
 
+#
+# Container images (ZeroFailed.Build.Containers)
+#
 $ContainerRegistryType = 'docker'
 $ContainerRegistryPublishPrefix = 'endjin'  # publish the container images to the 'endjin' DockerHub namespace
 $ContainersToBuild = @(
@@ -78,19 +48,21 @@ $ContainersToBuild = @(
     }
 )
 
-# Ensure the old-style environment variable override expected by the old scripted build still works
+# Ensure the old-style environment variable overrides expected by the CI workflow still work. These are
+# assigned after the extensions load, so they take precedence over the extension's own ZF_BUILD_* variables.
 $ContainerImageVersionOverride = property BUILDVAR_ContainerImageVersionOverride  'local'    # override the GitVersion-generated SemVer used for tagging container images
 $DockerRegistryUsername = property BUILDVAR_DockerRegistryUsername ''
+$DockerRegistryPassword = property DOCKERHUB_ACCESSTOKEN ''
 $NugetPublishSource = property BUILDVAR_NuGetPublishSource "$here/_local-nuget-feed"
 $SkipContainerImages = [Convert]::ToBoolean((property BUILDVAR_SkipContainerImages $false))
+$SkipBuildContainerImages = $SkipContainerImages
+$SkipPublishContainerImages = $SkipContainerImages
 
 # Handle not being able to set an empty environment variable
 if ($ContainerImageVersionOverride -eq '**UNSET**') {
     $ContainerImageVersionOverride = ''
 }
 
-$UseAcrTasks = $false
-$MinimumBicepCliVersion = '0.31.92'
 $NuSpecFilesToPackage = @(
     # "Solutions/MySolution/MyProject/MyProject.nuspec"
 )
@@ -121,7 +93,3 @@ task . FullBuild
 # task PrePublish {}
 # task PostPublish {}
 # task RunLast {}
-
-# TODO: These can be removed once the ZeroFailed container extension is implemented
-task BuildContainerWrapper -If { !$SkipContainerImages } -After PackageCore BuildContainerImages,BuildBicepFiles
-task PublishContainerWrapper -If { !$SkipContainerImages } -After PublishCore PublishContainerImages
