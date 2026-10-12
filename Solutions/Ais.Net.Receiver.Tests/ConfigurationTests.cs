@@ -331,7 +331,7 @@ public class ConfigurationTests
 
         // Assert
         config.Verbosity.ShouldBe(LogLevel.None);
-        config.StatisticsPeriodicity.ShouldBe(TimeSpan.Zero);
+        config.StatisticsPeriodicity.ShouldBe(TimeSpan.FromMinutes(1));
         config.VesselInactivityTimeout.ShouldBeNull();
     }
 

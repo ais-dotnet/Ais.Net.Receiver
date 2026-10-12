@@ -14,8 +14,9 @@ namespace Ais.Net.Receiver.Demo.Tracks.Sources;
 /// <c>AzureAppendBlobStorageClient</c> writes: <c>raw/yyyy/MM/dd/yyyyMMddTHH.nm4</c>.
 /// </summary>
 /// <remarks>
-/// The line handling - including the Latin1 round-tripping that keeps tag-block bytes intact - lives
-/// in <see cref="StreamNmeaReceiver"/>; this class only knows how to open the blob.
+/// The line handling lives in <see cref="StreamNmeaReceiver"/>, which frames lines on the raw bytes
+/// without decoding to text, so tag-block bytes above 0x7F come back unchanged; this class only
+/// knows how to open the blob.
 /// </remarks>
 public sealed class BlobNmeaReceiver : StreamNmeaReceiver
 {

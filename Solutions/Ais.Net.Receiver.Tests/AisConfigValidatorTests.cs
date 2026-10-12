@@ -87,6 +87,51 @@ public class AisConfigValidatorTests
     }
 
     [TestMethod]
+    public void Validate_RetryPeriodicityZero_FailsNamingTheMember()
+    {
+        AisConfig config = ValidTcp();
+        config.Connection.Retry.Periodicity = TimeSpan.Zero;
+
+        ValidateOptionsResult result = this.validator.Validate(null, config);
+
+        result.Failed.ShouldBeTrue();
+        result.Failures.ShouldContain(failure => failure.Contains("Ais:Connection:Retry:Periodicity", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
+    public void Validate_StatisticsPeriodicityZero_FailsNamingTheMember()
+    {
+        AisConfig config = ValidTcp();
+        config.Telemetry.StatisticsPeriodicity = TimeSpan.Zero;
+
+        ValidateOptionsResult result = this.validator.Validate(null, config);
+
+        result.Failed.ShouldBeTrue();
+        result.Failures.ShouldContain(failure => failure.Contains("Ais:Telemetry:StatisticsPeriodicity", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
+    public void Validate_NegativeVesselInactivityTimeout_FailsNamingTheMember()
+    {
+        AisConfig config = ValidTcp();
+        config.Telemetry.VesselInactivityTimeout = TimeSpan.FromSeconds(-1);
+
+        ValidateOptionsResult result = this.validator.Validate(null, config);
+
+        result.Failed.ShouldBeTrue();
+        result.Failures.ShouldContain(failure => failure.Contains("Ais:Telemetry:VesselInactivityTimeout", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
+    public void Validate_UnsetVesselInactivityTimeout_Succeeds()
+    {
+        AisConfig config = ValidTcp();
+        config.Telemetry.VesselInactivityTimeout = null;
+
+        this.validator.Validate(null, config).Succeeded.ShouldBeTrue();
+    }
+
+    [TestMethod]
     public void Validate_ReportsEveryFailureAtOnce()
     {
         AisConfig config = ValidTcp();

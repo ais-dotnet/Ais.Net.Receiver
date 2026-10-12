@@ -39,6 +39,31 @@ public class DeadLetterStoreTests
     }
 
     [TestMethod]
+    public async Task WriteThenRead_PreservesEmptyMessages()
+    {
+        using TempDirectory dir = new();
+        DeadLetterStore store = new(dir.Path, new FakeTimeProvider());
+
+        // The receiver emits an empty line between consecutive newlines as empty memory, and the
+        // live storage path appends it as a bare newline. Replay must hand back the same entries,
+        // not collapse them, or a batch of only empty sentences is deleted as if it had been written.
+        List<ReadOnlyMemory<byte>> batch =
+        [
+            ReadOnlyMemory<byte>.Empty,
+            "!AIVDM,1,1,,A,aaaa,0*00"u8.ToArray(),
+            ReadOnlyMemory<byte>.Empty,
+        ];
+
+        string file = await store.WriteAsync(batch);
+
+        IReadOnlyList<ReadOnlyMemory<byte>> read = await DeadLetterStore.ReadBatchAsync(file);
+        read.Count.ShouldBe(3);
+        read[0].Length.ShouldBe(0);
+        Encoding.ASCII.GetString(read[1].Span).ShouldBe("!AIVDM,1,1,,A,aaaa,0*00");
+        read[2].Length.ShouldBe(0);
+    }
+
+    [TestMethod]
     public void GetPendingFiles_MissingDirectory_ReturnsEmpty()
     {
         using TempDirectory dir = new();

@@ -173,6 +173,11 @@ entries below.
 - A batch that exhausts its storage retries is no longer lost (see dead-lettering under Added).
 - An hour-boundary race that could misroute append-blob writes; writes are now serialized.
 - `Detailed` and `Debug` verbosity no longer suppress the statistics line.
+- Dead-letter replay no longer drops empty sentences, so a replayed batch is byte-for-byte what
+  the live path would have appended.
+- `Ais:Telemetry:StatisticsPeriodicity`, `Ais:Telemetry:VesselInactivityTimeout` (when set) and
+  the `Retry:Periodicity` values are validated as positive durations at start-up, and
+  `StatisticsPeriodicity` now defaults to one minute instead of zero.
 - The tracked `appsettings.json` no longer fails `ValidateOnStart` out of the box (see
   `Storage:EnableCapture` under Changed).
 

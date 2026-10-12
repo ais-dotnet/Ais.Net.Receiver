@@ -90,7 +90,9 @@ public sealed class DeadLetterStore
     }
 
     /// <summary>
-    /// Reads a dead-letter file back into the batch of messages it holds.
+    /// Reads a dead-letter file back into the batch of messages it holds. Every newline-delimited
+    /// entry is returned, including empty ones, so the replayed batch is byte-for-byte what
+    /// <see cref="WriteAsync"/> received.
     /// </summary>
     /// <param name="path">The dead-letter file path.</param>
     /// <returns>The messages contained in the file.</returns>
@@ -104,11 +106,9 @@ public sealed class DeadLetterStore
         {
             if (content[i] == (byte)'\n')
             {
-                if (i > start)
-                {
-                    messages.Add(content.AsMemory(start, i - start));
-                }
-
+                // Keep zero-length entries: the live path appends an empty sentence as a bare newline,
+                // and replay must reproduce the batch exactly as it would have been written.
+                messages.Add(content.AsMemory(start, i - start));
                 start = i + 1;
             }
         }

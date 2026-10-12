@@ -12,8 +12,8 @@ namespace Ais.Net.Receiver.Tests;
 
 /// <summary>
 /// Proves the demo's blob replay source reads a capture back byte-for-byte - including bytes above
-/// 0x7F, which the Latin1 handling in <c>StreamNmeaReceiver</c> exists to preserve and which an
-/// ASCII reader would corrupt to '?'.
+/// 0x7F, which survive because <c>StreamNmeaReceiver</c> frames lines on the raw bytes rather than
+/// decoding them, and which a text reader would corrupt to '?'.
 /// </summary>
 [TestClass]
 public class BlobNmeaReceiverIntegrationTests : AzuriteIntegrationTestBase
