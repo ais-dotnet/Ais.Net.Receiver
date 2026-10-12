@@ -31,9 +31,13 @@
     <!--
       The year is computed at build time (UTC) so the notice never goes stale. Only the Copyright
       assembly attribute and package metadata vary with it, so builds remain functionally identical
-      across a year boundary.
+      across a year boundary. A build that must be reproducible byte for byte can pin the year by
+      setting SOURCE_DATE_EPOCH (the reproducible-builds convention, Unix seconds), which takes
+      precedence over the clock.
     -->
-    <Copyright>Copyright (c) Endjin Limited $([System.DateTime]::UtcNow.Year). All rights reserved.</Copyright>
+    <CopyrightYear Condition="'$(SOURCE_DATE_EPOCH)' != ''">$([System.DateTime]::UnixEpoch.AddSeconds($(SOURCE_DATE_EPOCH)).Year)</CopyrightYear>
+    <CopyrightYear Condition="'$(CopyrightYear)' == ''">$([System.DateTime]::UtcNow.Year)</CopyrightYear>
+    <Copyright>Copyright (c) Endjin Limited $(CopyrightYear). All rights reserved.</Copyright>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -65,16 +69,11 @@
     <None Include="$(MSBuildThisFileDirectory)PackageIcon.png" Pack="true" PackagePath="\" Visible="false" />
   </ItemGroup>
 
-  <PropertyGroup>
-    <!--
-      Marks the build as CI so the compiler normalises embedded paths, which is what makes a
-      deterministic build reproducible. The package only checked TF_BUILD (Azure Pipelines); this repo
-      builds on GitHub Actions, so both are honoured. An explicit -p:ContinuousIntegrationBuild=true
-      still wins, because these only apply when it has not already been set.
-    -->
-    <ContinuousIntegrationBuild Condition="'$(ContinuousIntegrationBuild)' == '' and '$(TF_BUILD)' == 'true'">true</ContinuousIntegrationBuild>
-    <ContinuousIntegrationBuild Condition="'$(ContinuousIntegrationBuild)' == '' and '$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
-  </PropertyGroup>
+  <!--
+    CI detection (ContinuousIntegrationBuild from TF_BUILD / GITHUB_ACTIONS) lives in
+    Directory.Build.props rather than here: this file is opt-in per project, and the projects that
+    restore in locked mode depend on that property too, so it must reach every project.
+  -->
 
   <PropertyGroup>
     <!--

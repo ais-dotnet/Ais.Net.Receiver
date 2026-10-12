@@ -26,4 +26,18 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <!--
+      Marks the build as CI so the compiler normalises embedded paths, which is what makes a
+      deterministic build reproducible, and so RestoreLockedMode engages in the projects that keep a
+      packages.lock.json and CI restores against it rather than silently resolving afresh. Lives
+      here, not in the opt-in Endjin.Conventions.props, because that file reaches only the projects
+      that import it. The Endjin package only checked TF_BUILD (Azure Pipelines); this repo builds on
+      GitHub Actions, so both are honoured. An explicit -p:ContinuousIntegrationBuild=true still
+      wins, because these only apply when it has not already been set.
+    -->
+    <ContinuousIntegrationBuild Condition="'$(ContinuousIntegrationBuild)' == '' and '$(TF_BUILD)' == 'true'">true</ContinuousIntegrationBuild>
+    <ContinuousIntegrationBuild Condition="'$(ContinuousIntegrationBuild)' == '' and '$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
 </Project>
