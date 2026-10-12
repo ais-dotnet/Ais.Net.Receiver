@@ -31,9 +31,10 @@
     <!--
       The year is computed at build time (UTC) so the notice never goes stale. Only the Copyright
       assembly attribute and package metadata vary with it, so builds remain functionally identical
-      across a year boundary. A build that must be reproducible byte for byte can pin the year by
-      setting SOURCE_DATE_EPOCH (the reproducible-builds convention, Unix seconds), which takes
-      precedence over the clock.
+      across a year boundary. The year is taken from SOURCE_DATE_EPOCH (the reproducible-builds
+      convention, Unix seconds) when it is set, which the ZeroFailed build (.zf/*.ps1) pins to the
+      HEAD commit's timestamp, so a commit rebuilds byte for byte in any year; an ad-hoc dotnet build
+      without it falls back to the clock.
     -->
     <CopyrightYear Condition="'$(SOURCE_DATE_EPOCH)' != ''">$([System.DateTime]::UnixEpoch.AddSeconds($(SOURCE_DATE_EPOCH)).Year)</CopyrightYear>
     <CopyrightYear Condition="'$(CopyrightYear)' == ''">$([System.DateTime]::UtcNow.Year)</CopyrightYear>

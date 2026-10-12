@@ -1,3 +1,14 @@
+# Reproducible builds: pin SOURCE_DATE_EPOCH to the HEAD commit's timestamp, so the copyright year in
+# Endjin.Conventions.props (and anything else honouring the convention) derives from the commit being
+# built rather than from the clock, and rebuilding a commit yields identical bytes across a year
+# boundary. A value already present in the environment wins; outside a git checkout the clock is used.
+if (-not $env:SOURCE_DATE_EPOCH) {
+    $commitTimestamp = & git log -1 --format=%ct 2>$null
+    if ($LASTEXITCODE -eq 0 -and $commitTimestamp) {
+        $env:SOURCE_DATE_EPOCH = "$commitTimestamp".Trim()
+    }
+}
+
 $zerofailedExtensions = @(
     @{
         # References the extension from its GitHub repository. If not already installed, use latest version from 'main' will be downloaded.

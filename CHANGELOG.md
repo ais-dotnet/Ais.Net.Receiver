@@ -154,7 +154,9 @@ entries below.
   VSTest-era switches: passing `--nologo`, `--logger` or `--test-adapter-path` makes the run report
   `Zero tests ran` rather than an unrecognised-argument error.
 - Build conventions come from a checked-in `Solutions/Endjin.Conventions.props` with the .NET
-  analyzers and code-style enforcement turned on; the copyright year is computed at build time.
+  analyzers and code-style enforcement turned on. The copyright year comes from `SOURCE_DATE_EPOCH`,
+  which the ZeroFailed build pins to the HEAD commit's timestamp so a commit rebuilds byte for byte
+  in any year; an ad-hoc `dotnet build` without it uses the current year.
 
 ### Removed
 
