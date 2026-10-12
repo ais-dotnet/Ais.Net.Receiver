@@ -217,11 +217,12 @@ public sealed class NmeaReceiver : INmeaReceiver
                     this.logger.StreamConnecting(this.Connection.EndpointAddress, this.Connection.EndpointPort);
                     await this.Connection.ConnectAsync(cancellationToken).ConfigureAwait(false);
                     this.logger.StreamConnected(this.Connection.EndpointAddress, this.Connection.EndpointPort);
-                    retryAttempt = 0; // Reset retry count on successful connection
 
-                    // Note: the consecutive-failure gauge is deliberately NOT reset here. Connecting
-                    // proves the port accepts, not that the feed sends; it is reset on the first
-                    // delivered sentence instead.
+                    // Note: neither the retry count nor the consecutive-failure gauge is reset here.
+                    // Connecting proves the port accepts, not that the feed sends; both are reset on
+                    // the first delivered sentence instead, so a peer that accepts and then closes
+                    // (or stays silent) still gets the configured backoff rather than a retry per
+                    // base interval forever.
                     connected = true;
                     connectActivity?.RecordConnectionStateEvent(true, "connect_succeeded", this.Connection.EndpointAddress, this.Connection.EndpointPort);
                     this.onConnectionStateChanged?.Invoke(true);
@@ -304,8 +305,9 @@ public sealed class NmeaReceiver : INmeaReceiver
                         if (!deliveredData)
                         {
                             // First sentence of this connection: the feed is demonstrably live, so
-                            // wind the consecutive-failure gauge back to zero.
+                            // wind the retry count and the consecutive-failure gauge back to zero.
                             deliveredData = true;
+                            retryAttempt = 0;
 
                             if (reportedConsecutiveFailures > 0)
                             {

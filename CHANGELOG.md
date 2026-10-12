@@ -124,15 +124,23 @@ entries below.
 - **OTLP exporters are registered only when `OTEL_EXPORTER_OTLP_ENDPOINT` is set.** They previously
   defaulted to `localhost:4317` and logged periodic connection failures in deployments with no
   collector, so no telemetry is exported unless the endpoint is configured.
+- **BREAKING: `INmeaStreamReader` is byte-oriented.** `ReadLineAsync` returns
+  `ValueTask<ReadOnlyMemory<byte>?>` (a buffer valid until the next call) instead of
+  `Task<string?>`, and `DataAvailable` is removed. External implementations and callers need
+  updating; new code should implement `INmeaConnection` instead.
 - The receiver sources are rebuilt on the shared primitives listed under Added.
   `NetworkStreamNmeaReceiver`, `WebSocketNmeaReceiver`, `StreamNmeaReceiver`,
-  `FileStreamNmeaReceiver`, `INmeaStreamReader` and `TcpClientNmeaStreamReader` keep their public
-  shape as facades over them. Three behaviours differ: an over-long line with no newline is discarded
+  `FileStreamNmeaReceiver`, `INmeaStreamReader` and `TcpClientNmeaStreamReader` remain as facades
+  over them (`FileStreamNmeaReceiver` keeps its `string path` constructors alongside the injectable
+  `IFileSystem` ones). Three behaviours differ: an over-long line with no newline is discarded
   through to the next newline instead of leaking its tail; file and blob sources pass bytes through
   without the previous Latin1 round-trip; and the hosts' receiver log categories are now
   `NmeaReceiver`, `TcpNmeaConnection` and `WebSocketNmeaConnection`.
 - The network receiver is a native `IAsyncEnumerable` sequence; the observable API is retained as a
   copying projection for backwards compatibility.
+- The reconnect backoff resets when the feed delivers its first sentence, not when the connection
+  is accepted, so a peer that accepts and then closes or stays silent is retried with the configured
+  backoff rather than once per base interval.
 - Idle-read detection has its own 60-second default, independent of the reconnect settings. Derived
   from them it worked out to roughly five seconds, too short to tell a quiet feed from a dropped one.
 - The storage queue is bounded: sentences are shed once `Storage:BoundedCapacity` is reached instead

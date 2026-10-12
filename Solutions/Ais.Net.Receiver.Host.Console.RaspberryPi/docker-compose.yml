@@ -1,7 +1,10 @@
 services:
   ais_net_receiver:
     container_name: ais-dotnet-receiver
-    image: endjin/ais-dotnet-receiver:0.3.8-dockerize.1
+    # The settings below need an image built from this release (1.0.0 or later): it is the first with
+    # the nested Ais:Connection schema and the prepared /data/deadletter directory. Override the tag
+    # with AIS_NET_RECEIVER_IMAGE_TAG to pin a specific build.
+    image: endjin/ais-dotnet-receiver:${AIS_NET_RECEIVER_IMAGE_TAG:-1.0.0}
     environment:
       - Ais__Connection__Host=153.44.253.27
       - Ais__Connection__Port=5631

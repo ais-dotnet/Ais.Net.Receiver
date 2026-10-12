@@ -21,6 +21,27 @@ public class FileStreamNmeaReceiver : StreamNmeaReceiver
         this.path = path;
     }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="FileStreamNmeaReceiver"/> class over the real
+    /// file system.
+    /// </summary>
+    /// <param name="path">The path of the NMEA file.</param>
+    public FileStreamNmeaReceiver(string path)
+        : this(new FileSystem(), new FilePath(path))
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="FileStreamNmeaReceiver"/> class over the real
+    /// file system, pausing between lines.
+    /// </summary>
+    /// <param name="path">The path of the NMEA file.</param>
+    /// <param name="delay">The delay before each line.</param>
+    public FileStreamNmeaReceiver(string path, TimeSpan delay)
+        : this(new FileSystem(), new FilePath(path), delay)
+    {
+    }
+
     public FileStreamNmeaReceiver(IFileSystem fileSystem, FilePath path, TimeSpan delay)
         : base(delay)
     {

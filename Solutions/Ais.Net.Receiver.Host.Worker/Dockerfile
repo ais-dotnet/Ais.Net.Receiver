@@ -13,6 +13,11 @@ ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 # Central Package Management: the version catalog must be restored alongside the project files.
 COPY ["Directory.Packages.props", "./"]
+# The projects import Endjin.Conventions.props unconditionally and the SDK auto-imports the
+# Directory.Build files, so restore needs all three before the project files or it fails with MSB4019.
+COPY ["Endjin.Conventions.props", "./"]
+COPY ["Directory.Build.props", "./"]
+COPY ["Directory.Build.targets", "./"]
 COPY ["Ais.Net.Receiver.Host.Worker/Ais.Net.Receiver.Host.Worker.csproj", "Ais.Net.Receiver.Host.Worker/"]
 COPY ["Ais.Net.Receiver.ServiceDefaults/Ais.Net.Receiver.ServiceDefaults.csproj", "Ais.Net.Receiver.ServiceDefaults/"]
 COPY ["Ais.Net.Receiver.Storage.Azure.Blob/Ais.Net.Receiver.Storage.Azure.Blob.csproj", "Ais.Net.Receiver.Storage.Azure.Blob/"]

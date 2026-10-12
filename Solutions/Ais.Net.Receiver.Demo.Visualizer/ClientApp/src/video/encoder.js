@@ -34,6 +34,27 @@ export class VideoExporter {
     this.onProgress = onProgress;
     this.onComplete = onComplete;
 
+    // Every exit path - success, cancellation, or a rendering/encoding/save failure - must clear
+    // `recording` and discard the encoder, or one transient failure would leave the guard above
+    // tripped and silently disable export for the rest of the page's life.
+    try {
+      return await this._run({durationSeconds, framerate, speed, startTime});
+    } finally {
+      if (this.encoder) {
+        // Reached only when the run threw before saving: flush so the encoder's resources are
+        // released, and discard whatever it produced.
+        try {
+          await this.encoder.save();
+        } catch {
+          // The partial encoding is being thrown away regardless.
+        }
+        this.encoder = null;
+      }
+      this.recording = false;
+    }
+  }
+
+  async _run({durationSeconds, framerate, speed, startTime}) {
     const totalFrames = durationSeconds * framerate;
     const timeRange = this.metadata.timeRange;
     const simDuration = timeRange.end - timeRange.start;
@@ -99,13 +120,12 @@ export class VideoExporter {
       }
 
       this.encoder = null;
-      this.recording = false;
       return null;
     }
 
     // Save the video
     const blob = await this.encoder.save();
-    this.recording = false;
+    this.encoder = null;
 
     if (blob && this.onComplete) {
       this.onComplete(blob);
