@@ -6,6 +6,7 @@ using System.ComponentModel.DataAnnotations;
 
 using Ais.Net.Receiver.Configuration;
 
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 using Shouldly;
@@ -120,6 +121,126 @@ public class ConfigurationTests
         // Assert
         isValid.ShouldBeTrue();
         results.ShouldBeEmpty();
+    }
+
+    [TestMethod]
+    public void AisConnectionConfig_DefaultTransport_IsTcp()
+    {
+        // Arrange & Act
+        AisConnectionConfig config = new();
+
+        // Assert
+        config.Transport.ShouldBe(AisTransport.Tcp);
+        config.Url.ShouldBeNull();
+    }
+
+    [TestMethod]
+    public void AisConnectionConfig_Validation_WebSocketWithWssUrlAndNoHostOrPort_Passes()
+    {
+        // Arrange
+        AisConnectionConfig config = new()
+        {
+            Transport = AisTransport.WebSocket,
+            Url = "wss://example.net/ais",
+            Host = string.Empty,
+            Port = 0,
+        };
+
+        // Act
+        List<ValidationResult> results = [];
+        bool isValid = Validator.TryValidateObject(config, new ValidationContext(config), results, validateAllProperties: true);
+
+        // Assert
+        isValid.ShouldBeTrue();
+        results.ShouldBeEmpty();
+    }
+
+    [TestMethod]
+    public void AisConnectionConfig_Validation_WebSocketWithoutUrl_FailsNamingUrl()
+    {
+        // Arrange
+        AisConnectionConfig config = new() { Transport = AisTransport.WebSocket };
+
+        // Act
+        List<ValidationResult> results = [];
+        bool isValid = Validator.TryValidateObject(config, new ValidationContext(config), results, validateAllProperties: true);
+
+        // Assert
+        isValid.ShouldBeFalse();
+        results.ShouldContain(r => r.MemberNames.Contains("Url"));
+        results.ShouldNotContain(r => r.MemberNames.Contains("Host") || r.MemberNames.Contains("Port"));
+    }
+
+    [TestMethod]
+    public void AisConnectionConfig_Validation_WebSocketWithHttpUrl_FailsNamingUrl()
+    {
+        // Arrange
+        AisConnectionConfig config = new() { Transport = AisTransport.WebSocket, Url = "http://example.net/ais" };
+
+        // Act
+        List<ValidationResult> results = [];
+        bool isValid = Validator.TryValidateObject(config, new ValidationContext(config), results, validateAllProperties: true);
+
+        // Assert
+        isValid.ShouldBeFalse();
+        results.ShouldContain(r => r.MemberNames.Contains("Url"));
+    }
+
+    [TestMethod]
+    public void AisConnectionConfig_Validation_WebSocketWithRelativeUrl_FailsNamingUrl()
+    {
+        // Arrange
+        AisConnectionConfig config = new() { Transport = AisTransport.WebSocket, Url = "example.net/ais" };
+
+        // Act
+        List<ValidationResult> results = [];
+        bool isValid = Validator.TryValidateObject(config, new ValidationContext(config), results, validateAllProperties: true);
+
+        // Assert
+        isValid.ShouldBeFalse();
+        results.ShouldContain(r => r.MemberNames.Contains("Url"));
+    }
+
+    [TestMethod]
+    public void AisConnectionConfig_Validation_TcpIgnoresUrl()
+    {
+        // Arrange - an invalid URL must not affect TCP validation
+        AisConnectionConfig config = new()
+        {
+            Transport = AisTransport.Tcp,
+            Host = "valid.host.com",
+            Port = 5631,
+            Url = "not a url",
+        };
+
+        // Act
+        List<ValidationResult> results = [];
+        bool isValid = Validator.TryValidateObject(config, new ValidationContext(config), results, validateAllProperties: true);
+
+        // Assert
+        isValid.ShouldBeTrue();
+        results.ShouldBeEmpty();
+    }
+
+    [TestMethod]
+    public void AisConfig_BindsWebSocketTransportAndUrlFromConfiguration()
+    {
+        // Arrange
+        IConfiguration configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Ais:Connection:Transport"] = "WebSocket",
+                ["Ais:Connection:Url"] = "wss://example/ais",
+            })
+            .Build();
+
+        // Act
+        AisConfig? config = configuration.GetSection("Ais").Get<AisConfig>();
+
+        // Assert
+        config.ShouldNotBeNull();
+        config.Connection.Transport.ShouldBe(AisTransport.WebSocket);
+        config.Connection.Url.ShouldBe("wss://example/ais");
     }
 
     [TestMethod]

@@ -72,10 +72,19 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
         // Echo the effective configuration at startup. Config arrives from several layered sources,
         // so "which host is it actually talking to" is otherwise guesswork when diagnosing a
         // deployment.
-        this.logger.ConfigurationLoaded(
-            aisConfig.Connection.Host,
-            aisConfig.Connection.Port,
-            aisConfig.Connection.Retry.Attempts);
+        if (aisConfig.Connection.Transport == AisTransport.WebSocket)
+        {
+            this.logger.WebSocketConfigurationLoaded(
+                aisConfig.Connection.Url ?? string.Empty,
+                aisConfig.Connection.Retry.Attempts);
+        }
+        else
+        {
+            this.logger.ConfigurationLoaded(
+                aisConfig.Connection.Host,
+                aisConfig.Connection.Port,
+                aisConfig.Connection.Retry.Attempts);
+        }
 
         this.logger.StorageConfigured(
             storageConfig.EnableCapture,

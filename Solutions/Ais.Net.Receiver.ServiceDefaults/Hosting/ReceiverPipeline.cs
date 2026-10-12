@@ -25,15 +25,16 @@ public static class ReceiverPipeline
 
     /// <summary>
     /// Builds a <see cref="ReceiverHost"/> and its underlying network receiver from the supplied AIS
-    /// configuration.
+    /// configuration. The transport is selected by <see cref="AisConnectionConfig.Transport"/>; see
+    /// <see cref="CreateReceiver"/>.
     /// </summary>
     /// <param name="aisConfig">The AIS connection and receiver configuration.</param>
     /// <param name="timeProvider">The time provider.</param>
     /// <param name="instrumentation">Optional application instrumentation for tracing.</param>
     /// <param name="metrics">Optional application metrics.</param>
-    /// <param name="onConnectionStateChanged">Optional callback invoked with the live TCP connection state (true on connect, false on any disconnect/idle/error), e.g. to drive a health check.</param>
+    /// <param name="onConnectionStateChanged">Optional callback invoked with the live connection state (true on connect, false on any disconnect/idle/error), e.g. to drive a health check.</param>
     /// <param name="loggerFactory">
-    /// Optional factory used to create loggers for the receiver and its TCP stream reader. Without it
+    /// Optional factory used to create loggers for the receiver and its stream reader or connection. Without it
     /// both fall back to <c>NullLogger</c>, which silently discards the connection and socket-level
     /// diagnostics (event ids 4000-4024) that are the only way to tell a refused connection from a
     /// DNS failure from a feed that accepts and then goes quiet.
@@ -49,20 +50,13 @@ public static class ReceiverPipeline
     {
         ArgumentNullException.ThrowIfNull(aisConfig);
 
-        INmeaStreamReader streamReader = new TcpClientNmeaStreamReader(
-            loggerFactory?.CreateLogger<TcpClientNmeaStreamReader>());
-
-        INmeaReceiver receiver = new NetworkStreamNmeaReceiver(
-            streamReader,
-            aisConfig.Connection.Host,
-            aisConfig.Connection.Port,
+        INmeaReceiver receiver = CreateReceiver(
+            aisConfig.Connection,
             timeProvider,
-            aisConfig.Connection.Retry.Periodicity,
-            retryAttemptLimit: aisConfig.Connection.Retry.Attempts,
-            metrics: metrics,
-            logger: loggerFactory?.CreateLogger<NetworkStreamNmeaReceiver>(),
-            onConnectionStateChanged: onConnectionStateChanged,
-            instrumentation: instrumentation);
+            instrumentation,
+            metrics,
+            onConnectionStateChanged,
+            loggerFactory);
 
         return new ReceiverHost(
             receiver,
@@ -71,6 +65,84 @@ public static class ReceiverPipeline
             retryPeriodicity: aisConfig.Receiver.Retry.Periodicity,
             retryAttempts: aisConfig.Receiver.Retry.Attempts,
             metrics: metrics);
+    }
+
+    /// <summary>
+    /// Builds the <see cref="INmeaReceiver"/> for the supplied connection configuration: an
+    /// <see cref="NmeaReceiver"/> over the transport's <see cref="INmeaConnection"/>. The reconnect,
+    /// idle-timeout, metrics and tracing behaviour lives in the receiver and is identical for every
+    /// transport; only the connection underneath differs.
+    /// </summary>
+    /// <param name="connection">The connection configuration.</param>
+    /// <param name="timeProvider">The time provider.</param>
+    /// <param name="instrumentation">Optional application instrumentation for tracing.</param>
+    /// <param name="metrics">Optional application metrics.</param>
+    /// <param name="onConnectionStateChanged">Optional callback invoked with the live connection state.</param>
+    /// <param name="loggerFactory">Optional factory used to create loggers for the receiver and its connection.</param>
+    /// <returns>The receiver.</returns>
+    /// <exception cref="ArgumentException">The configuration names a transport this factory does not support, or the WebSocket URL is missing or invalid.</exception>
+    public static INmeaReceiver CreateReceiver(
+        AisConnectionConfig connection,
+        TimeProvider timeProvider,
+        ApplicationInstrumentation? instrumentation,
+        ApplicationMetrics? metrics,
+        Action<bool>? onConnectionStateChanged = null,
+        ILoggerFactory? loggerFactory = null)
+    {
+        ArgumentNullException.ThrowIfNull(connection);
+
+        INmeaConnection source = CreateConnection(connection, loggerFactory);
+
+        NmeaReceiverOptions options = new()
+        {
+            RetryPeriodicity = connection.Retry.Periodicity,
+            RetryAttemptLimit = connection.Retry.Attempts,
+        };
+
+        return new NmeaReceiver(
+            source,
+            timeProvider,
+            options,
+            metrics,
+            loggerFactory?.CreateLogger<NmeaReceiver>(),
+            onConnectionStateChanged,
+            instrumentation);
+    }
+
+    /// <summary>
+    /// Builds the <see cref="INmeaConnection"/> for the supplied connection configuration.
+    /// </summary>
+    /// <param name="connection">The connection configuration.</param>
+    /// <param name="loggerFactory">Optional factory used to create the connection's logger.</param>
+    /// <returns>The connection, not yet connected.</returns>
+    /// <exception cref="ArgumentException">The configuration names a transport this factory does not support, or the WebSocket URL is missing or invalid.</exception>
+    public static INmeaConnection CreateConnection(AisConnectionConfig connection, ILoggerFactory? loggerFactory = null)
+    {
+        ArgumentNullException.ThrowIfNull(connection);
+
+        switch (connection.Transport)
+        {
+            case AisTransport.Tcp:
+                return new TcpNmeaConnection(
+                    connection.Host,
+                    connection.Port,
+                    loggerFactory?.CreateLogger<TcpNmeaConnection>());
+
+            case AisTransport.WebSocket:
+                // Options validation has already rejected a missing or non-ws(s) URL by the time a
+                // host gets here; this is the last line of defence for direct callers.
+                if (!Uri.TryCreate(connection.Url, UriKind.Absolute, out Uri? url))
+                {
+                    throw new ArgumentException($"'{nameof(AisConnectionConfig.Url)}' must be an absolute ws:// or wss:// URL when the transport is {nameof(AisTransport.WebSocket)}.", nameof(connection));
+                }
+
+                return new WebSocketNmeaConnection(
+                    url,
+                    loggerFactory?.CreateLogger<WebSocketNmeaConnection>());
+
+            default:
+                throw new ArgumentException($"Unsupported transport '{connection.Transport}'.", nameof(connection));
+        }
     }
 
     /// <summary>

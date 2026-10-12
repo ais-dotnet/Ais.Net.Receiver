@@ -77,6 +77,12 @@ internal static partial class Log
     public static partial void ConfigurationLoaded(this ILogger logger, string host, int port, int retryAttempts);
 
     [LoggerMessage(
+        EventId = 1013,
+        Level = LogLevel.Information,
+        Message = "AIS WebSocket connection configured: {Url}, retries: {RetryAttempts}")]
+    public static partial void WebSocketConfigurationLoaded(this ILogger logger, string url, int retryAttempts);
+
+    [LoggerMessage(
         EventId = 1011,
         Level = LogLevel.Information,
         Message = "Storage configured: enabled={Enabled}, container={Container}, batchSize={BatchSize}")]
