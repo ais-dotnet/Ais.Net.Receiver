@@ -218,4 +218,59 @@ internal static partial class Log
         Level = LogLevel.Debug,
         Message = "TCP graceful shutdown initiated for {Host}:{Port}")]
     public static partial void TcpGracefulShutdown(this ILogger logger, string host, int port);
+
+    // WebSocket connection events (4030-4039)
+    [LoggerMessage(
+        EventId = 4030,
+        Level = LogLevel.Information,
+        Message = "WebSocket connecting to {Url}")]
+    public static partial void WebSocketConnecting(this ILogger logger, string url);
+
+    [LoggerMessage(
+        EventId = 4031,
+        Level = LogLevel.Information,
+        Message = "WebSocket connected to {Url} (sub-protocol {SubProtocol})")]
+    public static partial void WebSocketConnected(this ILogger logger, string url, string? subProtocol);
+
+    [LoggerMessage(
+        EventId = 4032,
+        Level = LogLevel.Error,
+        Message = "WebSocket connection failed to {Url}")]
+    public static partial void WebSocketConnectionFailed(this ILogger logger, Exception exception, string url);
+
+    [LoggerMessage(
+        EventId = 4033,
+        Level = LogLevel.Warning,
+        Message = "WebSocket connection timed out to {Url}")]
+    public static partial void WebSocketConnectionTimedOut(this ILogger logger, string url);
+
+    [LoggerMessage(
+        EventId = 4034,
+        Level = LogLevel.Debug,
+        Message = "WebSocket connect to {Url} cancelled by caller during shutdown")]
+    public static partial void WebSocketConnectCancelled(this ILogger logger, string url);
+
+    [LoggerMessage(
+        EventId = 4035,
+        Level = LogLevel.Information,
+        Message = "WebSocket closed by peer {Url}: {CloseStatus} {CloseDescription}")]
+    public static partial void WebSocketClosedByPeer(this ILogger logger, string url, string closeStatus, string? closeDescription);
+
+    [LoggerMessage(
+        EventId = 4036,
+        Level = LogLevel.Warning,
+        Message = "WebSocket receive error from {Url}")]
+    public static partial void WebSocketReceiveError(this ILogger logger, Exception exception, string url);
+
+    [LoggerMessage(
+        EventId = 4037,
+        Level = LogLevel.Debug,
+        Message = "WebSocket graceful shutdown initiated for {Url}")]
+    public static partial void WebSocketGracefulShutdown(this ILogger logger, string url);
+
+    [LoggerMessage(
+        EventId = 4038,
+        Level = LogLevel.Information,
+        Message = "WebSocket connection closed to {Url}")]
+    public static partial void WebSocketDisconnected(this ILogger logger, string url);
 }

@@ -26,6 +26,9 @@ public static class SemanticConventions
 
         /// <summary>Transport protocol (e.g., "tcp", "udp").</summary>
         public const string Transport = "network.transport";
+
+        /// <summary>Application layer protocol name (e.g., "websocket").</summary>
+        public const string ProtocolName = "network.protocol.name";
     }
 
     /// <summary>

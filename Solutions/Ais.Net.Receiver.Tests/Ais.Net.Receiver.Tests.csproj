@@ -23,6 +23,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Ais.Net.Receiver\Ais.Net.Receiver.csproj" />
     <ProjectReference Include="..\Ais.Net.Receiver.Storage.Azure.Blob\Ais.Net.Receiver.Storage.Azure.Blob.csproj" />
     <ProjectReference Include="..\Ais.Net.Receiver.ServiceDefaults\Ais.Net.Receiver.ServiceDefaults.csproj" />

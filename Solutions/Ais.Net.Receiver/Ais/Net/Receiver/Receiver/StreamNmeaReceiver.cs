@@ -3,7 +3,6 @@
 // </copyright>
 
 using System.Runtime.CompilerServices;
-using System.Text;
 
 namespace Ais.Net.Receiver.Receiver;
 
@@ -13,22 +12,21 @@ namespace Ais.Net.Receiver.Receiver;
 /// inter-line delay, and disposal; a derived class supplies only the stream.
 /// </summary>
 /// <remarks>
-/// Latin1 maps each byte 0-255 to the same-valued char and back, so reading lines as text here and
-/// re-encoding them on the way out round-trips the original bytes losslessly (ASCII would corrupt
-/// any byte > 0x7F - e.g. in a tag block - to '?').
+/// This is a facade over an <see cref="NmeaReceiver"/> reading a <see cref="NmeaSourceKind.Finite"/>
+/// <see cref="StreamNmeaConnection"/> whose stream comes from <see cref="OpenStreamAsync"/>. Bytes
+/// pass through untouched: lines are split on <c>\n</c> (with one trailing <c>\r</c> trimmed)
+/// without any text decoding, so a byte above 0x7F - e.g. in a tag block - round-trips exactly.
 /// </remarks>
 public abstract class StreamNmeaReceiver : INmeaReceiver
 {
-    private readonly TimeSpan delay = TimeSpan.Zero;
-
-    private Stream? stream;
-    private StreamReader? streamReader;
+    private readonly NmeaReceiver receiver;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="StreamNmeaReceiver"/> class that reads as fast
     /// as the stream allows.
     /// </summary>
     protected StreamNmeaReceiver()
+        : this(TimeSpan.Zero)
     {
     }
 
@@ -39,7 +37,7 @@ public abstract class StreamNmeaReceiver : INmeaReceiver
     /// <param name="delay">The delay before each line.</param>
     protected StreamNmeaReceiver(TimeSpan delay)
     {
-        this.delay = delay;
+        this.receiver = new NmeaReceiver(new OwnerStreamConnection(this, delay), TimeProvider.System);
     }
 
     /// <summary>
@@ -47,46 +45,25 @@ public abstract class StreamNmeaReceiver : INmeaReceiver
     /// </summary>
     /// <param name="cancellationToken">A cancellation token.</param>
     /// <returns>The sentences, as the original bytes.</returns>
+    /// <remarks>
+    /// Unlike the live receivers, each yielded line is an owned copy rather than a slice of a reused
+    /// read buffer. Callers of the file and blob receivers commonly collect the lines (e.g. with
+    /// <c>ToListAsync</c>), which would otherwise leave every collected entry aliasing the same,
+    /// since-overwritten buffer. The copy keeps that pattern safe; finite sources are not on a hot
+    /// path where the allocation matters.
+    /// </remarks>
     public async IAsyncEnumerable<ReadOnlyMemory<byte>> GetAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        this.stream = await this.OpenStreamAsync(cancellationToken).ConfigureAwait(false);
-        this.streamReader = new StreamReader(this.stream, Encoding.Latin1);
-
-        try
+        await foreach (ReadOnlyMemory<byte> line in this.receiver.GetAsync(cancellationToken).ConfigureAwait(false))
         {
-            while (true)
-            {
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    yield break;
-                }
-
-                if (this.delay > TimeSpan.Zero)
-                {
-                    await Task.Delay(this.delay, cancellationToken).ConfigureAwait(false);
-                }
-
-                string? line = await this.streamReader.ReadLineAsync(cancellationToken).ConfigureAwait(false);
-
-                if (line is null)
-                {
-                    break;
-                }
-
-                yield return Encoding.Latin1.GetBytes(line);
-            }
-        }
-        finally
-        {
-            // Cleanup when enumeration completes normally or is cancelled
-            await this.CleanupAsync().ConfigureAwait(false);
+            yield return line.ToArray();
         }
     }
 
     /// <inheritdoc/>
     public async ValueTask DisposeAsync()
     {
-        await this.CleanupAsync().ConfigureAwait(false);
+        await this.receiver.DisposeAsync().ConfigureAwait(false);
         GC.SuppressFinalize(this);
     }
 
@@ -98,18 +75,14 @@ public abstract class StreamNmeaReceiver : INmeaReceiver
     /// <returns>The stream.</returns>
     protected abstract ValueTask<Stream> OpenStreamAsync(CancellationToken cancellationToken);
 
-    private async ValueTask CleanupAsync()
+    /// <summary>
+    /// Adapts the receiver's <see cref="OpenStreamAsync"/> extension point to a
+    /// <see cref="StreamNmeaConnection"/>.
+    /// </summary>
+    private sealed class OwnerStreamConnection(StreamNmeaReceiver owner, TimeSpan delay)
+        : StreamNmeaConnection(owner.GetType().Name, delay)
     {
-        if (this.streamReader is not null)
-        {
-            this.streamReader.Dispose();
-            this.streamReader = null;
-        }
-
-        if (this.stream is not null)
-        {
-            await this.stream.DisposeAsync().ConfigureAwait(false);
-            this.stream = null;
-        }
+        protected override ValueTask<Stream> OpenStreamAsync(CancellationToken cancellationToken) =>
+            owner.OpenStreamAsync(cancellationToken);
     }
 }
