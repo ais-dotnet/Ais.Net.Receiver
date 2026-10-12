@@ -4,12 +4,12 @@
     "net10.0": {
       "Ais.Net.Models.Json.Nats": {
         "type": "Direct",
-        "requested": "[1.0.0, )",
-        "resolved": "1.0.0",
-        "contentHash": "vWEd+yTYT7cxg1+M8gZjIjOL0crmi8+M7tJgh/ONBhb1744btoQQAJhF3b/DOb/DRJzyB7D2oaDHTrYdJApxpQ==",
+        "requested": "[1.0.1, )",
+        "resolved": "1.0.1",
+        "contentHash": "OU6lcJXDuQlM61hJz+1E9v4cDhHV2WFZMo0Pzo+eV4q/aNNHu0GvonHxcDplLZHNdoYI9sR6mGuI9/yGcu6GvA==",
         "dependencies": {
-          "Ais.Net.Models.Json": "1.0.0",
-          "NATS.Client.Core": "3.0.1"
+          "Ais.Net.Models.Json": "1.0.2",
+          "NATS.Client.Core": "3.3.0"
         }
       },
       "Aspire.NATS.Net": {
@@ -131,8 +131,8 @@
       },
       "Ais.Net.Models.Json": {
         "type": "Transitive",
-        "resolved": "1.0.0",
-        "contentHash": "YtQl8HMBR9eFh8CXqdMm+7yxL/LvfVPvSB4OeS5voF1q0N51kQUIN2ZI1Bm/mjmAmBVPGv/UHNAHSrWfDvxZ+Q==",
+        "resolved": "1.0.2",
+        "contentHash": "3s6BHceuopp4PKntce5BTdmsP3zEejqktcMkCLXlKb3FpPl1lZjfVq+XE61J4cpa3Hm9P7wFh3rGJBYUicjerw==",
         "dependencies": {
           "Ais.Net.Models": "1.0.1"
         }
@@ -505,20 +505,20 @@
       },
       "NATS.Client.Abstractions": {
         "type": "Transitive",
-        "resolved": "3.0.1",
-        "contentHash": "uqpvjqHhlHIfuqtucpSanjZZ0XZV7enjPYxOxTW8BRE0epqGLEKlwb2990yH82QSuMreR+y04IhfgY0pjDxZ4A==",
+        "resolved": "3.3.0",
+        "contentHash": "NVH32TcVvXiOL77VxtSiLSPpokLTbiFj0uVCdNEp+11Z7IlMNOg1TEUzBBi+lZU8wTyEJFmbpu22Aaw6XPdn0g==",
         "dependencies": {
           "Microsoft.Extensions.Primitives": "6.0.0"
         }
       },
       "NATS.Client.Core": {
         "type": "Transitive",
-        "resolved": "3.0.1",
-        "contentHash": "QmBnIttS2cYof+13NYuPoJdymkzJCQWNftTGv2fwy2rGLFsBVkhpv1Lej2kXhdOdVic8gaaZsx7S3J8c1Ye/xA==",
+        "resolved": "3.3.0",
+        "contentHash": "x5Faw180Giv2KUz+kwoK6NQOttuy70fkk1Q0/Vyj8ATtGLrYevsJ9r7rs97ktJfX0+Ck93BQI1qWIVBy8b+3Hw==",
         "dependencies": {
           "Microsoft.Extensions.Logging.Abstractions": "6.0.1",
           "Microsoft.Extensions.Primitives": "6.0.0",
-          "NATS.Client.Abstractions": "3.0.1",
+          "NATS.Client.Abstractions": "3.3.0",
           "NATS.NKeys": "1.0.1"
         }
       },

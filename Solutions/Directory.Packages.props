@@ -6,7 +6,7 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageVersion Include="Ais.Net.Models" Version="1.0.2" />
-    <PackageVersion Include="Ais.Net.Models.Json.Nats" Version="1.0.0" />
+    <PackageVersion Include="Ais.Net.Models.Json.Nats" Version="1.0.1" />
     <PackageVersion Include="Aspire.NATS.Net" Version="13.6.1" />
     <PackageVersion Include="Aspire.Hosting.AppHost" Version="13.6.1" />
     <PackageVersion Include="Aspire.Hosting.Azure.Storage" Version="13.6.1" />
