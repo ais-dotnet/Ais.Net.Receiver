@@ -433,3 +433,4 @@ kb/
 
 # AIS Visualizer demo: wwwroot is produced by the Vite build in ClientApp
 Solutions/Ais.Net.Receiver.Demo.Visualizer/wwwroot/
+Solutions/Ais.Net.Broadcaster.Host.Console/samples/kystverket-20260511T00.nm4

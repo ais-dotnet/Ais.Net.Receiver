@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <Import Project="$(MSBuildThisFileDirectory)..\Endjin.Conventions.props" />
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>14.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors Condition="'$(Configuration)' == 'Release'">true</TreatWarningsAsErrors>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <RootNamespace> </RootNamespace>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageDescription>Broadcasts NMEA AIS sentences to TCP and WebSocket clients: replay a recording or relay a live feed, with pacing and fault injection for testing AIS receivers. The sink-side counterpart of Ais.Net.Receiver. Sponsored by endjin.</PackageDescription>
+    <PackageTags>ais;aisvdm;aivdo;nmea;marine;gis;simulator;websocket;tcp;endjin</PackageTags>
+    <PackageReleaseNotes></PackageReleaseNotes>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      The WebSocket broadcaster hosts a minimal Kestrel endpoint. This ties consumers of the library to
+      the ASP.NET Core shared framework, which is acceptable for a testing and relay tool; the TCP
+      broadcaster has no such dependency.
+    -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Sources (file, TCP, WebSocket) and the tag-block parser come from the receiver's primitives. -->
+    <ProjectReference Include="..\Ais.Net.Receiver\Ais.Net.Receiver.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Ais.Net.Broadcaster.Tests" />
+  </ItemGroup>
+
+</Project>
