@@ -1,68 +1,60 @@
-﻿// <copyright file="TcpClientNmeaStreamReader.cs" company="Endjin Limited">
+// <copyright file="TcpClientNmeaStreamReader.cs" company="Endjin Limited">
 // Copyright (c) Endjin Limited. All rights reserved.
 // </copyright>
 
+using Microsoft.Extensions.Logging;
+
 namespace Ais.Net.Receiver.Receiver;
 
-using System;
-using System.IO;
-using System.Net.Sockets;
-using System.Threading;
-using System.Threading.Tasks;
-
+/// <summary>
+/// An <see cref="INmeaStreamReader"/> over a raw TCP feed. This is a thin adapter over
+/// <see cref="TcpNmeaConnection"/>, kept for source compatibility: each
+/// <see cref="ConnectAsync"/> creates a new connection to the given host and port.
+/// </summary>
 public class TcpClientNmeaStreamReader : INmeaStreamReader
 {
-    private TcpClient? tcpClient;
-    private NetworkStream? stream;
-    private StreamReader? reader;
+    private readonly ILogger<TcpClientNmeaStreamReader>? logger;
+    private TcpNmeaConnection? connection;
 
-    public bool DataAvailable => this.stream?.DataAvailable ?? false;
+    /// <summary>
+    /// Initializes a new instance of the <see cref="TcpClientNmeaStreamReader"/> class.
+    /// </summary>
+    /// <param name="logger">An optional logger, passed through to each <see cref="TcpNmeaConnection"/>.</param>
+    public TcpClientNmeaStreamReader(ILogger<TcpClientNmeaStreamReader>? logger = null)
+    {
+        this.logger = logger;
+    }
 
-    public bool Connected => (this.tcpClient?.Connected ?? false) && (this.stream?.Socket.Connected ?? false);
+    /// <summary>
+    /// Gets a value indicating whether the reader currently holds an open TCP connection.
+    /// </summary>
+    public bool Connected => this.connection?.Connected == true;
 
+    /// <inheritdoc/>
     public async Task ConnectAsync(string host, int port, CancellationToken cancellationToken)
     {
-        this.tcpClient = new TcpClient();
+        await this.DisposeAsync().ConfigureAwait(false);
 
-        try
-        {
-            await this.tcpClient.ConnectAsync(host, port, cancellationToken);
-            this.stream = this.tcpClient.GetStream();
-            this.reader = new StreamReader(this.stream);
-        }
-        catch (Exception)
-        {
-            // If connection fails, clean up resources
-            await this.DisposeAsync();
-            throw;
-        }
+        this.connection = new TcpNmeaConnection(host, port, this.logger);
+        await this.connection.ConnectAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task<string?> ReadLineAsync(CancellationToken cancellationToken)
-    {
-        return this.reader is not null
-            ? await this.reader.ReadLineAsync(cancellationToken).ConfigureAwait(false)
-            : null;
-    }
+    /// <inheritdoc/>
+    public ValueTask<ReadOnlyMemory<byte>?> ReadLineAsync(CancellationToken cancellationToken) =>
+        this.connection is { } c ? c.ReadLineAsync(cancellationToken) : ValueTask.FromResult<ReadOnlyMemory<byte>?>(null);
 
+    /// <summary>
+    /// Disposes the current connection, if any. Safe to call more than once.
+    /// </summary>
+    /// <returns>A task that completes when the connection has been released.</returns>
     public async ValueTask DisposeAsync()
     {
-        if (this.reader is not null)
+        if (this.connection is { } c)
         {
-            try { this.reader.Dispose(); } catch { /* Ignore any errors during cleanup */ }
-            this.reader = null;
+            this.connection = null;
+            await c.DisposeAsync().ConfigureAwait(false);
         }
 
-        if (this.stream is not null)
-        {
-            try { await this.stream.DisposeAsync(); } catch { /* Ignore any errors during cleanup */ }
-            this.stream = null;
-        }
-
-        if (this.tcpClient is not null)
-        {
-            try { this.tcpClient.Dispose(); } catch { /* Ignore any errors during cleanup */ }
-            this.tcpClient = null;
-        }
+        GC.SuppressFinalize(this);
     }
 }

@@ -1,0 +1,17 @@
+<Project>
+
+  <PropertyGroup>
+    <!--
+      Generating the documentation file (see Directory.Build.props) also turns on CS1591, "missing XML
+      comment for publicly visible type or member". That is not the point of the exercise - the file is
+      generated so IDE0005 runs - and demanding doc comments on tests, benchmarks and internal hosts
+      would be noise. Suppressed here rather than in the props file so it appends to whatever each
+      project has set, instead of being overwritten by it.
+
+      The published library, Ais.Net.Receiver, already lists CS1591 in its own NoWarn, so nothing about
+      its API documentation changes.
+    -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+</Project>

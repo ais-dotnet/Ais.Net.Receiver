@@ -1,0 +1,25 @@
+{
+  "name": "ais-visualizer-client",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 3000",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@deck.gl/core": "^9.2",
+    "@deck.gl/extensions": "^9.2",
+    "@deck.gl/geo-layers": "^9.2",
+    "@deck.gl/layers": "^9.2",
+    "@deck.gl/mapbox": "^9.2",
+    "@deck.gl/widgets": "^9.2",
+    "maplibre-gl": "^4.7",
+    "nats.ws": "^1.30",
+    "webm-muxer": "^5"
+  },
+  "devDependencies": {
+    "vite": "^6"
+  }
+}
