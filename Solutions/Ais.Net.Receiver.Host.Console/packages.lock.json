@@ -621,6 +621,7 @@
           "Corvus.Retry": "[1.0.7, )",
           "Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions": "[10.0.12, )",
           "Microsoft.Extensions.Logging.Abstractions": "[10.0.12, )",
+          "Microsoft.Extensions.Options": "[10.0.12, )",
           "OpenTelemetry.Api": "[1.19.1, )",
           "Spectre.IO": "[0.23.0, )",
           "System.Linq.Async": "[7.0.1, )",

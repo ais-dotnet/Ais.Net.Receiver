@@ -24,6 +24,7 @@
     <PackageReference Include="Corvus.Retry" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Options" />
     <PackageReference Include="OpenTelemetry.Api" />
     <PackageReference Include="Spectre.IO" />
     <PackageReference Include="System.Linq.Async" />

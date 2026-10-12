@@ -28,6 +28,10 @@ builder.Services.AddOptions<StorageConfig>()
 // ConnectionString/ContainerName are only required when capture is enabled.
 builder.Services.AddSingleton<IValidateOptions<StorageConfig>, StorageConfigValidator>();
 
+// ValidateDataAnnotations only inspects the top-level AisConfig; this validator walks the nested
+// Connection/Retry/Telemetry sections so a bad transport setting fails at start-up, not at receive.
+builder.Services.AddSingleton<IValidateOptions<AisConfig>, AisConfigValidator>();
+
 builder.Services.AddSingleton(TimeProvider.System);
 
 TypeRegistrar registrar = new(builder.Services);

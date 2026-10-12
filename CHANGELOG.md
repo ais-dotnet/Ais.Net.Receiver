@@ -87,6 +87,10 @@ entries below.
   Docker endpoint; set `AIS_TEST_REQUIRE_INTEGRATION=true` to make a missing daemon a failure, as CI
   does.
 - Extensive unit test coverage across the receiver, parser, configuration, telemetry and storage.
+- `AisConfigValidator`, an `IValidateOptions<AisConfig>` registered by both hosts, validates the nested
+  `Connection`, `Retry` and `Telemetry` sections at start-up with their configuration paths in the
+  message, so a bad transport setting fails the host immediately rather than when the receiver is
+  created; `ValidateDataAnnotations` alone only inspects the top-level object.
 
 ### Changed
 
