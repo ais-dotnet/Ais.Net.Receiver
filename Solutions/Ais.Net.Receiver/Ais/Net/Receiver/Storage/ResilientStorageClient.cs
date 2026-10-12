@@ -7,8 +7,6 @@ using Ais.Net.Receiver.Telemetry;
 
 using Microsoft.Extensions.Logging;
 
-using Polly;
-
 namespace Ais.Net.Receiver.Storage;
 
 /// <summary>
@@ -20,7 +18,7 @@ namespace Ais.Net.Receiver.Storage;
 public sealed class ResilientStorageClient : IStorageClient
 {
     private readonly IStorageClient inner;
-    private readonly ResiliencePipeline retryPipeline;
+    private readonly ConstantDelayRetry retry;
     private readonly DeadLetterStore? deadLetterStore;
     private readonly ApplicationMetrics? metrics;
     private readonly ILogger? logger;
@@ -45,7 +43,7 @@ public sealed class ResilientStorageClient : IStorageClient
         ILogger? logger = null)
     {
         this.inner = inner ?? throw new ArgumentNullException(nameof(inner));
-        this.retryPipeline = RetryPipelines.ConstantDelay(retryPeriodicity, maxAttempts);
+        this.retry = new ConstantDelayRetry(retryPeriodicity, maxAttempts);
         this.deadLetterStore = deadLetterPath is null ? null : new DeadLetterStore(deadLetterPath, timeProvider);
         this.metrics = metrics;
         this.logger = logger;
@@ -59,9 +57,7 @@ public sealed class ResilientStorageClient : IStorageClient
 
         try
         {
-            await this.retryPipeline.ExecuteAsync(
-                async _ => await this.inner.PersistAsync(batch).ConfigureAwait(false),
-                CancellationToken.None).ConfigureAwait(false);
+            await this.retry.ExecuteAsync(_ => this.inner.PersistAsync(batch), CancellationToken.None).ConfigureAwait(false);
         }
         catch (Exception ex)
         {

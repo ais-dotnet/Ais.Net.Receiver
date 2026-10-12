@@ -14,15 +14,13 @@ using Ais.Net.Receiver.Parser;
 using Ais.Net.Receiver.Resilience;
 using Ais.Net.Receiver.Telemetry;
 
-using Polly;
-
 namespace Ais.Net.Receiver.Receiver;
 
 public class ReceiverHost : IAsyncDisposable
 {
     private static readonly ActivitySource DefaultActivitySource = new("Ais.Net.Receiver");
     private readonly INmeaReceiver receiver;
-    private readonly ResiliencePipeline retryPipeline;
+    private readonly ConstantDelayRetry retry;
     private readonly TimeProvider timeProvider;
     private readonly ActivitySource activitySource;
     private readonly ApplicationMetrics? metrics;
@@ -71,7 +69,7 @@ public class ReceiverHost : IAsyncDisposable
         this.timeProvider = timeProvider;
         this.activitySource = instrumentation?.ActivitySource ?? DefaultActivitySource;
         this.metrics = metrics;
-        this.retryPipeline = RetryPipelines.ConstantDelay(retryPeriodicity ?? TimeSpan.FromSeconds(5), retryAttempts);
+        this.retry = new ConstantDelayRetry(retryPeriodicity ?? TimeSpan.FromSeconds(5), retryAttempts);
     }
 
     public IObservable<string> Sentences => this.sentences;
@@ -91,9 +89,7 @@ public class ReceiverHost : IAsyncDisposable
 
     public async Task StartAsync(CancellationToken cancellationToken = default)
     {
-        await this.retryPipeline.ExecuteAsync(
-            async token => await this.StartAsyncInternal(token).ConfigureAwait(false),
-            cancellationToken).ConfigureAwait(false);
+        await this.retry.ExecuteAsync(this.StartAsyncInternal, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task StartAsyncInternal(CancellationToken cancellationToken = default)

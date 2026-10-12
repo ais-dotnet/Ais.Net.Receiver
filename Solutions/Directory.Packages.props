@@ -1,7 +1,7 @@
 <Project>
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
-    <!-- Preserve the repo's floating package versions (e.g. Polly.Core 8.*, Testcontainers.Azurite 4.*). -->
+    <!-- Preserve the repo's floating package versions (e.g. Testcontainers.Azurite 4.*). -->
     <CentralPackageFloatingVersionsEnabled>true</CentralPackageFloatingVersionsEnabled>
   </PropertyGroup>
   <ItemGroup>
@@ -13,6 +13,7 @@
     <PackageVersion Include="Aspire.Hosting.Nats" Version="13.6.1" />
     <PackageVersion Include="Azure.Storage.Blobs" Version="12.30.1" />
     <PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
+    <PackageVersion Include="Corvus.Retry" Version="1.0.7" />
     <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.12" />
     <PackageVersion Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.12" />
     <PackageVersion Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.12" />
@@ -47,7 +48,6 @@
     <!-- Process instrumentation has no stable release; rc.1 tracks the 1.17.0 line of the others. -->
     <PackageVersion Include="OpenTelemetry.Instrumentation.Process" Version="1.17.0-rc.1" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.19.0" />
-    <PackageVersion Include="Polly.Core" Version="8.*" />
     <PackageVersion Include="Shouldly" Version="4.3.0" />
     <PackageVersion Include="Spectre.Console" Version="0.57.2" />
     <PackageVersion Include="Spectre.Console.Cli" Version="0.57.2" />

@@ -21,7 +21,7 @@
 
   <ItemGroup>
     <PackageReference Include="Ais.Net.Models" />
-    <PackageReference Include="Polly.Core" />
+    <PackageReference Include="Corvus.Retry" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
     <PackageReference Include="OpenTelemetry.Api" />
