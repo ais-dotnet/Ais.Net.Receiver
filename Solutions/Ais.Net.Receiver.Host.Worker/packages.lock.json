@@ -709,7 +709,7 @@
           "OpenTelemetry.Exporter.OpenTelemetryProtocol": "[1.19.1, )",
           "OpenTelemetry.Extensions.Hosting": "[1.19.1, )",
           "OpenTelemetry.Instrumentation.Http": "[1.19.0, )",
-          "OpenTelemetry.Instrumentation.Process": "[1.17.0-rc.1, )",
+          "OpenTelemetry.Instrumentation.Process": "[1.19.0-rc.1, )",
           "OpenTelemetry.Instrumentation.Runtime": "[1.19.0, )"
         }
       },
@@ -869,11 +869,11 @@
       },
       "OpenTelemetry.Instrumentation.Process": {
         "type": "CentralTransitive",
-        "requested": "[1.17.0-rc.1, )",
-        "resolved": "1.17.0-rc.1",
-        "contentHash": "oN56aaWQ6p+1JRTDXf7QXEOZi8sX7OGVRvBYDlPstPDQ9MAtn695+E68HeJFJeD7F2KhD4CBPiMWieVW2UQK2w==",
+        "requested": "[1.19.0-rc.1, )",
+        "resolved": "1.19.0-rc.1",
+        "contentHash": "Pl0vOlpxf+VaqGimA9KzQf3v06dvCRaXEGJFnOhxuwm1bX2CnuMnogeqNhXbm3ppSK/uufA8rbNvAZOh5x2wkQ==",
         "dependencies": {
-          "OpenTelemetry.Api": "[1.17.0, 2.0.0)"
+          "OpenTelemetry.Api": "[1.19.0, 2.0.0)"
         }
       },
       "Spectre.IO": {
