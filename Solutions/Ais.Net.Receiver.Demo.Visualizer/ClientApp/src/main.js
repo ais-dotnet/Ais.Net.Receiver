@@ -1,6 +1,10 @@
 import {MapboxOverlay} from '@deck.gl/mapbox';
-import maplibregl from 'maplibre-gl';
+import * as maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
+// MapLibre 6 runs its tile parsing in a web worker shipped as a separate module. Outside a plain
+// <script type="module"> page it cannot find that file by itself, so Vite bundles it and hands the
+// URL over here, as the MapLibre installation guide prescribes for Vite.
+import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 
 import {INITIAL_VIEW_STATE, loadConfig} from './config.js';
 import {loadVesselData} from './utils/data-loader.js';
@@ -14,6 +18,8 @@ import {TimeControls} from './ui/time-controls.js';
 import {getTooltip} from './ui/tooltip.js';
 import {VideoExporter, downloadBlob} from './video/encoder.js';
 import {ExportUI} from './video/export-ui.js';
+
+maplibregl.setWorkerUrl(maplibreWorkerUrl);
 
 // State
 let vesselData = null;
