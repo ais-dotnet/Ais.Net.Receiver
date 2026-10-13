@@ -95,6 +95,9 @@ jobs:
 
     # Additional build steps to produce an ARM version of the container image
     - name: Login to Docker Hub
+      # Dependabot and fork PRs have no access to repository secrets, so the login (which is only
+      # needed when the image is actually pushed, below) must not run for them.
+      if: ${{ startsWith(github.ref, 'refs/tags/') || github.event.inputs.forcePublish == 'true' }}
       uses: docker/login-action@abd2ef45e78c5afb21d64d4ca52ee8550d9572c7    # v4.5.1
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
