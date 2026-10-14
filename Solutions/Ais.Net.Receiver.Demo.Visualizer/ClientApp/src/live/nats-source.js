@@ -1,4 +1,4 @@
-import {connect, StringCodec} from 'nats.ws';
+import {wsconnect} from '@nats-io/nats-core';
 import {TRAIL_LENGTH_SECONDS} from '../config.js';
 import {isPositionReport, readName, readPosition, readShipType} from './ais-messages.js';
 
@@ -51,7 +51,7 @@ export class LiveVesselSource {
   }
 
   async start(onError) {
-    this.connection = await connect({
+    this.connection = await wsconnect({
       servers: this.url,
       user: this.user,
       pass: this.pass,
@@ -61,13 +61,12 @@ export class LiveVesselSource {
       reconnectTimeWait: 2000
     });
 
-    const codec = StringCodec();
     const subscription = this.connection.subscribe(this.subject);
 
     (async () => {
       for await (const message of subscription) {
         try {
-          this.#apply(JSON.parse(codec.decode(message.data)));
+          this.#apply(message.json());
         } catch (err) {
           // One malformed message must not end the subscription and freeze the map.
           console.warn('Dropped an unreadable AIS message', err);

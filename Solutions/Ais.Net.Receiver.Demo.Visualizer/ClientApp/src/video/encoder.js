@@ -1,5 +1,5 @@
 /**
- * Video export using WebCodecs + webm-muxer for frame-by-frame capture,
+ * Video export using WebCodecs + Mediabunny for frame-by-frame capture,
  * with a custom rendering loop that steps through the animation timeline.
  *
  * Captures directly from the MapLibre canvas using VideoFrame (GPU-to-GPU,
@@ -73,7 +73,7 @@ export class VideoExporter {
       height: mapCanvas.height,
       framerate
     });
-    this.encoder.start();
+    await this.encoder.start();
 
     for (let frame = 0; frame < totalFrames; frame++) {
       if (!this.recording) break;

@@ -1,11 +1,11 @@
 /**
- * WebCodecs-based VP9 encoder using webm-muxer.
+ * WebCodecs-based VP9 encoder using Mediabunny for the WebM container.
  *
  * VideoFrame is created directly from the canvas (GPU-to-GPU, no pixel
  * readback), and VideoEncoder produces compressed chunks that are muxed
  * into a seekable WebM container.
  */
-import {Muxer, ArrayBufferTarget} from 'webm-muxer';
+import {BufferTarget, EncodedPacket, EncodedVideoPacketSource, Output, WebMOutputFormat} from 'mediabunny';
 
 const BITRATE = 8_000_000; // 8 Mbps
 const KEYFRAME_INTERVAL_S = 2; // keyframe every 2 seconds
@@ -17,25 +17,29 @@ export class WebCodecsEncoder {
     this.framerate = framerate;
     this.frameIndex = 0;
     this.encoder = null;
-    this.muxer = null;
-    this.target = null;
+    this.output = null;
+    this.source = null;
+    this.muxing = Promise.resolve();
   }
 
-  start() {
-    this.target = new ArrayBufferTarget();
-    this.muxer = new Muxer({
-      target: this.target,
-      video: {
-        codec: 'V_VP9',
-        width: this.width,
-        height: this.height,
-        frameRate: this.framerate
-      },
-      type: 'webm'
+  async start() {
+    this.output = new Output({
+      format: new WebMOutputFormat(),
+      target: new BufferTarget()
     });
+    this.source = new EncodedVideoPacketSource('vp9');
+    this.output.addVideoTrack(this.source, {frameRate: this.framerate});
+    await this.output.start();
 
+    this.muxing = Promise.resolve();
     this.encoder = new VideoEncoder({
-      output: (chunk, meta) => this.muxer.addVideoChunk(chunk, meta),
+      // Mediabunny wants packets added in decode order, one at a time, and add() is async. The
+      // encoder calls output() synchronously for each chunk, so chain the adds; save() awaits the
+      // chain, which also surfaces any muxing error instead of losing it in a floating promise.
+      output: (chunk, meta) => {
+        const packet = EncodedPacket.fromEncodedChunk(chunk);
+        this.muxing = this.muxing.then(() => this.source.add(packet, meta));
+      },
       error: (e) => console.error('VideoEncoder error:', e)
     });
 
@@ -72,8 +76,8 @@ export class WebCodecsEncoder {
 
   async save() {
     await this.encoder.flush();
-    this.muxer.finalize();
-    const buf = this.target.buffer;
-    return new Blob([buf], {type: 'video/webm'});
+    await this.muxing;
+    await this.output.finalize();
+    return new Blob([this.output.target.buffer], {type: 'video/webm'});
   }
 }

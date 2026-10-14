@@ -110,7 +110,7 @@ flowchart LR
     W -- "capture: hourly .nm4 blobs" --> A
     W -- "publish: ais.messages (JSON)" --> N
     A -. "replay source" .-> V
-    N == "websocket (nats.ws)" ==> B["browser<br/>deck.gl + MapLibre"]
+    N == "websocket (nats-core)" ==> B["browser<br/>deck.gl + MapLibre"]
     V -- "bundle · /api/config · /api/tracks" --> B
 ```
 
@@ -361,7 +361,7 @@ dotnet run --project Solutions/Ais.Net.Receiver.AppHost
 
 **Live is the default.** The worker publishes every decoded message to NATS as JSON
 (`Ais.Net.Models.Json`), and the page subscribes to that subject directly from the browser with
-[nats.ws](https://github.com/nats-io/nats.ws) and decodes it. The ASP.NET Core host relays no vessel
+[`@nats-io/nats-core`](https://github.com/nats-io/nats.js) and decodes it. The ASP.NET Core host relays no vessel
 data at all — it serves the bundle and tells the page where the broker is.
 
 AIS splits a vessel across messages, so the page correlates them by MMSI: a vessel appears as soon as
