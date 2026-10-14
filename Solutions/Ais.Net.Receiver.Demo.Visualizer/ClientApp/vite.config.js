@@ -7,7 +7,7 @@ export default defineConfig({
   build: {
     // Straight into wwwroot so UseDefaultFiles finds index.html at the site root. emptyOutDir is off
     // because wwwroot is the web root rather than a directory Vite owns outright.
-    outDir: path.resolve(__dirname, '../wwwroot'),
+    outDir: path.resolve(import.meta.dirname, '../wwwroot'),
     emptyOutDir: false
   },
   server: {

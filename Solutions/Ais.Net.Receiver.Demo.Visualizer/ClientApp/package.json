@@ -18,6 +18,6 @@
     "mediabunny": "^1.61.4"
   },
   "devDependencies": {
-    "vite": "^6"
+    "vite": "^8.3.1"
   }
 }
