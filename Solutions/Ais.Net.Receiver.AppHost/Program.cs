@@ -17,7 +17,7 @@ IResourceBuilder<AzureBlobStorageResource> blobs = builder.AddAzureStorage("stor
     .AddBlobs("blobs");
 
 // NATS carries decoded vessel positions from the worker to the visualiser. The websocket listener is
-// what makes that reach the browser directly: the visualiser page subscribes with nats.ws rather than
+// what makes that reach the browser directly: the visualiser page subscribes with @nats-io/nats-core rather than
 // the ASP.NET Core host relaying the stream. nats-server has no command-line switch for websockets -
 // it is configuration-file only - hence the bind-mounted nats.conf.
 IResourceBuilder<NatsServerResource> nats = builder.AddNats("nats")

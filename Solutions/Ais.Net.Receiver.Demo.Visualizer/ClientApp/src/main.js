@@ -54,7 +54,9 @@ async function init() {
   // and (for live) the websocket the browser subscribes on.
   const config = await loadConfig();
 
-  // Create MapLibre map with preserveDrawingBuffer for video capture
+  // Create MapLibre map with preserveDrawingBuffer for video capture. MapLibre 5+ reads WebGL context
+  // attributes only from canvasContextAttributes and silently ignores a top-level preserveDrawingBuffer;
+  // without it the map canvas is cleared before the exporter copies it, and videos lose the basemap.
   map = new maplibregl.Map({
     container: 'map',
     style: config.basemapStyle,
@@ -62,7 +64,7 @@ async function init() {
     zoom: INITIAL_VIEW_STATE.zoom,
     pitch: INITIAL_VIEW_STATE.pitch,
     bearing: INITIAL_VIEW_STATE.bearing,
-    preserveDrawingBuffer: true
+    canvasContextAttributes: {preserveDrawingBuffer: true}
   });
 
   // Create deck.gl overlay

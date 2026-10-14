@@ -55,7 +55,7 @@ entries below.
 - An AIS Visualizer demo (`Ais.Net.Receiver.Demo.Visualizer` and its `Ais.Net.Receiver.Demo.Tracks`
   pipeline): a deck.gl and MapLibre map served by ASP.NET Core and orchestrated by the AppHost
   alongside a NATS broker. The page subscribes to the worker's NATS subject directly from the browser
-  with `nats.ws`, so the web host relays no vessel data; it can instead replay a recorded day from a
+  with `@nats-io/nats-core`, so the web host relays no vessel data; it can instead replay a recorded day from a
   local `.nm4` file or from an hour the receiver captured to blob storage. Neither demo project ships
   in the container images or as a package.
 - Dead-lettering: with `Storage:DeadLetterPath` configured, a batch that exhausts its storage retries
