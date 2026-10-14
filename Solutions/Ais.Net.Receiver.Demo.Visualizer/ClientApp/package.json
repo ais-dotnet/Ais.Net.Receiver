@@ -9,22 +9,15 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@deck.gl/core": "^9.2",
-    "@deck.gl/extensions": "^9.2",
-    "@deck.gl/geo-layers": "^9.2",
-    "@deck.gl/layers": "^9.2",
-    "@deck.gl/mapbox": "^9.2",
-    "@deck.gl/widgets": "^9.2",
+    "@deck.gl/core": "~9.3.7",
+    "@deck.gl/extensions": "~9.3.7",
+    "@deck.gl/layers": "~9.3.7",
+    "@deck.gl/mapbox": "~9.3.7",
+    "@nats-io/nats-core": "^3.4.0",
     "maplibre-gl": "^6.14.0",
-    "nats.ws": "^1.30",
-    "webm-muxer": "^5"
+    "mediabunny": "^1.61.4"
   },
   "devDependencies": {
     "vite": "^6"
-  },
-  "overrides": {
-    "fflate": "0.7.5",
-    "image-size": "^2.0.3",
-    "argparse": "^2.0.1"
   }
 }

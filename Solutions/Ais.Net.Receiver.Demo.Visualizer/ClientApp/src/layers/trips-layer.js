@@ -1,4 +1,4 @@
-import {TripsLayer} from '@deck.gl/geo-layers';
+import {TripsLayer} from './vendor/trips-layer.js';
 import {TRAIL_LENGTH_SECONDS, TRAIL_WIDTH} from '../config.js';
 
 const getPath = d => d.path;
