@@ -10,7 +10,7 @@
     <PackageVersion Include="Aspire.NATS.Net" Version="13.6.1" />
     <PackageVersion Include="Aspire.Hosting.AppHost" Version="13.6.1" />
     <PackageVersion Include="Aspire.Hosting.Azure.Storage" Version="13.6.1" />
-    <PackageVersion Include="Aspire.Hosting.Nats" Version="13.6.1" />
+    <PackageVersion Include="Aspire.Hosting.Nats" Version="13.6.2" />
     <PackageVersion Include="Azure.Storage.Blobs" Version="12.30.1" />
     <PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
     <PackageVersion Include="Corvus.Retry" Version="1.0.7" />
