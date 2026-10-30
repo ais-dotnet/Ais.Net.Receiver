@@ -638,7 +638,7 @@
           "OpenTelemetry.Exporter.OpenTelemetryProtocol": "[1.20.1, )",
           "OpenTelemetry.Extensions.Hosting": "[1.20.1, )",
           "OpenTelemetry.Instrumentation.Http": "[1.20.1, )",
-          "OpenTelemetry.Instrumentation.Process": "[1.19.0-rc.1, )",
+          "OpenTelemetry.Instrumentation.Process": "[1.20.1-rc.1, )",
           "OpenTelemetry.Instrumentation.Runtime": "[1.20.1, )"
         }
       },
@@ -743,11 +743,11 @@
       },
       "OpenTelemetry.Instrumentation.Process": {
         "type": "CentralTransitive",
-        "requested": "[1.19.0-rc.1, )",
-        "resolved": "1.19.0-rc.1",
-        "contentHash": "Pl0vOlpxf+VaqGimA9KzQf3v06dvCRaXEGJFnOhxuwm1bX2CnuMnogeqNhXbm3ppSK/uufA8rbNvAZOh5x2wkQ==",
+        "requested": "[1.20.1-rc.1, )",
+        "resolved": "1.20.1-rc.1",
+        "contentHash": "PA2WWtknVPxKg9pDinOkV668U5umNqYBxl0wf02dhMK9p4+IxGxfDQvWdxgkiTLPHknHsbuUGHtZ6fs42/cgnQ==",
         "dependencies": {
-          "OpenTelemetry.Api": "[1.19.0, 2.0.0)"
+          "OpenTelemetry.Api": "[1.20.1, 2.0.0)"
         }
       },
       "System.Linq.Async": {
