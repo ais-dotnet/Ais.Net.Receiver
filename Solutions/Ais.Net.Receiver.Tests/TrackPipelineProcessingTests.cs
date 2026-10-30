@@ -101,6 +101,54 @@ public class TrackPipelineProcessingTests
     }
 
     [TestMethod]
+    public void TimelineOutliers_RemovesPositionsFromAClockADayBehind()
+    {
+        const long Start = 1_778_198_400;
+        VesselTrack stale = TrackWithEpochs(Start - 86_400, Start + 10);
+        VesselTrack normal = TrackWithEpochs(Start, Start + 3_600);
+
+        TimelineOutlierFilter.Apply([stale, normal]);
+
+        stale.Positions.Select(p => p.Epoch).ShouldBe([Start + 10]);
+        normal.Positions.Select(p => p.Epoch).ShouldBe([Start, Start + 3_600]);
+    }
+
+    [TestMethod]
+    public void TimelineOutliers_RemovesPositionsFromAClockADayAhead()
+    {
+        const long Start = 1_778_198_400;
+        VesselTrack track = TrackWithEpochs(Start, Start + 10, Start + 86_400);
+
+        TimelineOutlierFilter.Apply([track]);
+
+        track.Positions.Select(p => p.Epoch).ShouldBe([Start, Start + 10]);
+    }
+
+    [TestMethod]
+    public void TimelineOutliers_KeepsARecordingWithAnOutageShorterThanTheLimit()
+    {
+        const long Start = 1_778_198_400;
+        VesselTrack track = TrackWithEpochs(Start, Start + (5 * 3_600), Start + (10 * 3_600));
+
+        TimelineOutlierFilter.Apply([track]);
+
+        track.Positions.Count.ShouldBe(3);
+    }
+
+    [TestMethod]
+    public void TimelineOutliers_AcceptsTracksWithNoPositions()
+    {
+        VesselTrack track = TrackWithEpochs();
+
+        TimelineOutlierFilter.Apply([track]);
+
+        track.Positions.ShouldBeEmpty();
+    }
+
+    private static VesselTrack TrackWithEpochs(params long[] epochs) =>
+        new() { Positions = [.. epochs.Select(epoch => new VesselTrackPoint(10.0, 58.0, epoch, 12, 90))] };
+
+    [TestMethod]
     public void Geofence_KeepsOnlyPointsInsideThePolygon()
     {
         using TempDirectory directory = new();
