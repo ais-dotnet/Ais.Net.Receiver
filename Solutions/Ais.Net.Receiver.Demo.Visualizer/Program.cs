@@ -59,6 +59,7 @@ app.MapGet("/api/config", (IOptions<VisualizerOptions> options, IConfiguration c
                 // Already a ws:// URL: the AppHost declares the endpoint with the ws scheme.
                 url = value.NatsWebSocketUrl,
                 subject = AisNats.MessagesSubject,
+                timestampHeader = AisNats.TimestampHeader,
 
                 // Local demo credentials, generated per run by the AppHost. They are handed to the
                 // page because the browser connects to the broker itself; that is only acceptable

@@ -1,5 +1,7 @@
 using Aspire.Hosting.Azure;
 
+using Microsoft.Extensions.Configuration;
+
 IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(args);
 
 // Azurite stands in for Azure Storage locally, so capture runs on a fresh clone with no account and
@@ -39,8 +41,26 @@ string recording = File.Exists(Path.Combine(broadcasterSamples, "kystverket-2026
     ? "samples/kystverket-20260511T00.nm4"
     : "samples/sample.nm4";
 
+// A longer local recording can replace the sample without touching the repo: set AisRecording to its
+// absolute path, typically with dotnet user-secrets. The AppHost does not run under the Development
+// environment that would load those by default, so they are added here. Real captures interleave stale
+// timestamps, each of which would stall the replay for the default 5 second maximum gap, so these get a
+// shorter one.
+builder.Configuration.AddUserSecrets(typeof(Program).Assembly, optional: true);
+List<string> broadcasterArgs = ["replay", recording, "--tcp", "15631", "--ws", "18080", "--pace", "tags", "--quiet"];
+if (builder.Configuration["AisRecording"] is { Length: > 0 } localRecording)
+{
+    if (!File.Exists(localRecording))
+    {
+        throw new FileNotFoundException($"AisRecording points at a file that does not exist: '{localRecording}'.");
+    }
+
+    broadcasterArgs[1] = localRecording;
+    broadcasterArgs.AddRange(["--max-gap", "1"]);
+}
+
 IResourceBuilder<ProjectResource> broadcaster = builder.AddProject<Projects.Ais_Net_Broadcaster_Host_Console>("broadcaster")
-    .WithArgs("replay", recording, "--tcp", "15631", "--ws", "18080", "--pace", "tags", "--quiet")
+    .WithArgs([.. broadcasterArgs])
     .WithEndpoint(targetPort: 15631, scheme: "tcp", name: "tcp")
 
     // Declared with the ws scheme so GetEndpoint("ws") yields a ws:// URL the worker can use verbatim.

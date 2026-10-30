@@ -106,7 +106,12 @@ public static class TrackPipeline
             {
                 track.Positions = geofence.Filter(track.Positions);
             }
+        }
 
+        TimelineOutlierFilter.Apply(tracks);
+
+        foreach (VesselTrack track in tracks)
+        {
             if (track.Positions.Count > 2)
             {
                 track.Positions = TrackDownsampler.Downsample(track.Positions);

@@ -215,12 +215,13 @@ public class Worker : BackgroundService, IHostedLifecycleService, IAsyncDisposab
             {
                 this.metrics.MessagesReceived.Add(1, MessageTypeTagsFor(msg.MessageType));
                 this.connectionMonitor.RecordMessageReceived();
-
-                // Offer the message to whatever is publishing off-box. This is a queue write, not a
-                // network call, so it does not slow the receive path; with nothing configured it is
-                // the no-op publisher.
-                this.messagePublisher.Publish(msg);
             }));
+
+        // Offer each message to whatever is publishing off-box. This is a queue write, not a network
+        // call, so it does not slow the receive path; with nothing configured it is the no-op
+        // publisher. The metadata stream is the one that pairs a message with its tag-block time.
+        this.subscriptions.Add(
+            this.receiverHost.Metadata.Subscribe(item => this.messagePublisher.Publish(item.Message, item.UnixTimestamp)));
 
         // Subscribe to sentences for metrics
         this.subscriptions.Add(

@@ -18,5 +18,6 @@ public interface IAisMessagePublisher
     /// receive path, where a slow publisher would stall decoding for every other subscriber.
     /// </summary>
     /// <param name="message">The decoded message.</param>
-    void Publish(IAisMessage message);
+    /// <param name="unixTimestamp">The time from the message's NMEA tag block, or 0 if it had none.</param>
+    void Publish(IAisMessage message, long unixTimestamp);
 }

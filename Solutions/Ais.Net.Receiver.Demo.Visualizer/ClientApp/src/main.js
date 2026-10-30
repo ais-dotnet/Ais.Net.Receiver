@@ -155,6 +155,7 @@ async function initLive(config) {
   liveSource = new LiveVesselSource({
     url: config.nats.url,
     subject: config.nats.subject,
+    timestampHeader: config.nats.timestampHeader,
     user: config.nats.user,
     pass: config.nats.pass,
     shipTypeStyles: config.shipTypeStyles,

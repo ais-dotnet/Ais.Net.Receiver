@@ -13,7 +13,7 @@ namespace Ais.Net.Receiver.Host.Worker.Publishing;
 public sealed class NullAisMessagePublisher : IAisMessagePublisher
 {
     /// <inheritdoc/>
-    public void Publish(IAisMessage message)
+    public void Publish(IAisMessage message, long unixTimestamp)
     {
     }
 }

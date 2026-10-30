@@ -343,6 +343,14 @@ reads the broadcaster's WebSocket endpoint instead, which works offline. The qui
 the setting is also honoured as an environment variable or on the command line
 (`dotnet run --project Solutions/Ais.Net.Receiver.AppHost -- --AisSource broadcaster`).
 
+To replay a longer recording of your own instead of the sample, keep its path out of the repo in user
+secrets. The value must be the absolute path of a single file, and the broadcaster then runs with
+`--max-gap 1`, because real captures contain stale timestamps that would otherwise stall the replay:
+
+```bash
+dotnet user-secrets set AisRecording "<absolute path to .nm4>" --project Solutions/Ais.Net.Receiver.AppHost
+```
+
 ## Demos
 
 ### AIS Visualizer
