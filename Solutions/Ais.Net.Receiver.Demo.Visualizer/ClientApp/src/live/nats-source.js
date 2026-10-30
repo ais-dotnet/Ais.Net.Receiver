@@ -19,7 +19,7 @@ const DEFAULT_COLOR = [150, 249, 161];
  * data-loader.js behave identically whether the data is live or recorded.
  */
 export class LiveVesselSource {
-  constructor({url, subject, user, pass, shipTypeStyles, inactivitySeconds = 900}) {
+  constructor({url, subject, timestampHeader, user, pass, shipTypeStyles, inactivitySeconds = 900}) {
     this.url = url;
     this.subject = subject;
     this.user = user;
@@ -27,7 +27,15 @@ export class LiveVesselSource {
     this.shipTypeStyles = shipTypeStyles ?? {};
     this.inactivitySeconds = inactivitySeconds;
 
+    this.timestampHeader = timestampHeader;
+
     this.baseEpoch = Math.floor(Date.now() / 1000);
+
+    // How far the feed's own time is from this browser's clock. Near zero for a live feed; for a
+    // replay it is what makes the displayed time the capture's. It only moves forward, because a base
+    // station with a slow clock would otherwise drag the display back. Rendering stays on the browser
+    // clock, so trails and interpolation are unaffected.
+    this.feedClockOffset = null;
     this.vessels = new Map();
     this.connection = null;
   }
@@ -39,7 +47,7 @@ export class LiveVesselSource {
 
   get metadata() {
     return {
-      baseEpoch: this.baseEpoch,
+      baseEpoch: this.baseEpoch + (this.feedClockOffset ?? 0),
       timeRange: {start: 0, end: this.currentTime},
       vesselCount: this.vessels.size
     };
@@ -66,6 +74,7 @@ export class LiveVesselSource {
     (async () => {
       for await (const message of subscription) {
         try {
+          this.#observeFeedClock(message.headers?.get(this.timestampHeader));
           this.#apply(message.json());
         } catch (err) {
           // One malformed message must not end the subscription and freeze the map.
@@ -81,6 +90,16 @@ export class LiveVesselSource {
     if (this.connection) {
       await this.connection.close();
       this.connection = null;
+    }
+  }
+
+  #observeFeedClock(header) {
+    const timestamp = Number(header);
+    if (!(timestamp > 0)) return;
+
+    const offset = timestamp - Math.floor(Date.now() / 1000);
+    if (this.feedClockOffset === null || offset > this.feedClockOffset) {
+      this.feedClockOffset = offset;
     }
   }
 

@@ -2,6 +2,7 @@
 // Copyright (c) Endjin Limited. All rights reserved.
 // </copyright>
 
+using System.Globalization;
 using System.Threading.Channels;
 
 using Ais.Net.Models;
@@ -36,7 +37,7 @@ public sealed class NatsAisMessagePublisher : IAisMessagePublisher, IHostedServi
     private readonly INatsConnection connection;
     private readonly ILogger<NatsAisMessagePublisher> logger;
     private readonly string subject;
-    private readonly Channel<AisMessageBase> queue;
+    private readonly Channel<(AisMessageBase Message, long UnixTimestamp)> queue;
     private readonly CancellationTokenSource stopping = new();
 
     private Task? drainTask;
@@ -66,7 +67,7 @@ public sealed class NatsAisMessagePublisher : IAisMessagePublisher, IHostedServi
         // Drops are observed via the itemDropped callback: under DropOldest, TryWrite always
         // succeeds on a full channel by evicting the oldest entry, so a failed-write check could
         // never see a backpressure drop.
-        this.queue = Channel.CreateBounded<AisMessageBase>(
+        this.queue = Channel.CreateBounded<(AisMessageBase Message, long UnixTimestamp)>(
             new BoundedChannelOptions(capacity)
             {
                 FullMode = BoundedChannelFullMode.DropOldest,
@@ -76,7 +77,7 @@ public sealed class NatsAisMessagePublisher : IAisMessagePublisher, IHostedServi
     }
 
     /// <inheritdoc/>
-    public void Publish(IAisMessage message)
+    public void Publish(IAisMessage message, long unixTimestamp)
     {
         // The serializer is polymorphic over AisMessageBase; every message the decoder produces
         // derives from it, but the receiver's stream is typed as the interface.
@@ -87,7 +88,7 @@ public sealed class NatsAisMessagePublisher : IAisMessagePublisher, IHostedServi
 
         // A false return only happens after shutdown has completed the writer; backpressure drops
         // are reported through the channel's itemDropped callback instead.
-        this.queue.Writer.TryWrite(concrete);
+        this.queue.Writer.TryWrite((concrete, unixTimestamp));
     }
 
     /// <inheritdoc/>
@@ -141,13 +142,18 @@ public sealed class NatsAisMessagePublisher : IAisMessagePublisher, IHostedServi
     {
         try
         {
-            await foreach (AisMessageBase message in this.queue.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
+            await foreach ((AisMessageBase message, long unixTimestamp) in this.queue.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
             {
                 try
                 {
+                    NatsHeaders? headers = unixTimestamp > 0
+                        ? new NatsHeaders { [AisNats.TimestampHeader] = unixTimestamp.ToString(CultureInfo.InvariantCulture) }
+                        : null;
+
                     await this.connection.PublishAsync(
                         this.subject,
                         message,
+                        headers: headers,
                         serializer: AisMessageNatsSerializer.Default,
                         cancellationToken: cancellationToken).ConfigureAwait(false);
                 }

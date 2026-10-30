@@ -21,4 +21,11 @@ public static class AisNats
     /// (<c>Ais.Net.Models.Json</c>, with a <c>$type</c> discriminator).
     /// </summary>
     public const string MessagesSubject = "ais.messages";
+
+    /// <summary>
+    /// The header carrying the Unix time in seconds that a message's NMEA tag block gives for it. It
+    /// is absent when the sentence had no timestamp. For a replayed recording this is the time of the
+    /// capture, not the time of the broadcast.
+    /// </summary>
+    public const string TimestampHeader = "Ais-Timestamp";
 }
