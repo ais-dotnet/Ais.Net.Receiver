@@ -8,6 +8,7 @@
     <!-- Orchestration dependencies (DCP, dashboard) come from NuGet; the Aspire CLI bundle is not required. -->
     <AspireUseCliBundle>false</AspireUseCliBundle>
     <NoWarn>$(NoWarn);ASPIRE010</NoWarn>
+    <UserSecretsId>dotnet-Ais.Net.Receiver.AppHost-8e1f4c27-3a96-4d0b-b5e2-1c7a9f6d2e48</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
