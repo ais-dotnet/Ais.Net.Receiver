@@ -233,4 +233,28 @@ public class NmeaMessageExtensionsTests
         stationId.ShouldBe(0);
         timestamp.ShouldBe(0);
     }
+    [TestMethod]
+    public void TagBlockTimestampToDateTimeOffset_Zero_ReturnsNull()
+    {
+        0L.TagBlockTimestampToDateTimeOffset().ShouldBeNull();
+    }
+
+    [TestMethod]
+    public void TagBlockTimestampToDateTimeOffset_Seconds_ReturnsThatInstant()
+    {
+        1637760000L.TagBlockTimestampToDateTimeOffset().ShouldBe(new DateTimeOffset(2021, 11, 24, 13, 20, 0, TimeSpan.Zero));
+    }
+
+    [TestMethod]
+    public void TagBlockTimestampToDateTimeOffset_Milliseconds_ReturnsThatInstant()
+    {
+        1637760000123L.TagBlockTimestampToDateTimeOffset().ShouldBe(new DateTimeOffset(2021, 11, 24, 13, 20, 0, 123, TimeSpan.Zero));
+    }
+
+    [TestMethod]
+    public void TagBlockTimestampToDateTimeOffset_OutOfRange_ReturnsNull()
+    {
+        long.MaxValue.TagBlockTimestampToDateTimeOffset().ShouldBeNull();
+        (-1L).TagBlockTimestampToDateTimeOffset().ShouldBeNull();
+    }
 }

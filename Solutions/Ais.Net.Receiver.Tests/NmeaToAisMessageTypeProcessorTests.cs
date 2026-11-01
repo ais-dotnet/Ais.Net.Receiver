@@ -282,4 +282,70 @@ public class NmeaToAisMessageTypeProcessorTests
         IVesselIdentity identity = receivedMessage;
         identity.Mmsi.ShouldBe(236091959u);
     }
+    [TestMethod]
+    public void OnNext_WithTimestampSet_StampsEmittedMessage()
+    {
+        // Arrange
+        using NmeaToAisMessageTypeProcessor processor = new();
+        DateTimeOffset receivedAt = new(2026, 1, 1, 0, 0, 3, TimeSpan.Zero);
+        processor.Timestamp = receivedAt;
+
+        IAisMessage? receivedMessage = null;
+        using IDisposable subscription = processor.Messages.Subscribe(msg => receivedMessage = msg);
+
+        NmeaLineParser parsedLine = new("!AIVDM,1,1,,A,13u?etPv2;0n:dDPwUM1U1Cb069D,0*24"u8);
+
+        // Act
+        processor.OnNext(parsedLine, parsedLine.Payload, parsedLine.Padding);
+
+        // Assert
+        receivedMessage.ShouldNotBeNull();
+        IAisTimestamp timestamped = receivedMessage.ShouldBeAssignableTo<IAisTimestamp>();
+        timestamped.Timestamp.ShouldBe(receivedAt);
+    }
+
+    [TestMethod]
+    public void OnNext_WithoutTimestamp_LeavesTimestampNull()
+    {
+        // Arrange
+        using NmeaToAisMessageTypeProcessor processor = new();
+
+        IAisMessage? receivedMessage = null;
+        using IDisposable subscription = processor.Messages.Subscribe(msg => receivedMessage = msg);
+
+        NmeaLineParser parsedLine = new("!AIVDM,1,1,,B,B52Jcw000>k<865k030n4?w00000,0*18"u8);
+
+        // Act
+        processor.OnNext(parsedLine, parsedLine.Payload, parsedLine.Padding);
+
+        // Assert
+        receivedMessage.ShouldNotBeNull();
+        IAisTimestamp timestamped = receivedMessage.ShouldBeAssignableTo<IAisTimestamp>();
+        timestamped.Timestamp.ShouldBeNull();
+    }
+
+    [TestMethod]
+    public void OnNext_TimestampChangedBetweenLines_EachMessageKeepsItsOwn()
+    {
+        // Arrange
+        using NmeaToAisMessageTypeProcessor processor = new();
+        DateTimeOffset first = new(2026, 1, 1, 0, 0, 3, TimeSpan.Zero);
+        DateTimeOffset second = first.AddSeconds(7);
+
+        List<IAisMessage> receivedMessages = [];
+        using IDisposable subscription = processor.Messages.Subscribe(receivedMessages.Add);
+
+        NmeaLineParser parsedLine = new("!AIVDM,1,1,,A,13u?etPv2;0n:dDPwUM1U1Cb069D,0*24"u8);
+
+        // Act
+        processor.Timestamp = first;
+        processor.OnNext(parsedLine, parsedLine.Payload, parsedLine.Padding);
+        processor.Timestamp = second;
+        processor.OnNext(parsedLine, parsedLine.Payload, parsedLine.Padding);
+
+        // Assert
+        receivedMessages.Count.ShouldBe(2);
+        ((IAisTimestamp)receivedMessages[0]).Timestamp.ShouldBe(first);
+        ((IAisTimestamp)receivedMessages[1]).Timestamp.ShouldBe(second);
+    }
 }
