@@ -1,3 +1,4 @@
+using Ais.Net.Models;
 using Ais.Net.Models.Abstractions;
 using Ais.Net.Receiver.Parser;
 
@@ -282,8 +283,18 @@ public class NmeaToAisMessageTypeProcessorTests
         IVesselIdentity identity = receivedMessage;
         identity.Mmsi.ShouldBe(236091959u);
     }
+
+    // One row per record the processor constructs, so that dropping the timestamp from any single
+    // construction site fails a row. The payloads are the ones the per-type tests above decode.
     [TestMethod]
-    public void OnNext_WithTimestampSet_StampsEmittedMessage()
+    [DataRow("!AIVDM,1,1,,A,13u?etPv2;0n:dDPwUM1U1Cb069D,0*24", typeof(AisMessageType1Through3), DisplayName = "Type 1")]
+    [DataRow("!AIVDM,1,1,,A,55?MbV02;H;s<HtKR20EHE:0@T4@Dn2222222216L961O5Gf0NSQEp6ClRp8888888888880,2*00", typeof(AisMessageType5), DisplayName = "Type 5")]
+    [DataRow("!AIVDM,1,1,,B,B52Jcw000>k<865k030n4?w00000,0*18", typeof(AisMessageType18), DisplayName = "Type 18")]
+    [DataRow("!AIVDM,1,1,,B,C5N3SRgPEnJGEBT>NhWAwwo862PaLELTBJ:V00000000S0D:R220,0*0B", typeof(AisMessageType19), DisplayName = "Type 19")]
+    [DataRow("!AIVDM,1,1,,A,H42O55i18tMET00000000000000,2*6D", typeof(AisMessageType24Part0), DisplayName = "Type 24 part A")]
+    [DataRow("!AIVDM,1,1,,A,H42O55lti4hhhilD3nink000?050,0*40", typeof(AisMessageType24Part1), DisplayName = "Type 24 part B")]
+    [DataRow("!AIVDM,1,1,,A,KCQ9r=hrFUnH7P00,0*41", typeof(AisMessageType27), DisplayName = "Type 27")]
+    public void OnNext_WithTimestampSet_StampsEveryMessageType(string line, Type expectedType)
     {
         // Arrange
         using NmeaToAisMessageTypeProcessor processor = new();
@@ -293,13 +304,14 @@ public class NmeaToAisMessageTypeProcessorTests
         IAisMessage? receivedMessage = null;
         using IDisposable subscription = processor.Messages.Subscribe(msg => receivedMessage = msg);
 
-        NmeaLineParser parsedLine = new("!AIVDM,1,1,,A,13u?etPv2;0n:dDPwUM1U1Cb069D,0*24"u8);
+        NmeaLineParser parsedLine = new(System.Text.Encoding.ASCII.GetBytes(line));
 
         // Act
         processor.OnNext(parsedLine, parsedLine.Payload, parsedLine.Padding);
 
         // Assert
         receivedMessage.ShouldNotBeNull();
+        receivedMessage.GetType().ShouldBe(expectedType);
         IAisTimestamp timestamped = receivedMessage.ShouldBeAssignableTo<IAisTimestamp>();
         timestamped.Timestamp.ShouldBe(receivedAt);
     }
