@@ -149,6 +149,7 @@ public class ReceiverHost : IAsyncDisposable
         await foreach (ReadOnlyMemory<byte> message in this.GetAsync(cancellationToken))
         {
             currentMetadata = message.Span.ParseNmeaBlockTags();
+            processor.Timestamp = currentMetadata.UnixTimestamp.TagBlockTimestampToDateTimeOffset();
 
             using Activity? activity = this.activitySource.StartActivity("ProcessMessage");
 

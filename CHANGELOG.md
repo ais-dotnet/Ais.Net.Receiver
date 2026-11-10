@@ -18,6 +18,10 @@ entries below.
 
 ### Added
 
+- Every decoded message now carries the time it was received. `AisMessageBase.Timestamp` (from
+  Ais.Net.Models 1.0.5, exposed through `IAisTimestamp`) is set from the NMEA tag block's `c:` field,
+  or from the host clock for lines that arrived without a tag block. Tag-block values in seconds and
+  milliseconds are both understood; a missing or malformed value leaves it `null`.
 - A .NET Aspire AppHost (`Ais.Net.Receiver.AppHost`) and a shared `Ais.Net.Receiver.ServiceDefaults`
   project carrying telemetry, health checks and service discovery. The AppHost runs an Azurite
   container and points the worker at it, so `dotnet run` on the AppHost captures NMEA locally with no

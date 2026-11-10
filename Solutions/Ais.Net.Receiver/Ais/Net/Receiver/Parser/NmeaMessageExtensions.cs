@@ -105,6 +105,29 @@ public static class NmeaMessageExtensions
             WritePrependedNmeaBlockTags(message, timeProvider.GetUtcNow().ToUnixTimeSeconds(), destination);
     }
 
+    extension(long unixTimestamp)
+    {
+        /// <summary>
+        /// Converts a tag-block <c>c:</c> value to a <see cref="DateTimeOffset"/>. The field is UNIX time in
+        /// seconds, but some feeds write milliseconds, so a value too large to be seconds is read as
+        /// milliseconds. Zero (the tag was absent or malformed) and anything outside both ranges give
+        /// <see langword="null"/> rather than throwing on the receive path.
+        /// </summary>
+        public DateTimeOffset? TagBlockTimestampToDateTimeOffset()
+        {
+            const long MaxUnixSeconds = 253_402_300_799; // 9999-12-31T23:59:59Z
+            const long MaxUnixMilliseconds = (MaxUnixSeconds * 1000) + 999;
+
+            return unixTimestamp switch
+            {
+                <= 0 => null,
+                <= MaxUnixSeconds => DateTimeOffset.FromUnixTimeSeconds(unixTimestamp),
+                <= MaxUnixMilliseconds => DateTimeOffset.FromUnixTimeMilliseconds(unixTimestamp),
+                _ => null,
+            };
+        }
+    }
+
     extension(ReadOnlyMemory<byte> message)
     {
         public ReadOnlyMemory<byte> PrependNmeaBlockTags(TimeProvider timeProvider)

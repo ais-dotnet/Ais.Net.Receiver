@@ -21,6 +21,14 @@ public class NmeaToAisMessageTypeProcessor : INmeaAisMessageStreamProcessor, IDi
     public IObservable<IAisMessage> Messages => this.messages;
     public IObservable<(Exception Exception, string Line)> ParseErrors => this.parseErrors;
 
+    /// <summary>
+    /// Gets or sets the timestamp stamped onto every message emitted from now on, until it is set
+    /// again. The host sets it from each line's NMEA tag block before handing the line to the
+    /// parser, so a message carries its time of receipt without a second allocation to attach it.
+    /// Leave it <see langword="null"/> when the source supplies no time.
+    /// </summary>
+    public DateTimeOffset? Timestamp { get; set; }
+
     public void OnNext(in NmeaLineParser parsedLine, in ReadOnlySpan<byte> asciiPayload, uint padding)
     {
         try
@@ -111,7 +119,10 @@ public class NmeaToAisMessageTypeProcessor : INmeaAisMessageStreamProcessor, IDi
             SpareBits145: parser.SpareBits145,
             SpeedOverGround: parser.SpeedOverGroundTenths.FromTenths(),
             TimeStampSecond: parser.TimeStampSecond,
-            TrueHeadingDegrees: parser.TrueHeadingDegrees);
+            TrueHeadingDegrees: parser.TrueHeadingDegrees)
+        {
+            Timestamp = this.Timestamp,
+        };
 
         this.messages.OnNext(message);
     }
@@ -140,7 +151,10 @@ public class NmeaToAisMessageTypeProcessor : INmeaAisMessageStreamProcessor, IDi
             DimensionToStern: parser.DimensionToStern,
             Draught10thMetres: parser.Draught10thMetres,
             Spare423: parser.Spare423,
-            PositionFixType: parser.PositionFixType);
+            PositionFixType: parser.PositionFixType)
+        {
+            Timestamp = this.Timestamp,
+        };
 
         this.messages.OnNext(message);
     }
@@ -167,7 +181,10 @@ public class NmeaToAisMessageTypeProcessor : INmeaAisMessageStreamProcessor, IDi
             TrueHeadingDegrees: parser.TrueHeadingDegrees,
             IsAssigned: parser.IsAssigned,
             RaimFlag: parser.RaimFlag,
-            RepeatIndicator: parser.RepeatIndicator);
+            RepeatIndicator: parser.RepeatIndicator)
+        {
+            Timestamp = this.Timestamp,
+        };
 
         this.messages.OnNext(message);
     }
@@ -200,7 +217,10 @@ public class NmeaToAisMessageTypeProcessor : INmeaAisMessageStreamProcessor, IDi
             SpeedOverGround: parser.SpeedOverGroundTenths.FromTenths(),
             TimeStampSecond: parser.TimeStampSecond,
             TrueHeadingDegrees: parser.TrueHeadingDegrees,
-            Position: Position.From10000thMins(parser.Latitude10000thMins, parser.Longitude10000thMins));
+            Position: Position.From10000thMins(parser.Latitude10000thMins, parser.Longitude10000thMins))
+        {
+            Timestamp = this.Timestamp,
+        };
 
         this.messages.OnNext(message);
     }
@@ -222,7 +242,10 @@ public class NmeaToAisMessageTypeProcessor : INmeaAisMessageStreamProcessor, IDi
                     Mmsi: parser.Mmsi,
                     PartNumber: parser.PartNumber,
                     RepeatIndicator: parser.RepeatIndicator,
-                    Spare160: parser.Spare160);
+                    Spare160: parser.Spare160)
+                {
+                    Timestamp = this.Timestamp,
+                };
 
                 this.messages.OnNext(message);
 
@@ -257,7 +280,10 @@ public class NmeaToAisMessageTypeProcessor : INmeaAisMessageStreamProcessor, IDi
                     Spare162: parser.Spare162,
                     UnitModelCode: parser.UnitModelCode,
                     VendorIdRev3: vendorIdRev3Ascii.GetString(),
-                    VendorIdRev4: vendorIdRev4Ascii.GetString());
+                    VendorIdRev4: vendorIdRev4Ascii.GetString())
+                {
+                    Timestamp = this.Timestamp,
+                };
 
                 this.messages.OnNext(message);
                 break;
@@ -282,7 +308,10 @@ public class NmeaToAisMessageTypeProcessor : INmeaAisMessageStreamProcessor, IDi
             RaimFlag: parser.RaimFlag,
             RepeatIndicator: parser.RepeatIndicator,
             GnssPositionStatus: parser.NotGnssPosition,
-            NavigationStatus: parser.NavigationStatus);
+            NavigationStatus: parser.NavigationStatus)
+        {
+            Timestamp = this.Timestamp,
+        };
 
         this.messages.OnNext(message);
     }

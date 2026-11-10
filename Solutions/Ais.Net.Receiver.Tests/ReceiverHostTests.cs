@@ -5,6 +5,7 @@ using Ais.Net.Models.Abstractions;
 using Ais.Net.Receiver.Parser;
 using Ais.Net.Receiver.Receiver;
 
+using Microsoft.Extensions.Time.Testing;
 using NSubstitute;
 using Shouldly;
 
@@ -262,6 +263,56 @@ public class ReceiverHostTests
         // Assert
         receivedMetadata.ShouldNotBeNull();
         receivedMetadata.Value.Message.ShouldNotBeNull();
+    }
+
+    [TestMethod]
+    public async Task StartAsync_WithTagBlock_StampsMessageWithTagBlockTime()
+    {
+        // Arrange
+        INmeaReceiver? receiver = Substitute.For<INmeaReceiver>();
+        byte[] bytes = @"\s:2573210,c:1614556795*03\!BSVDM,1,1,,A,13c6@t0PBR0G5d6QQVgFKm9f0`PB,0*70"u8.ToArray();
+
+        receiver.GetAsync(Arg.Any<CancellationToken>())
+            .Returns(new[] { (ReadOnlyMemory<byte>)bytes }.ToAsyncEnumerable());
+
+        await using ReceiverHost host = new(receiver, TimeProvider.System);
+        IAisMessage? receivedMessage = null;
+        using IDisposable subscription = host.Messages.Subscribe(m => receivedMessage = m);
+
+        // Act
+        await host.StartAsync(CancellationToken.None);
+
+        // Assert
+        receivedMessage.ShouldNotBeNull();
+        IAisTimestamp timestamped = receivedMessage.ShouldBeAssignableTo<IAisTimestamp>();
+        timestamped.Timestamp.ShouldBe(DateTimeOffset.FromUnixTimeSeconds(1614556795));
+    }
+
+    [TestMethod]
+    public async Task StartAsync_WithoutTagBlock_StampsMessageWithTimeOfReceipt()
+    {
+        // Arrange
+        INmeaReceiver? receiver = Substitute.For<INmeaReceiver>();
+        byte[] bytes = "!AIVDM,1,1,,A,13u?etPv2;0n:dDPwUM1U1Cb069D,0*24"u8.ToArray();
+
+        receiver.GetAsync(Arg.Any<CancellationToken>())
+            .Returns(new[] { (ReadOnlyMemory<byte>)bytes }.ToAsyncEnumerable());
+
+        // The host prepends its own tag block to an untagged line, with whole-second resolution.
+        DateTimeOffset receivedAt = new(2026, 1, 1, 0, 0, 3, TimeSpan.Zero);
+        FakeTimeProvider timeProvider = new(receivedAt);
+
+        await using ReceiverHost host = new(receiver, timeProvider);
+        IAisMessage? receivedMessage = null;
+        using IDisposable subscription = host.Messages.Subscribe(m => receivedMessage = m);
+
+        // Act
+        await host.StartAsync(CancellationToken.None);
+
+        // Assert
+        receivedMessage.ShouldNotBeNull();
+        IAisTimestamp timestamped = receivedMessage.ShouldBeAssignableTo<IAisTimestamp>();
+        timestamped.Timestamp.ShouldBe(receivedAt);
     }
 
     [TestMethod]
