@@ -95,7 +95,7 @@ entries below.
 ### Changed
 
 - Upgraded to .NET 10 (`net10.0`) and C# 14, with a modernised project structure, and to
-  `Ais.Net.Models` 1.0.2.
+  `Ais.Net.Models` 1.0.5 and `Ais.Net.Models.Json.Nats` 1.0.3.
 - Adopted Central Package Management: package versions live in `Solutions/Directory.Packages.props`.
 - **The configuration file is renamed and restructured.** Settings move from `settings.json` to
   `appsettings.json`, read through the standard .NET host pipeline, so `appsettings.{Environment}.json`,
@@ -151,7 +151,7 @@ entries below.
   of growing memory without limit, and the drops are counted rather than hidden.
 - Storage writes are retried before a batch is dead-lettered or, without a dead-letter path,
   surfaced to the caller rather than swallowed.
-- The constant-delay retry helper is rebuilt on `Corvus.Retry` with a custom policy that preserves
+- The constant-delay retry helper is rebuilt on `Corvus.Retry` 2.0 with a custom policy that preserves
   cancellation semantics. An interim move to [Polly](https://github.com/App-vNext/Polly) during this
   cycle was reverted after Polly adopted the Open Source Maintenance Fee.
 - Tests run on `MSTest.Sdk` and the Microsoft.Testing.Platform runner. `dotnet test` no longer accepts

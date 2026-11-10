@@ -617,8 +617,8 @@
       "ais.net.receiver": {
         "type": "Project",
         "dependencies": {
-          "Ais.Net.Models": "[1.0.2, )",
-          "Corvus.Retry": "[1.0.7, )",
+          "Ais.Net.Models": "[1.0.5, )",
+          "Corvus.Retry": "[2.0.0, )",
           "Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions": "[10.0.14, )",
           "Microsoft.Extensions.Logging.Abstractions": "[10.0.14, )",
           "Microsoft.Extensions.Options": "[10.0.14, )",
@@ -637,7 +637,7 @@
           "Microsoft.Extensions.ServiceDiscovery": "[10.11.0, )",
           "OpenTelemetry.Exporter.OpenTelemetryProtocol": "[1.20.1, )",
           "OpenTelemetry.Extensions.Hosting": "[1.20.1, )",
-          "OpenTelemetry.Instrumentation.Http": "[1.20.1, )",
+          "OpenTelemetry.Instrumentation.Http": "[1.20.2, )",
           "OpenTelemetry.Instrumentation.Process": "[1.20.1-rc.1, )",
           "OpenTelemetry.Instrumentation.Runtime": "[1.20.1, )"
         }
@@ -654,9 +654,9 @@
       },
       "Ais.Net.Models": {
         "type": "CentralTransitive",
-        "requested": "[1.0.2, )",
-        "resolved": "1.0.2",
-        "contentHash": "/pC6UVuF6bzPkB8wyZJ64QkpjTGt+zn3ASLSeRzvhF/H7bJRZtXc65KkX2/Y2p2/VtDK81jafZM8P/qYSrKeEw==",
+        "requested": "[1.0.5, )",
+        "resolved": "1.0.5",
+        "contentHash": "hLGOKELCcdDVOPUO9Oe1ZcxJVZk4DILnhjJ+SI885NYUESxnh2WRZDt6e8VmhnC9F3K5xZsplJfSu7Ki6rI+dA==",
         "dependencies": {
           "Ais.Net": "0.4.2"
         }
@@ -674,9 +674,9 @@
       },
       "Corvus.Retry": {
         "type": "CentralTransitive",
-        "requested": "[1.0.7, )",
-        "resolved": "1.0.7",
-        "contentHash": "CMAb5YGTXzUeNS+9aumQCGUH6MzymbvlsljHAamxNwffmEly8S50UoqdMi6lHlQlkl2bc+xrvIbGnhJnnF6Puw=="
+        "requested": "[2.0.0, )",
+        "resolved": "2.0.0",
+        "contentHash": "u0r9uwPvmeZ5l9xwKMrec2rDn6WD/45vnmGq97nFv2OWILvgs2hh1solaNBIDNNijuCSOoSgbFCAptWXlqQ5Xw=="
       },
       "Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions": {
         "type": "CentralTransitive",
@@ -732,9 +732,9 @@
       },
       "OpenTelemetry.Instrumentation.Http": {
         "type": "CentralTransitive",
-        "requested": "[1.20.1, )",
-        "resolved": "1.20.1",
-        "contentHash": "XJTM6imVztxLraOrzsdlZf5shdH9TVeEWNBxpyepB5e3Gy+KNeQf2hyic398210UxqlPtt4iOkBELtjfIFTzug==",
+        "requested": "[1.20.2, )",
+        "resolved": "1.20.2",
+        "contentHash": "B84T2n4U7r3l+N5qP8vmoztGhbliWXc+vSz0BefjYNXbW9BA9q7iqU9+xn5dtCPlMNdHb+9Horgk8YhcO+eNTw==",
         "dependencies": {
           "Microsoft.Extensions.Configuration": "10.0.0",
           "Microsoft.Extensions.Options": "10.0.0",

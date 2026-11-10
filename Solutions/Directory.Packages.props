@@ -5,15 +5,15 @@
     <CentralPackageFloatingVersionsEnabled>true</CentralPackageFloatingVersionsEnabled>
   </PropertyGroup>
   <ItemGroup>
-    <PackageVersion Include="Ais.Net.Models" Version="1.0.2" />
-    <PackageVersion Include="Ais.Net.Models.Json.Nats" Version="1.0.2" />
+    <PackageVersion Include="Ais.Net.Models" Version="1.0.5" />
+    <PackageVersion Include="Ais.Net.Models.Json.Nats" Version="1.0.3" />
     <PackageVersion Include="Aspire.NATS.Net" Version="13.6.4" />
     <PackageVersion Include="Aspire.Hosting.AppHost" Version="13.6.4" />
     <PackageVersion Include="Aspire.Hosting.Azure.Storage" Version="13.6.4" />
     <PackageVersion Include="Aspire.Hosting.Nats" Version="13.6.4" />
     <PackageVersion Include="Azure.Storage.Blobs" Version="12.30.1" />
     <PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
-    <PackageVersion Include="Corvus.Retry" Version="1.0.7" />
+    <PackageVersion Include="Corvus.Retry" Version="2.0.0" />
     <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.14" />
     <PackageVersion Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.14" />
     <PackageVersion Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.14" />
@@ -44,7 +44,7 @@
     <PackageVersion Include="OpenTelemetry.Exporter.Console" Version="1.20.1" />
     <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.20.1" />
     <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.20.1" />
-    <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.20.1" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.20.2" />
     <!-- Process instrumentation has no stable release; rc.1 tracks the 1.20.1 line of the others. -->
     <PackageVersion Include="OpenTelemetry.Instrumentation.Process" Version="1.20.1-rc.1" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.20.1" />
