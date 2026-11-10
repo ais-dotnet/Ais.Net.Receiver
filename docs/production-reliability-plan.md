@@ -12,8 +12,8 @@ hot path is already lean (~232 B/line), so this plan is about *reliability*, not
 - **Tests-first** for the correctness and resilience items.
 - New operational signals are exposed as **metrics** (OpenTelemetry meter) so failures are visible.
 
-**Progress:** C1, R1, R2, T1, T2, T3, and M1 are implemented and tested (125 tests green). The
-Corvus.Retry → Polly migration is also done. Remaining: T4 (optional CI soak).
+**Progress:** C1, R1, R2, T1, T2, T3, and M1 are implemented and tested (125 tests green).
+Remaining: T4 (optional CI soak).
 
 ---
 
@@ -67,7 +67,7 @@ file for later replay. Verify `BlobClientOptions.Retry` is configured on the cli
 **Acceptance.** Mock storage client that fails N times then succeeds proves retry; terminal-failure
 test asserts the failed counter increments (and the dead-letter file is written, if implemented).
 
-**Done (with replay).** `ResilientStorageClient` retries via Polly, then dead-letters each still-failing
+**Done (with replay).** `ResilientStorageClient` retries via Corvus.Retry, then dead-letters each still-failing
 batch to `DeadLetterPath` as an atomic `.nm4` file (staged then renamed, via `DeadLetterStore`). A
 background `DeadLetterReplayer` sweeps that directory every `DeadLetterReplayIntervalSeconds` (default
 60) and re-persists each batch once the backend recovers, deleting the file on success and stopping at

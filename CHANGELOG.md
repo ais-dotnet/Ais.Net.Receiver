@@ -152,8 +152,7 @@ entries below.
 - Storage writes are retried before a batch is dead-lettered or, without a dead-letter path,
   surfaced to the caller rather than swallowed.
 - The constant-delay retry helper is rebuilt on `Corvus.Retry` 2.0 with a custom policy that preserves
-  cancellation semantics. An interim move to [Polly](https://github.com/App-vNext/Polly) during this
-  cycle was reverted after Polly adopted the Open Source Maintenance Fee.
+  cancellation semantics.
 - Tests run on `MSTest.Sdk` and the Microsoft.Testing.Platform runner. `dotnet test` no longer accepts
   VSTest-era switches: passing `--nologo`, `--logger` or `--test-adapter-path` makes the run report
   `Zero tests ran` rather than an unrecognised-argument error.

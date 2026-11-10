@@ -7,16 +7,14 @@ using Corvus.Retry.Policies;
 namespace Ais.Net.Receiver.Resilience;
 
 /// <summary>
-/// Retries any failure except cancellation of the caller's token: the behaviour Polly's retry
-/// strategy had with <c>Handle&lt;Exception&gt;()</c> plus its own cancellation checks.
+/// Retries any failure except cancellation of the caller's token.
 /// </summary>
 /// <remarks>
 /// Corvus.Retry's loop stops retrying once the token is cancelled, but it only consults the token
 /// after an attempt has failed. This policy additionally refuses to retry an
 /// <see cref="OperationCanceledException"/> raised for that same token, so a cancelled wait or a
 /// cancelled operation is surfaced to the caller rather than counted as a transient failure. A
-/// cancellation carrying a different token (for example an internal timeout) is still retried,
-/// as it was under Polly.
+/// cancellation carrying a different token (for example an internal timeout) is still retried.
 /// </remarks>
 internal sealed class NotCancelledRetryPolicy : IRetryPolicy
 {

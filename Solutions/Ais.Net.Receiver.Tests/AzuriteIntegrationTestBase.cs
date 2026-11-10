@@ -54,7 +54,7 @@ public abstract class AzuriteIntegrationTestBase
     /// The defaults here are chosen so no real-clock timer can influence a test:
     /// <c>BatchTimeoutSeconds</c> is far longer than any test runs (the batch pipeline's flush timer
     /// is a raw <see cref="System.Threading.Timer"/> that a fake clock cannot drive, so tests must
-    /// flush explicitly), and <c>WriteRetryAttempts</c> of 1 disables Polly's retry entirely, whose
+    /// flush explicitly), and <c>WriteRetryAttempts</c> of 1 disables the storage write retry entirely, whose
     /// delays also come from the real clock.
     /// </remarks>
     protected StorageConfig CreateStorageConfig(Action<StorageConfig>? configure = null)

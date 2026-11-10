@@ -18,7 +18,7 @@ namespace Ais.Net.Receiver.Resilience;
 /// ended. The strategy used here therefore reports no delay, and the wait is taken at the start of
 /// each retry attempt with <see cref="Task.Delay(TimeSpan, CancellationToken)"/> instead. The
 /// <see cref="OperationCanceledException"/> that produces on cancellation is rejected by
-/// <see cref="NotCancelledRetryPolicy"/> and surfaces to the caller, as it did under Polly.
+/// <see cref="NotCancelledRetryPolicy"/> and surfaces to the caller.
 /// </para>
 /// <para>
 /// Corvus.Retry strategies carry per-run state (the attempt count), so a fresh strategy and policy

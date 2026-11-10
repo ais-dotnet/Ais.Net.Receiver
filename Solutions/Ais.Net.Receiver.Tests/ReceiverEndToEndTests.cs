@@ -345,7 +345,7 @@ public class ReceiverEndToEndTests : AzuriteIntegrationTestBase
         // No delay overload: that delay is real wall-clock time, one interval per line.
         FileStreamNmeaReceiver receiver = new(fileSystem, new FilePath(FeedPath));
 
-        // retryAttempts 1 disables the host's Polly retry, so a defect surfaces as a failure rather
+        // retryAttempts 1 disables the host's retry, so a defect surfaces as a failure rather
         // than as a multi-second stall repeated a hundred times.
         return new ReceiverHost(
             receiver,
