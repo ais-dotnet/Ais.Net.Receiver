@@ -70,7 +70,7 @@ param (
     [string] $ZfModulePath,
 
     [Parameter()]
-    [string] $ZfModuleVersion = "1.0.7",
+    [string] $ZfModuleVersion = "2.0.1",
 
     [Parameter()]
     [version] $InvokeBuildModuleVersion = "5.14.23"

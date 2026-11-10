@@ -29,6 +29,7 @@ permissions:
   actions: write  # enable cache clean-up
   checks: write  # enable test result annotations
   contents: write  # enable creating releases
+  id-token: write  # enable NuGet.org Trusted Publishing (OIDC)
   issues: read
   packages: write  # enable publishing packages
   pull-requests: write  # enable test result annotations
@@ -59,6 +60,9 @@ jobs:
         # Docker action to build the multi-arch images at the end of the build.
         environmentVariablesYaml: |
           BUILDVAR_NuGetPublishSource: "${{ startsWith(github.ref, 'refs/tags/') && 'https://api.nuget.org/v3/index.json' || format('https://nuget.pkg.github.com/{0}/index.json', github.repository_owner) }}"
+          # Trusted Publishing only applies to nuget.org - GitHub Packages publishing still uses NUGET_API_KEY
+          ZF_BUILD_DOTNET_NUGET_USE_TRUSTED_PUBLISHING: ${{ startsWith(github.ref, 'refs/tags/') && vars.ZF_BUILD_DOTNET_NUGET_USE_TRUSTED_PUBLISHING || 'false' }}
+          ZF_BUILD_DOTNET_NUGET_TRUSTED_PUBLISHING_USER: ${{ vars.ZF_BUILD_DOTNET_NUGET_TRUSTED_PUBLISHING_USER }}
           BUILDVAR_ContainerImageVersionOverride: "**UNSET**"
           BUILDVAR_DockerRegistryUsername: "${{ secrets.DOCKERHUB_USERNAME }}"
           BUILDVAR_SkipContainerImages: "true"
@@ -67,7 +71,8 @@ jobs:
           # and the build would stay green having covered none of the storage path.
           AIS_TEST_REQUIRE_INTEGRATION: "true"
         secretsYaml: |
-          NUGET_API_KEY: "${{ startsWith(github.ref, 'refs/tags/') && secrets.NUGET_APIKEY || secrets.BUILD_PUBLISHER_PAT }}"
+          # nuget.org publishing uses Trusted Publishing (OIDC), so an API key is only needed for GitHub Packages
+          NUGET_API_KEY: "${{ !startsWith(github.ref, 'refs/tags/') && secrets.BUILD_PUBLISHER_PAT || '' }}"
           DOCKERHUB_ACCESSTOKEN: "${{ secrets.DOCKERHUB_ACCESSTOKEN }}"
         secretsEncryptionKey: ${{ secrets.SHARED_WORKFLOW_KEY }}
 
@@ -98,7 +103,7 @@ jobs:
       # Dependabot and fork PRs have no access to repository secrets, so the login (which is only
       # needed when the image is actually pushed, below) must not run for them.
       if: ${{ startsWith(github.ref, 'refs/tags/') || github.event.inputs.forcePublish == 'true' }}
-      uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6    # v4.7.0
+      uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550    # v4.8.0
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_ACCESSTOKEN }}
